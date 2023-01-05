@@ -39,7 +39,7 @@
 #include "S3ObjectStores.h"
 #include "Server.h"
 #include "Statistics.h"
-#include "TcpTransport.h"
+#include "TcpClient.h"
 
 const char Default_GEDSFolderDelimiter = '/';
 // Hadoop S3A uses 32MB - thus we set the same value.
@@ -265,12 +265,6 @@ public:
    */
   std::string getLocalPath(const std::string &bucket, const std::string &key) const;
   std::string getLocalPath(const GEDSFile &file) const;
-
-  /**
-   * @brief Tcp inter-node object transport service.
-   *
-   */
-  std::shared_ptr<geds::TcpTransport> _tcpTransport;
 
   /**
    * @brief Register an object store configuration with GEDS.

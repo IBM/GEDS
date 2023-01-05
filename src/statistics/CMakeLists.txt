@@ -18,6 +18,7 @@ SET(SOURCES
 add_library(geds_statistics STATIC ${SOURCES})
 target_link_libraries(geds_statistics
     PUBLIC
+    ${Boost_LIBRARIES}
     geds_utility
 )
 target_include_directories(geds_statistics

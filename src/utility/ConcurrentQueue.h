@@ -5,11 +5,15 @@
 
 #pragma once
 
+#include <chrono>
+#include <condition_variable>
 #include <functional>
 #include <mutex>
 #include <optional>
 #include <queue>
 #include <shared_mutex>
+
+using namespace std::chrono_literals;
 
 #include "RWConcurrentObjectAdaptor.h"
 
@@ -17,6 +21,9 @@ namespace utility {
 
 template <class K> class ConcurrentQueue : RWConcurrentObjectAdaptor {
   std::queue<K> _queue;
+
+  std::condition_variable _cv;
+  std::mutex _cv_lock;
 
 public:
   std::optional<K> front() const {
@@ -37,19 +44,34 @@ public:
     return result;
   }
 
+  K pop_wait_until_available() {
+    std::optional<K> result = pop();
+    if (result.has_value()) {
+      return *result;
+    }
+    do {
+      std::unique_lock<std::mutex> cv_lock(_cv_lock);
+      _cv.wait_for(cv_lock, 500ms, [] { return true; });
+      result = pop();
+    } while (!result.has_value());
+    return *result;
+  }
+
   bool empty() const {
     auto lock = getReadLock();
     return _queue.empty();
   }
 
-  void emplace(K k) {
+  void push(K &k) {
     auto lock = getWriteLock();
-    _queue.emplace(k);
+    _queue.push(k);
+    _cv.notify_one();
   }
 
   void emplace(K &&k) {
     auto lock = getWriteLock();
     _queue.emplace(k);
+    _cv.notify_one();
   }
 
   void remove(std::function<bool(K &)> selector) {

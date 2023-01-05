@@ -5,9 +5,6 @@
 
 #include "MMAPFile.h"
 
-#include "Filesystem.h"
-#include "Logging.h"
-
 #include <algorithm>
 #include <cstddef>
 #include <exception>
@@ -17,6 +14,9 @@
 #include <string>
 #include <sys/mman.h>
 #include <unistd.h>
+
+#include "Filesystem.h"
+#include "Logging.h"
 
 namespace geds::filesystem {
 
