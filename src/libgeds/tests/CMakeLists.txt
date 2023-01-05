@@ -13,6 +13,7 @@ add_executable(test_geds_lib
         test_GEDSFile.cpp
         test_GEDSFileHandle.cpp
         test_GEDSS3FileHandle.cpp
+        test_TcpDataTransport.cpp
 )
 target_link_libraries(test_geds_lib
         PUBLIC

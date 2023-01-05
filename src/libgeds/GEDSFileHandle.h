@@ -76,6 +76,7 @@ public:
   virtual absl::StatusOr<size_t> readBytes(uint8_t *bytes, size_t position, size_t length);
 
   virtual absl::StatusOr<int> rawFd() const;
+  virtual absl::StatusOr<uint8_t *> rawPtr() const;
 
   /**
    * @brief Write length bytes into file handle at position. The API needs to handle POSIX errors.

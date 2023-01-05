@@ -42,7 +42,6 @@
 #include "Platform.h"
 #include "Ports.h"
 #include "Statistics.h"
-#include "TcpTransport.h"
 #include "Version.h"
 
 using namespace geds;
@@ -126,11 +125,9 @@ absl::Status GEDS::start() {
                                 std::string{hostIP.status().message()});
     }
     _hostURI = computeHostUri(hostIP.value(), _server.port());
+    _hostname = *hostIP;
     LOG_INFO("Using ", _hostURI, " to announce myself.");
   }
-
-  _tcpTransport = TcpTransport::factory(shared_from_this());
-  _tcpTransport->start();
 
   result = _httpServer.start();
   if (!result.ok()) {
@@ -172,7 +169,6 @@ absl::Status GEDS::stop() {
   // XXX TODO: Properly cleanup files
   _fileHandles.clear();
   _fileTransfers.clear();
-  _tcpTransport->stop();
 
   _state = ServiceState::Stopped;
   return result;
@@ -407,8 +403,7 @@ GEDS::getFileTransferService(const std::string &hostname) {
       return *fileTransferService;
     }
   }
-  auto fileTransferService =
-      std::make_shared<FileTransferService>(hostname, shared_from_this(), _tcpTransport);
+  auto fileTransferService = std::make_shared<FileTransferService>(hostname, shared_from_this());
   auto status = fileTransferService->connect();
   if (!status.ok()) {
     LOG_ERROR("Unable to connect to ", hostname, " for FileTransferService.: ", status.code());

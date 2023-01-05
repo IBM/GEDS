@@ -62,6 +62,10 @@ absl::StatusOr<int> GEDSFileHandle::rawFd() const {
   return absl::UnavailableError("rawFDs are not supported for this FileHandle type!");
 }
 
+absl::StatusOr<uint8_t *> GEDSFileHandle::rawPtr() const {
+  return absl::UnavailableError("rawPtrs are not supported for this FileHandle type!");
+}
+
 absl::Status GEDSFileHandle::writeBytes(const uint8_t * /* unused bytes */,
                                         size_t /* unused position */, size_t /* unused length */) {
   return absl::UnavailableError("Write operation is not available.");

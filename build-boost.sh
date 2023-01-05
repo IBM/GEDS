@@ -21,4 +21,4 @@ wget -O ${BUILD_DIR}/boost.tar.gz https://boostorg.jfrog.io/artifactory/main/rel
 cd "${BUILD_DIR}"
 tar xf boost.tar.gz --strip-components 1
 ./bootstrap.sh --prefix="${INSTALL_PREFIX}"
-sudo ./b2 install
+sudo ./b2 cxxflags=-fPIC cflags=-fPIC install
