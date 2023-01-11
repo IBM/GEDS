@@ -1,0 +1,68 @@
+#
+# Copyright 2022- IBM Inc. All rights reserved
+# SPDX-License-Identifier: Apache2.0
+#
+
+ARG DOCKER_BUILD_TARGET
+FROM geds_build:${DOCKER_BUILD_TARGET}
+
+ARG CMAKE_CXX_STANDARD=20
+ARG CMAKE_VERSION=3.22.4
+
+# Install CMake
+RUN wget --quiet -O cmake.tar.gz https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-linux-x86_64.tar.gz \
+    && tar xf cmake.tar.gz  --strip-components=1 -C /usr/local/ \
+    && rm cmake.tar.gz
+
+ARG GRPC_VERSION=v1.48.0
+ENV GRPC_INSTALL_DIR=/usr/local/opt/grpc
+RUN mkdir /src
+
+RUN git clone --recurse-submodules -b ${GRPC_VERSION} --depth 1 --shallow-submodules https://github.com/grpc/grpc /src/grpc \
+    && mkdir -p /build/grpc \
+    && cd /build/grpc \
+    && cmake -DgRPC_INSTALL=ON \
+             -DgRPC_BUILD_TESTS=OFF \
+             -DgRPC_SSL_PROVIDER=package \
+             -DCMAKE_CXX_COMPILER=/usr/bin/clang++ \
+             -DCMAKE_C_COMPILER=/usr/bin/clang \
+             -DCMAKE_INSTALL_PREFIX=${GRPC_INSTALL_DIR} \
+             -DCMAKE_CXX_STANDARD=${CMAKE_CXX_STANDARD} \
+             -S /src/grpc -B . -G Ninja \
+    && cmake --build . --target all \
+    && cmake --install . --prefix ${GRPC_INSTALL_DIR} \
+    && cd / \
+    && rm -rf /build/grpc /src/grpc
+
+ARG AWS_SDK_VERSION=1.10.20
+ENV AWS_SDK_INSTALL_DIR=/usr/local/opt/aws-sdk-cpp
+
+RUN git clone --recurse-submodules -b ${AWS_SDK_VERSION} --depth 1 --shallow-submodules https://github.com/aws/aws-sdk-cpp /src/aws-sdk-cpp \
+    && mkdir -p /build/aws-sdk-cpp \
+    && cd /build/aws-sdk-cpp \
+    && cmake -DCMAKE_BUILD_TYPE=Release \
+             -DBUILD_ONLY=s3 \
+             -DBUILD_SHARED_LIBS=OFF \
+             -DCMAKE_CXX_STANDARD=${CMAKE_CXX_STANDARD} \
+             -DCPP_STANDARD=${CMAKE_CXX_STANDARD} \
+             -DENABLE_TESTING=OFF -DAUTORUN_UNIT_TESTS=OFF \
+             -DCMAKE_INSTALL_PREFIX=${AWS_SDK_INSTALL_DIR} \
+             -S /src/aws-sdk-cpp -B . \
+    && cmake --build . \
+    && cmake --install . --prefix ${AWS_SDK_INSTALL_DIR} \
+    && cd / \
+    && rm -rf /build/aws-sdk-cpp /src/aws-sdk-cpp
+
+ARG BOOST_VERSION=1.80.0
+ARG BOOST_VERSION_=1_80_0
+ENV BOOST_INSTALL_DIR=/usr/local/opt/boost
+
+RUN mkdir -p /build/boost \
+    && cd /build/boost \
+    && wget -O boost.tar.gz https://boostorg.jfrog.io/artifactory/main/release/${BOOST_VERSION}/source/boost_${BOOST_VERSION_}.tar.gz \
+    && cd "${BUILD_DIR}" \
+    && tar xf boost.tar.gz --strip-components 1 \
+    && ./bootstrap.sh --prefix="${INSTALL_PREFIX}" \
+    && ./b2 install \
+    && cd / \
+    && rm -rf /build/boost

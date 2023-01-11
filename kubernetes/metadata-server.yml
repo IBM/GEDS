@@ -1,0 +1,36 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: geds-metadataserver
+spec:
+  selector:
+    app: geds-metadataserver
+  ports:
+  - port: 50001
+  selector:
+    app: geds-metadataserver
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: geds-metadataserver
+  labels:
+    app: geds-metadataserver
+spec:
+  hostname: geds-metadataserver
+  containers:
+  - name: geds-metadataserver
+    image: us.icr.io/zrlio/geds-dev:latest
+    imagePullPolicy: Always
+    ports:
+    - containerPort: 50001
+    command: [ "/usr/local/bin/metadataserver" ]
+    resources:
+      requests:
+        cpu: 2
+        memory: 4G
+      limits:
+        cpu: 2
+        memory: 4G
+  imagePullSecrets:
+    - name: zrlio

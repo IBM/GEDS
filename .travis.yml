@@ -1,0 +1,45 @@
+#
+# Copyright 2022- IBM Inc. All rights reserved
+# SPDX-License-Identifier: Apache2.0
+#
+
+language: c++
+dist: jammy
+
+services:
+  - docker
+
+env:
+  global:
+    - DOCKER_CACHE_DIR=$HOME/travis/cache
+  matrix:
+    - DOCKER_BUILD_TARGET=ubuntu20.04 CMAKE_BUILD_TYPE=Release
+    - DOCKER_BUILD_TARGET=ubuntu20.04 CMAKE_BUILD_TYPE=Debug
+    - DOCKER_BUILD_TARGET=ubuntu22.04 CMAKE_BUILD_TYPE=Release
+    - DOCKER_BUILD_TARGET=ubuntu22.04 CMAKE_BUILD_TYPE=Debug
+    - DOCKER_BUILD_TARGET=debian11.5 CMAKE_BUILD_TYPE=Release
+    - DOCKER_BUILD_TARGET=debian11.5 CMAKE_BUILD_TYPE=Debug
+
+notifications:
+  email:
+    on_success: never # default: change
+    on_failure: always # default: always
+
+before_install:
+  - .travis/build-or-cache-grpc.sh
+
+script:
+  - .travis/build-geds.sh
+
+cache:
+  directories:
+  - $DOCKER_CACHE_DIR
+  timeout: 1000
+
+deploy:
+  provider: releases
+  file_glob: true
+  file: travis_artifacts/*
+  skip_cleanup: true
+  on:
+    tags: true

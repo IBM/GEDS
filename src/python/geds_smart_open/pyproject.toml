@@ -1,0 +1,35 @@
+[project]
+name = "geds_smart_open"
+version = "SNAPSHOT"
+authors = [
+  { name="Pascal Spörri", email="psp@zurich.ibm.com" },
+]
+description = "A smart_open plugin for GEDS."
+readme = "README.md"
+requires-python = ">=3.9"
+
+dependencies = [
+    "smart_open",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/IBM/GEDS"
+"Bug Tracker" = "https://github.com/IBM/GEDS/issues"
+
+[build-system]
+requires = [
+  "setuptools >= 61.0.0",
+]
+build-backend = "setuptools.build_meta"
+
+# see also https://setuptools.pypa.io/en/latest/userguide/datafiles.html
+[tool.setuptools]
+# By default, include-package-data is true in pyproject.toml, so you do
+# NOT have to specify this line.
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"*" = ["*.so"]

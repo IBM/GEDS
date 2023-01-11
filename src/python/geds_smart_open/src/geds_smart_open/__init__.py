@@ -1,0 +1,14 @@
+#
+# Copyright 2022- IBM Inc. All rights reserved
+# SPDX-License-Identifier: Apache2.0
+#
+
+from .pygeds import GEDS
+from smart_open.transport import register_transport
+
+from . import geds
+from .geds import register_object_store
+
+register_transport(geds)
+
+__all__ = ["GEDS", "register_object_store"]

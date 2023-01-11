@@ -1,0 +1,23 @@
+#
+# Copyright 2022- IBM Inc. All rights reserved
+# SPDX-License-Identifier: Apache2.0
+#
+
+ARG GIT_REVISION
+FROM geds-build_ubuntu22.04:${GIT_REVISION} as builder
+
+FROM ubuntu:22.04
+
+ENV DEBIAN_FRONTEND noninteractive
+ENV DEBCONF_NONINTERACTIVE_SEEN true
+
+RUN apt-get clean && apt-get update \
+    && apt-get install -y --no-install-recommends \
+        openjdk-11-jdk-headless \
+        python3.10 python3.10-distutils python3-numpy \
+    && apt-get clean
+
+COPY --from=builder /usr/local/opt/geds/ /usr/local/
+
+EXPOSE 50001
+EXPOSE 50053

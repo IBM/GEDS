@@ -1,0 +1,14 @@
+#
+# Copyright 2022- IBM Inc. All rights reserved
+# SPDX-License-Identifier: Apache2.0
+#
+
+# Default Docker build target
+export DOCKER_BUILD_TARGET=${DOCKER_BUILD_TARGET:-"ubuntu22.04"}
+
+# AWS SDK
+export AWS_SDK_VERSION="1.10.20"
+# GRPC Version
+export GRPC_VERSION="v1.51.1"
+# Boost Version
+export BOOST_VERSION="1.80.0"

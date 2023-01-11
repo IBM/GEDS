@@ -1,0 +1,14 @@
+/**
+ * Copyright 2022- IBM Inc. All rights reserved
+ * SPDX-License-Identifier: Apache2.0
+ */
+ 
+#include "Version.h"
+#include <string_view>
+
+namespace utility {
+const std::string_view &GEDSVersion() {
+  static const std::string_view GEDS_VERSION = "@GEDS_VERSION@";
+  return GEDS_VERSION;
+}
+} // namespace utility

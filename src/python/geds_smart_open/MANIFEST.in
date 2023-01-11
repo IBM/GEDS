@@ -1,0 +1,1 @@
+include ./src/geds_smart_open/*.so

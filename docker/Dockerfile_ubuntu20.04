@@ -1,0 +1,27 @@
+#
+# Copyright 2022- IBM Inc. All rights reserved
+# SPDX-License-Identifier: Apache2.0
+#
+
+ARG GIT_REVISION
+FROM geds-build_ubuntu20.04:${GIT_REVISION} as builder
+
+FROM ubuntu:20.04
+
+ENV DEBIAN_FRONTEND noninteractive
+ENV DEBCONF_NONINTERACTIVE_SEEN true
+
+RUN apt-get clean && apt-get update \
+    && apt-get install -y --no-install-recommends \
+        openjdk-11-jdk-headless gcc-10 \
+        python3.9 python3.9-distutils \
+        curl \
+    && apt-get clean \
+    && curl -o /tmp/get-pip.py https://bootstrap.pypa.io/get-pip.py \
+    && python3.9 /tmp/get-pip.py \
+    && python3.9 -m pip install numpy
+
+COPY --from=builder /usr/local/opt/geds/ /usr/local/
+
+EXPOSE 50001
+EXPOSE 50053

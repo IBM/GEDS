@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  generateName: geds-python-create-
+spec:
+  containers:
+  - name: geds-python-create
+    image: us.icr.io/zrlio/geds-dev:latest
+    command: [ "python3.9", "/usr/local/python/create.py"  ]
+    imagePullPolicy: Always
+    ports:
+    - containerPort: 50003
+    env:
+    - name: GEDS_METADATASERVER
+      value: geds-metadataserver:50001
+  imagePullSecrets:
+    - name: zrlio

@@ -1,0 +1,130 @@
+/**
+ * Copyright 2022- IBM Inc. All rights reserved
+ * SPDX-License-Identifier: Apache2.0
+ */
+ 
+#include "GEDSFileHandle.h"
+
+#include <algorithm>
+#include <cstdint>
+#include <stdexcept>
+#include <vector>
+
+#include "GEDS.h"
+#include "GEDSFile.h"
+#include "GEDSInternal.h"
+#include "Logging.h"
+#include "Statistics.h"
+
+GEDSFileHandle::GEDSFileHandle(std::shared_ptr<GEDS> gedsService, std::string bucketArg,
+                               std::string keyArg)
+    : enable_shared_from_this(), bucket(std::move(bucketArg)), key(std::move(keyArg)),
+      identifier(bucket + "/" + key), _gedsService(gedsService) {}
+
+GEDSFileHandle::~GEDSFileHandle() {
+  if (_openCount.load() != 0) {
+    geds::Statistics::counter("GEDS: closed filehandles with dangling references")->increase();
+    LOG_ERROR << "The file handle " + identifier + " has still dangling references." << std::endl;
+  }
+}
+
+int64_t GEDSFileHandle::openCount() const { return _openCount; }
+void GEDSFileHandle::increaseOpenCount() {
+  _openCount++;
+  _lastOpened = std::chrono::system_clock::now();
+}
+void GEDSFileHandle::decreaseOpenCount() {
+  _openCount--;
+  _lastReleased = std::chrono::system_clock::now();
+  if (_openCount == 0) {
+    notifyUnused();
+  }
+}
+
+void GEDSFileHandle::notifyUnused() {
+  LOG_DEBUG << "The file " << identifier << " is unused." << std::endl;
+}
+
+std::chrono::system_clock::time_point GEDSFileHandle::lastOpened() const { return _lastOpened; }
+std::chrono::system_clock::time_point GEDSFileHandle::lastReleased() const { return _lastReleased; }
+
+size_t GEDSFileHandle::roundToNearestMultiple(size_t number, size_t factor) const {
+  return ((number + factor - 1) / factor) * factor;
+}
+
+absl::StatusOr<size_t> GEDSFileHandle::readBytes(uint8_t * /* unused bytes */,
+                                                 size_t /* unused position */,
+                                                 size_t /* unused length */) {
+  return absl::UnavailableError("Read operation is not available.");
+}
+
+absl::StatusOr<int> GEDSFileHandle::rawFd() const {
+  return absl::UnavailableError("rawFDs are not supported for this FileHandle type!");
+}
+
+absl::Status GEDSFileHandle::writeBytes(const uint8_t * /* unused bytes */,
+                                        size_t /* unused position */, size_t /* unused length */) {
+  return absl::UnavailableError("Write operation is not available.");
+}
+
+absl::Status GEDSFileHandle::write(std::istream & /* stream */, size_t /* position */,
+                                   std::optional<size_t> /* lengthOptional */) {
+  return absl::UnavailableError("Write is not available.");
+}
+
+absl::Status GEDSFileHandle::truncate(size_t /*targetSize*/) {
+  return absl::UnavailableError("Truncate is not available.");
+}
+
+absl::Status GEDSFileHandle::download(std::shared_ptr<GEDSFileHandle> destination) {
+  size_t pos = 0;
+  const auto totalSize = size();
+  if (!totalSize.ok()) {
+    return totalSize.status();
+  }
+  do {
+    auto length = std::min(_gedsService->blockSize, *totalSize - pos);
+    auto count = downloadRange(destination, pos, length, pos);
+    if (!count.ok()) {
+      return count.status();
+    }
+    pos += *count;
+  } while (pos < *totalSize);
+  return absl::OkStatus();
+}
+
+absl::StatusOr<size_t> GEDSFileHandle::downloadRange(std::shared_ptr<GEDSFileHandle> destination,
+                                                     size_t srcPosition, size_t length,
+                                                     size_t destPosition) {
+  if (this == destination.get()) {
+    return absl::InvalidArgumentError("Source and target are the same!");
+  }
+  size_t count = 0;
+  try {
+    std::vector<uint8_t> buffer(_gedsService->blockSize, 0);
+    do {
+      auto rcount =
+          readBytes(&buffer[0], srcPosition + count, std::min(length - count, buffer.size()));
+      if (!rcount.ok()) {
+        return rcount.status();
+      }
+      if (*rcount == 0) {
+        break;
+      }
+      auto writeStatus = destination->writeBytes(&buffer[0], destPosition + count, *rcount);
+      if (!writeStatus.ok()) {
+        return writeStatus;
+      }
+      count += *rcount;
+    } while (count < length);
+  } catch (const std::runtime_error &e) {
+    return absl::UnknownError(e.what());
+  }
+  return count;
+}
+
+absl::Status GEDSFileHandle::seal() {
+  return absl::UnavailableError("Seal operation is not available.");
+}
+
+absl::StatusOr<GEDSFile> GEDSFileHandle::open() { return GEDSFile(shared_from_this()); }

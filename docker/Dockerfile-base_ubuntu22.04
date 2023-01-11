@@ -1,0 +1,26 @@
+#
+# Copyright 2022- IBM Inc. All rights reserved
+# SPDX-License-Identifier: Apache2.0
+#
+
+FROM ubuntu:22.04
+
+ENV DEBIAN_FRONTEND noninteractive
+ENV DEBCONF_NONINTERACTIVE_SEEN true
+ARG DEFAULT_LOCALE=en_US.UTF-8
+
+RUN apt-get clean && apt-get update && \
+    apt-get install -y --no-install-recommends \
+        clang \
+        git \
+        curl wget \
+        build-essential gcc ninja-build \
+        openjdk-11-jdk \
+        python3.10 python3.10-dev python3-distutils \
+        libcurl4 libcurl4-openssl-dev libssl-dev \
+        locales
+
+RUN locale-gen ${DEFAULT_LOCALE}
+ENV LC_ALL=${DEFAULT_LOCALE}
+ENV LANG=${DEFAULT_LOCALE}
+ENV LANGUAGE=${DEFAULT_LOCALE}
