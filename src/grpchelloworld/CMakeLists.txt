@@ -1,6 +1,6 @@
 #
 # Copyright 2022- IBM Inc. All rights reserved
-# SPDX-License-Identifier: Apache2.0
+# SPDX-License-Identifier: Apache-2.0
 #
 
 protobuf_generate_grpc_cpp(helloworld.proto)

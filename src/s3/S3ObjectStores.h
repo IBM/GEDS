@@ -1,8 +1,8 @@
 /**
  * Copyright 2022- IBM Inc. All rights reserved
- * SPDX-License-Identifier: Apache2.0
+ * SPDX-License-Identifier: Apache-2.0
  */
- 
+
 #ifndef GEDS_S3_OBJECT_STORES_H
 #define GEDS_S3_OBJECT_STORES_H
 

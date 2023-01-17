@@ -1,6 +1,6 @@
 #
 # Copyright 2022- IBM Inc. All rights reserved
-# SPDX-License-Identifier: Apache2.0
+# SPDX-License-Identifier: Apache-2.0
 #
 
 # Dependencies for GEDS
@@ -19,7 +19,6 @@ add_subdirectory(benchmark)
 add_subdirectory(geds)
 add_subdirectory(geds_cmd)
 add_subdirectory(metadataservice)
-add_subdirectory(scripts)
 
 if(HAVE_PYTHON_BINDINGS)
     add_subdirectory(python)

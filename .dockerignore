@@ -1,0 +1,7 @@
+.cache
+.git
+.travis
+travis_*
+
+CMakeLists.txt.user
+compile_commands.json

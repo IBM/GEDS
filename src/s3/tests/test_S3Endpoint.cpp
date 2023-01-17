@@ -1,8 +1,8 @@
 /**
  * Copyright 2022- IBM Inc. All rights reserved
- * SPDX-License-Identifier: Apache2.0
+ * SPDX-License-Identifier: Apache-2.0
  */
- 
+
 #include <cstdint>
 #include <cstdlib>
 #include <ctime>
@@ -18,9 +18,26 @@
 #include "ObjectStoreConfig.h"
 #include "S3Endpoint.h"
 
+#ifndef S3_TEST_ENDPOINT
+#define S3_TEST_ENDPOINT "http://localhost"
+#endif
+#ifndef S3_TEST_ACCESS_KEY
+#define S3_TEST_ACCESS_KEY "test"
+#endif
+#ifndef S3_TEST_SECRET_KEY
+#define S3_TEST_SECRET_KEY "test"
+#endif
+
+#define ADD_QUOTES_(x) #x
+#define ADD_QUOTES(x) ADD_QUOTES_(x)
+
+#define S3_TEST_ENDPOINT_ ADD_QUOTES(S3_TEST_ENDPOINT)
+#define S3_TEST_ACCESS_KEY_ ADD_QUOTES(S3_TEST_ACCESS_KEY)
+#define S3_TEST_SECRET_KEY_ ADD_QUOTES(S3_TEST_SECRET_KEY)
+
 class S3EndpointTest : public ::testing::Test {
 protected:
-  geds::s3::Endpoint endpoint{S3_TEST_ENDPOINT, S3_TEST_ACCESS_KEY, S3_TEST_SECRET_KEY};
+  geds::s3::Endpoint endpoint{S3_TEST_ENDPOINT_, S3_TEST_ACCESS_KEY_, S3_TEST_SECRET_KEY_};
   const std::string bucket = "geds-test";
 };
 
@@ -100,11 +117,16 @@ TEST_F(S3EndpointTest, Read) {
 
 TEST_F(S3EndpointTest, ReadWrite) {
   const std::string_view message =
-      "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt "
-      "ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation "
-      "ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in "
-      "reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur "
-      "sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est "
+      "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod "
+      "tempor incididunt "
+      "ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud "
+      "exercitation "
+      "ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute "
+      "irure dolor in "
+      "reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla "
+      "pariatur. Excepteur "
+      "sint occaecat cupidatat non proident, sunt in culpa qui officia "
+      "deserunt mollit anim id est "
       "laborum.";
 
   auto testKey = "unittest/s3EndPointTest" + std::to_string(std::rand());
@@ -146,11 +168,16 @@ TEST_F(S3EndpointTest, ReadWrite) {
 
 TEST_F(S3EndpointTest, ReadWrite_Array) {
   const std::string_view message =
-      "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt "
-      "ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation "
-      "ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in "
-      "reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur "
-      "sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est "
+      "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod "
+      "tempor incididunt "
+      "ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud "
+      "exercitation "
+      "ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute "
+      "irure dolor in "
+      "reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla "
+      "pariatur. Excepteur "
+      "sint occaecat cupidatat non proident, sunt in culpa qui officia "
+      "deserunt mollit anim id est "
       "laborum.";
 
   auto testKey = "unittest/s3EndPointTest" + std::to_string(std::rand());

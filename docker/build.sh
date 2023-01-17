@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # Copyright 2022- IBM Inc. All rights reserved
-# SPDX-License-Identifier: Apache2.0
+# SPDX-License-Identifier: Apache-2.0
 #
 
 set -euo pipefail
