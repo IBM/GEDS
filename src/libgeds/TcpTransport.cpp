@@ -1,6 +1,10 @@
 /**
  * Copyright 2022- IBM Inc. All rights reserved
+<<<<<<< HEAD
  * SPDX-License-Identifier: Apache-2.0
+=======
+ * SPDX-License-Identifier: Apache2.0
+>>>>>>> 1638f77 (Contribute TcpTransport.)
  */
 
 #include <algorithm>
@@ -242,7 +246,7 @@ bool TcpPeer::processEndpointSend(std::shared_ptr<TcpEndpoint> tep) {
        * The caller should take care actually.
        */
       if (sent == data_to_send)
-        delete[](uint8_t *) ctx->va;
+        delete[] (uint8_t *)ctx->va;
     }
     if (sent == data_to_send) {
       tep->tx_bytes += ctx->hdr.datalen;

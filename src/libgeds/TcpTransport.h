@@ -1,6 +1,10 @@
 /**
  * Copyright 2022- IBM Inc. All rights reserved
+<<<<<<< HEAD
  * SPDX-License-Identifier: Apache-2.0
+=======
+ * SPDX-License-Identifier: Apache2.0
+>>>>>>> 1638f77 (Contribute TcpTransport.)
  */
 
 #ifndef _TCP_TRANSPORT_H
