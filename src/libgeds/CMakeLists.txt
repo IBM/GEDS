@@ -28,6 +28,10 @@ SET(SOURCES
         GEDSProtocol.cpp
         GEDSService.cpp
         GEDSService.h
+        HttpServer.cpp
+        HttpServer.h
+        HttpSession.cpp
+        HttpSession.h
         MetadataService.cpp
         MetadataService.h
         GEDSInternal.cpp

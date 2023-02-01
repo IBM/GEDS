@@ -18,6 +18,8 @@ class StatisticsCounter {
 
 public:
   const std::string label;
+  const std::string prometheusLabel;
+
   void increase(size_t s = 1);
   [[nodiscard]] size_t get() const;
 
