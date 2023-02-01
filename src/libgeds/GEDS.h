@@ -29,6 +29,7 @@
 #include "GEDSFileStatus.h"
 #include "GEDSInternal.h"
 #include "GEDSLocalFileHandle.h"
+#include "HttpServer.h"
 #include "MetadataService.h"
 #include "Object.h"
 #include "ObjectStoreConfig.h"
@@ -94,6 +95,8 @@ class GEDS : public std::enable_shared_from_this<GEDS>, utility::RWConcurrentObj
       geds::Statistics::counter("GEDS: files opened");
   std::shared_ptr<geds::StatisticsCounter> _statisticsFilesCreated =
       geds::Statistics::counter("GEDS: files created");
+
+  geds::HttpServer _httpServer;
 
 public:
   /**

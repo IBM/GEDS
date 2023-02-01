@@ -49,4 +49,13 @@ void Statistics::printStatistics() const {
   msg << std::endl;
   LOG_INFO << msg.str();
 }
+
+void Statistics::prometheusMetrics(std::stringstream &stream) const {
+  _statistics.run([&stream](const std::string &, std::shared_ptr<StatisticsCounter> &counter) {
+    stream << "# TYPE " << counter->prometheusLabel << " counter"
+           << "\n" //
+           << counter->prometheusLabel << " " << counter->get() << "\n";
+  });
+}
+
 } // namespace geds

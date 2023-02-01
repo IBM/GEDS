@@ -10,5 +10,6 @@
 
 const uint16_t defaultMetdataServerPort = 50001;
 const uint16_t defaultGEDSPort = 50002;
+const uint16_t defaultPrometheusPort = 10223;
 
 #endif

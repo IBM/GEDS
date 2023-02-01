@@ -63,9 +63,9 @@ GEDS::GEDS(std::string metadataServiceAddress, std::optional<std::string> pathPr
            std::optional<std::string> hostname, std::optional<uint16_t> portArg,
            std::optional<size_t> blockSizeArg)
     : std::enable_shared_from_this<GEDS>(), _server(hostname.value_or("0.0.0.0"), portArg),
-      _state(ServiceState::Stopped), _metadataService(std::move(metadataServiceAddress)),
+      _metadataService(std::move(metadataServiceAddress)),
       _pathPrefix(handlePathPrefix(pathPrefix)), _hostname(hostname.value_or("")),
-      blockSize(blockSizeArg.value_or(Default_BlockSize)) {
+      _httpServer(defaultPrometheusPort), blockSize(blockSizeArg.value_or(Default_BlockSize)) {
   std::error_code ec;
   auto success = std::filesystem::create_directories(_pathPrefix, ec);
   if (!success && ec.value() != 0) {
@@ -130,6 +130,11 @@ absl::Status GEDS::start() {
   _tcpTransport = TcpTransport::factory(shared_from_this());
   _tcpTransport->start();
 
+  result = _httpServer.start();
+  if (!result.ok()) {
+    LOG_ERROR << "Unable to start webserver." << std::endl;
+  }
+
   // Update state.
   _state = ServiceState::Running;
 
@@ -158,6 +163,9 @@ absl::Status GEDS::stop() {
     LOG_ERROR << "cannot stop server" << std::endl;
     return result;
   }
+
+  _httpServer.stop();
+
   // XXX TODO: Properly cleanup files
   _fileHandles.clear();
   _fileTransfers.clear();

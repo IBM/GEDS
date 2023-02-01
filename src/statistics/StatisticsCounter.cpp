@@ -6,8 +6,19 @@
 #include "StatisticsCounter.h"
 #include <memory>
 
+#include <boost/algorithm/string/case_conv.hpp>
+#include <boost/algorithm/string/replace.hpp>
+
+static std::string createPrometheusLabel(std::string label) {
+  boost::replace_all(label, ":", "_");
+  boost::replace_all(label, " ", "_");
+  boost::to_lower(label);
+  return label;
+}
+
 namespace geds {
-StatisticsCounter::StatisticsCounter(std::string labelArg) : label(std::move(labelArg)) {}
+StatisticsCounter::StatisticsCounter(std::string labelArg)
+    : label(std::move(labelArg)), prometheusLabel(createPrometheusLabel(label)) {}
 
 void StatisticsCounter::increase(size_t s) { _count += s; }
 
