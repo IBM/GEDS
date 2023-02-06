@@ -16,7 +16,11 @@ target_link_libraries(test_s3_lib
         geds_s3
         ${AWSSDK_LIBRARIES}
 )
-gtest_discover_tests(test_s3_lib)
+
+if (DEFINED ENV{CI})
+        message(WARNING "S3 Tests disabled.")
+        gtest_discover_tests(test_s3_lib)
+endif()
 
 set(S3_TEST_ENDPOINT $ENV{S3_TEST_ENDPOINT} "http://localhost")
 set(S3_TEST_ACCESS_KEY $ENV{S3_TEST_ACCESS_KEY} "test")
