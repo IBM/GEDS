@@ -289,11 +289,15 @@ add_subdirectory(src)
 
 add_custom_target(build-all
     DEPENDS
+    benchmark
     geds
     geds_cmd
     metadataserver
     helloworld_client
     helloworld_server
-    test_libgeds
     test_metadataserver
+    pygeds
+
+    geds_java
+    geds_jar
 )
