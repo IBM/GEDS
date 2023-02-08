@@ -51,19 +51,18 @@ absl::Status MetadataService::connect() {
     _channel = grpc::CreateChannel(serverAddress, grpc::InsecureChannelCredentials());
     auto success = _channel->WaitForConnected(grpcDefaultDeadline());
     if (!success) {
-      LOG_ERROR << "Unable to connect to " << serverAddress << std::endl;
+      LOG_ERROR("Unable to connect to ", serverAddress);
       return absl::UnavailableError("Could not connect to " + serverAddress + ".");
     }
     _stub = geds::rpc::MetadataService::NewStub(_channel);
   } catch (std::exception &e) {
-    LOG_ERROR << "Unable to open channel with " << serverAddress << ". Reason: " << e.what()
-              << std::endl;
-    return absl::UnavailableError("Could not open channel with " + serverAddress + ". Reason" +
-                                  e.what());
+    auto msg = "Could not open channel with " + serverAddress + ". Reason" + std::string(e.what());
+    LOG_ERROR(msg);
+    return absl::UnavailableError(msg);
   }
   _connectionState = ConnectionState::Connected;
   // ToDO: Register client and implement stop().
-  LOG_DEBUG << "Connected to metadata service." << std::endl;
+  LOG_DEBUG("Connected to metadata service.");
   return absl::OkStatus();
 }
 

@@ -73,8 +73,8 @@ public:
   ~GEDSAbstractFileHandle() override {
     if (_isValid) {
       // TODO: Should we delete the file.
-      LOG_INFO << "The file associated with" << bucket << "/" << key << " (" << _file.path()
-               << ") is still registered." << std::endl;
+      LOG_INFO("The file associated with", bucket, "/", key, " (", _file.path(),
+               ") is still registered.");
     }
   }
 

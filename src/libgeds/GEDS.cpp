@@ -83,9 +83,10 @@ std::shared_ptr<GEDS> GEDS::factory(std::string metadataServiceAddress,
 }
 
 GEDS::~GEDS() {
-  LOG_INFO << "XXX GEDS Destructor. state: " << (int)_state << std::endl;
+  LOG_DEBUG("XXX GEDS Destructor. state: ", (int)_state);
+  ;
   if (_state == ServiceState::Running) {
-    LOG_INFO << "Stopping GEDS Service" << std::endl;
+    LOG_INFO("Stopping GEDS Service");
     (void)stop();
   }
 }
@@ -116,7 +117,7 @@ absl::Status GEDS::start() {
 
   if (!_hostname.empty()) {
     _hostURI = computeHostUri(_hostname, _server.port());
-    LOG_INFO << "Hostname was declared, using " << _hostURI << " to announce myself." << std::endl;
+    LOG_INFO("Hostname was declared, using ", _hostURI, " to announce myself.");
   } else {
     auto hostIP = _metadataService.getConnectionInformation();
     if (!hostIP.ok()) {
@@ -124,7 +125,7 @@ absl::Status GEDS::start() {
                                 std::string{hostIP.status().message()});
     }
     _hostURI = computeHostUri(hostIP.value(), _server.port());
-    LOG_INFO << "Using " << _hostURI << " to announce myself." << std::endl;
+    LOG_INFO("Using ", _hostURI, " to announce myself.");
   }
 
   _tcpTransport = TcpTransport::factory(shared_from_this());
@@ -132,7 +133,7 @@ absl::Status GEDS::start() {
 
   result = _httpServer.start();
   if (!result.ok()) {
-    LOG_ERROR << "Unable to start webserver." << std::endl;
+    LOG_ERROR("Unable to start webserver.");
   }
 
   // Update state.
@@ -140,7 +141,7 @@ absl::Status GEDS::start() {
 
   auto st = syncObjectStoreConfigs();
   if (!syncObjectStoreConfigs().ok()) {
-    LOG_ERROR << "Unable to synchronize object store configs on boot." << std::endl;
+    LOG_ERROR("Unable to synchronize object store configs on boot.");
   }
 
   return absl::OkStatus();
@@ -148,19 +149,21 @@ absl::Status GEDS::start() {
 
 absl::Status GEDS::stop() {
   GEDS_CHECK_SERVICE_RUNNING
-  LOG_INFO << "Stopping" << std::endl;
-  LOG_INFO << "Printing statistics" << std::endl;
+  LOG_INFO("Stopping");
+  ;
+  LOG_INFO("Printing statistics");
+  ;
   geds::Statistics::print();
   auto result = _metadataService.disconnect();
   if (!result.ok()) {
-    LOG_ERROR << "cannot disconnect metadata service" << std::endl;
+    LOG_ERROR("cannot disconnect metadata service");
     _state = ServiceState::Unknown;
     return result;
   }
   result = _server.stop();
   if (!result.ok()) {
     _state = ServiceState::Unknown;
-    LOG_ERROR << "cannot stop server" << std::endl;
+    LOG_ERROR("cannot stop server");
     return result;
   }
 
@@ -220,7 +223,7 @@ absl::Status GEDS::isValid(const std::string &bucket, const std::string &key) {
 
 absl::StatusOr<GEDSFile> GEDS::create(const std::string &bucket, const std::string &key,
                                       bool overwrite) {
-  LOG_DEBUG << "create " << bucket << "/" << key << std::endl;
+  LOG_DEBUG("create ", bucket, "/", key);
   auto result = createAsFileHandle(bucket, key, overwrite);
   if (result.ok()) {
     *_statisticsFilesCreated += 1;
@@ -267,10 +270,10 @@ absl::Status GEDS::mkdirs(const std::string &bucket, const std::string &path, ch
     return mkdirs(bucket, path + delimiter);
   }
   auto folderPath = path + Default_DirectoryMarker;
-  LOG_DEBUG << "Creating " << bucket << "/" << folderPath << std::endl;
+  LOG_DEBUG("Creating ", bucket, "/", folderPath);
   auto mkdir = create(bucket, folderPath);
   if (!mkdir.ok() && mkdir.status().code() != absl::StatusCode::kAlreadyExists) {
-    LOG_ERROR << "Unable to create folder " << folderPath << std::endl;
+    LOG_ERROR("Unable to create folder ", folderPath);
     return mkdir.status();
   }
   if (path.size() >= 2) {
@@ -312,7 +315,7 @@ absl::Status GEDS::lookupBucket(const std::string &bucket) {
 }
 
 absl::StatusOr<GEDSFile> GEDS::open(const std::string &bucket, const std::string &key) {
-  LOG_DEBUG << "open " << bucket << "/" << key << std::endl;
+  LOG_DEBUG("open ", bucket, "/", key);
   auto fh = openAsFileHandle(bucket, key);
   if (fh.ok()) {
     _statisticsFilesOpened->increase();
@@ -381,12 +384,11 @@ absl::StatusOr<std::shared_ptr<GEDSFileHandle>> GEDS::openAsFileHandle(const std
   if (!fileHandle.ok()) {
     // Delete object if the file does not exist.
     if (fileHandle.status().code() == absl::StatusCode::kNotFound) {
-      LOG_INFO << "Deleting " << bucket << "/" << key << " associated with " << object.info.location
-               << " since it does not exist." << std::endl;
+      LOG_INFO("Deleting ", bucket, "/", key, " associated with ", object.info.location,
+               " since it does not exist.");
       (void)deleteObject(bucket, key);
     }
-    LOG_ERROR << "Unable to open " << bucket << "/" << key
-              << " reason: " << fileHandle.status().message() << std::endl;
+    LOG_ERROR("Unable to open ", bucket, "/", key, " reason: ", fileHandle.status().message());
     return fileHandle.status();
   }
   // Prevent race condition.
@@ -409,8 +411,7 @@ GEDS::getFileTransferService(const std::string &hostname) {
       std::make_shared<FileTransferService>(hostname, shared_from_this(), _tcpTransport);
   auto status = fileTransferService->connect();
   if (!status.ok()) {
-    LOG_ERROR << "Unable to connect to " << hostname
-              << " for FileTransferService.: " << status.code() << std::endl;
+    LOG_ERROR("Unable to connect to ", hostname, " for FileTransferService.: ", status.code());
     return absl::UnavailableError("Unable to connect to " + hostname + ": " +
                                   std::string{status.message()});
   }
@@ -558,8 +559,7 @@ absl::Status GEDS::renamePrefix(const std::string &bucket, const std::string &sr
 
 absl::Status GEDS::renamePrefix(const std::string &srcBucket, const std::string &srcKey,
                                 const std::string &destBucket, const std::string &destKey) {
-  LOG_DEBUG << "rename" << srcBucket << "/" << srcKey << " to " << destBucket << "/" << destKey
-            << std::endl;
+  LOG_DEBUG("rename", srcBucket, "/", srcKey, " to ", destBucket, "/", destKey);
   auto prefixList = list(srcBucket, srcKey);
   if (!prefixList.ok()) {
     return prefixList.status();
@@ -640,7 +640,7 @@ absl::Status GEDS::copy(const std::string &srcBucket, const std::string &srcKey,
 }
 
 absl::Status GEDS::deleteObject(const std::string &bucket, const std::string &key) {
-  LOG_DEBUG << "DeleteObject " << bucket << "/" << key << std::endl;
+  LOG_DEBUG("DeleteObject ", bucket, "/", key);
   // Delete on metadata service.
   {
     auto status = _metadataService.deleteObject(bucket, key);
@@ -655,8 +655,7 @@ absl::Status GEDS::deleteObject(const std::string &bucket, const std::string &ke
     if (storeStatus.ok() && !key.starts_with(GEDSCachedFileHandle::CacheBlockMarker)) {
       auto deleteStatus = storeStatus.value()->deleteObject(bucket, key);
       if (!deleteStatus.ok()) {
-        LOG_ERROR << "Unable to delete " << bucket << "/" << key
-                  << " on S3:" << deleteStatus.message() << std::endl;
+        LOG_ERROR("Unable to delete ", bucket, "/", key, " on S3:", deleteStatus.message());
       }
     }
   }
@@ -665,13 +664,13 @@ absl::Status GEDS::deleteObject(const std::string &bucket, const std::string &ke
   auto path = getPath(bucket, key);
   auto removed = _fileHandles.remove(path);
   if (!removed) {
-    LOG_ERROR << "The file " << path.name << " did not exist locally!" << std::endl;
+    LOG_ERROR("The file ", path.name, " did not exist locally!");
   }
   return absl::OkStatus();
 }
 
 absl::Status GEDS::deleteObjectPrefix(const std::string &bucket, const std::string &prefix) {
-  LOG_DEBUG << "deleteObjectPrefix " << bucket << "/" << prefix << std::endl;
+  LOG_DEBUG("deleteObjectPrefix ", bucket, "/", prefix);
 
   // Delete on GEDS.
   {
@@ -687,8 +686,8 @@ absl::Status GEDS::deleteObjectPrefix(const std::string &bucket, const std::stri
     if (storeStatus.ok()) {
       auto deleteStatus = storeStatus.value()->deletePrefix(bucket, prefix);
       if (!deleteStatus.ok()) {
-        LOG_ERROR << "Unable to delete prefix " << bucket << "/" << prefix
-                  << " on S3: " << deleteStatus.message() << std::endl;
+        LOG_ERROR("Unable to delete prefix ", bucket, "/", prefix,
+                  " on S3: ", deleteStatus.message());
       }
     }
   }

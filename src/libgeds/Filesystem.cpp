@@ -72,7 +72,7 @@ std::string mktempdir(const std::string &name) {
     int err = errno;
     auto errorMessage = "mkdtemp returned an error while trying to create a tempdir with pattern " +
                         path + ": " + std::strerror(err);
-    LOG_ERROR << errorMessage << std::endl;
+    LOG_ERROR(errorMessage);
     throw std::runtime_error(errorMessage);
   }
   return path;
@@ -97,7 +97,7 @@ std::string tempFile(const std::string &folder, const std::string &prefix) {
     int error = errno;
     auto errorMessage =
         "mkstemp returned an invalid file descriptor for " + prefix + ": " + std::strerror(error);
-    LOG_ERROR << errorMessage << std::endl;
+    LOG_ERROR(errorMessage);
     throw std::runtime_error(errorMessage);
   }
   (void)close(fd);

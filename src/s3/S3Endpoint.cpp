@@ -110,7 +110,7 @@ Endpoint::list(const std::string &bucket, const std::string &prefix, char delimi
 absl::Status Endpoint::list(const std::string &bucket, const std::string &prefix, char delimiter,
                             std::set<GEDSFileStatus> &result,
                             std::optional<std::string> continuationToken) const {
-  LOG_DEBUG << bucket << "/" << prefix << "with " << std::to_string(delimiter) << std::endl;
+  LOG_DEBUG(bucket, "/", prefix, "with ", std::to_string(delimiter));
   Aws::S3::Model::ListObjectsV2Request request;
   request.WithBucket(bucket);
   request.WithPrefix(prefix);
@@ -133,7 +133,7 @@ absl::Status Endpoint::list(const std::string &bucket, const std::string &prefix
 
   auto newToken = s3result.GetNextContinuationToken();
   if (newToken != "") {
-    // LOG_DEBUG << "Sending sub request"
+    // LOG_DEBUG("Sending sub request");
     auto subRequest = list(bucket, prefix, delimiter, result, newToken);
     if (!subRequest.ok()) {
       return subRequest;
@@ -304,8 +304,7 @@ absl::StatusOr<size_t> Endpoint::read(const std::string &bucket, const std::stri
   if (!outcome.IsSuccess()) {
     auto &error = outcome.GetError();
     if (error.GetExceptionName() == "InvalidRange" && !retry) {
-      LOG_DEBUG << "Endpoint reports " << bucket << "/" << key << ": " << error.GetMessage()
-                << std::endl;
+      LOG_DEBUG("Endpoint reports ", bucket, "/", key, ": ", error.GetMessage());
       auto fileInfo = fileStatus(bucket, key);
       if (!fileInfo.ok()) {
         return fileInfo.status();
@@ -319,14 +318,12 @@ absl::StatusOr<size_t> Endpoint::read(const std::string &bucket, const std::stri
         if (newCount == 0) {
           return 0;
         }
-        LOG_DEBUG << "Retrying read for " << bucket << "/" << key << " with truncated count."
-                  << std::endl;
+        LOG_DEBUG("Retrying read for ", bucket, "/", key, " with truncated count.");
         return read(bucket, key, outputStream, position, newCount, true);
       }
       return absl::InternalError("Unable to read " + bucket + "/" + key + ":" + error.GetMessage());
     }
-    LOG_DEBUG << "Unable to read " << bucket << "/" << key << ": " << error.GetMessage()
-              << std::endl;
+    LOG_DEBUG("Unable to read ", bucket, "/", key, ": ", error.GetMessage());
     return convertS3Error(error, "readBytes", key);
   }
 

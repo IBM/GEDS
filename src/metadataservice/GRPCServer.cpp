@@ -28,10 +28,8 @@
 #include "geds.grpc.pb.h"
 #include "geds.pb.h"
 
-// NOLINTNEXTLINE
-#define LOG_TIMESTAMP std::clog << std::chrono::system_clock::now() << " - "
-// NOLINTNEXTLINE
-#define LOG_ACCESS LOG_TIMESTAMP << context->peer() << ": "
+#define LOG_ACCESS(...)                                                                            \
+  geds::logging::LogTimestamp(std::clog, context->peer(), ": ", __VA_ARGS__) // NOLINT
 
 class MetadataServiceImpl final : public geds::rpc::MetadataService::Service {
   std::shared_ptr<KVS> _kvs;
@@ -54,7 +52,7 @@ protected:
                                         const ::geds::rpc::EmptyParams * /* unused request */,
                                         ::geds::rpc::ConnectionInformation *response) override {
 
-    LOG_ACCESS << "get connection information" << std::endl;
+    LOG_ACCESS("get connection information");
 
     const auto result = geds::GetAddressFromGRPCPeer(context->peer());
     if (result.ok()) {
@@ -69,8 +67,8 @@ protected:
   ::grpc::Status RegisterObjectStore(::grpc::ServerContext *context,
                                      const ::geds::rpc::ObjectStoreConfig *request,
                                      ::geds::rpc::StatusResponse *response) override {
-    LOG_ACCESS << "register object store " << request->endpointurl() << " for bucket "
-               << request->bucket() << "'." << std::endl;
+    LOG_ACCESS("register object store ", request->endpointurl(), " for bucket ", request->bucket(),
+               "'.");
 
     auto status = _objectStoreHandler.insertConfig(std::make_shared<geds::ObjectStoreConfig>(
         request->bucket(), request->endpointurl(), request->accesskey(), request->secretkey()));
@@ -82,7 +80,7 @@ protected:
   ::grpc::Status ListObjectStores(::grpc::ServerContext *context,
                                   const ::geds::rpc::EmptyParams * /* unused request */,
                                   ::geds::rpc::AvailableObjectStoreConfigs *response) override {
-    LOG_ACCESS << "list object stores" << std::endl;
+    LOG_ACCESS("list object stores");
     auto list = _objectStoreHandler.listConfigs();
     for (const auto &el : list) {
       auto mapping = response->add_mappings();
@@ -96,7 +94,7 @@ protected:
 
   grpc::Status CreateBucket(::grpc::ServerContext *context, const ::geds::rpc::Bucket *request,
                             ::geds::rpc::StatusResponse *response) override {
-    LOG_ACCESS << "create bucket: " << request->bucket() << std::endl;
+    LOG_ACCESS("create bucket: ", request->bucket());
     auto result = _kvs->createBucket(request->bucket());
     convertStatus(response, result);
     return grpc::Status::OK;
@@ -104,7 +102,7 @@ protected:
 
   grpc::Status DeleteBucket(::grpc::ServerContext *context, const ::geds::rpc::Bucket *request,
                             ::geds::rpc::StatusResponse *response) override {
-    LOG_ACCESS << "delete bucket: " << request->bucket() << std::endl;
+    LOG_ACCESS("delete bucket: ", request->bucket());
     auto result = _kvs->deleteBucket(request->bucket());
     convertStatus(response, result);
     return grpc::Status::OK;
@@ -113,7 +111,7 @@ protected:
   grpc::Status ListBuckets(::grpc::ServerContext *context,
                            const ::geds::rpc::EmptyParams * /* unused request */,
                            ::geds::rpc::BucketListResponse *response) override {
-    LOG_ACCESS << "List buckets" << std::endl;
+    LOG_ACCESS("List buckets");
     auto result = _kvs->listBuckets();
     if (result.ok()) {
       for (const auto &bucket : *result) {
@@ -129,7 +127,7 @@ protected:
 
   grpc::Status LookupBucket(::grpc::ServerContext *context, const ::geds::rpc::Bucket *request,
                             ::geds::rpc::StatusResponse *response) override {
-    LOG_ACCESS << "Lookup bucket: " << request->bucket() << std::endl;
+    LOG_ACCESS("Lookup bucket: ", request->bucket());
     auto result = _kvs->bucketStatus(request->bucket());
     convertStatus(response, result);
     return grpc::Status::OK;
@@ -137,9 +135,9 @@ protected:
 
   grpc::Status Create(::grpc::ServerContext *context, const ::geds::rpc::Object *request,
                       ::geds::rpc::StatusResponse *response) override {
-    LOG_ACCESS << "create: " << request->id().bucket() << "/" << request->id().key() << ": "
-               << request->info().location() << " (" << request->info().size() << ", "
-               << request->info().sealedoffset() << ")" << std::endl;
+    LOG_ACCESS("create: ", request->id().bucket(), "/", request->id().key(), ": ",
+               request->info().location(), " (", request->info().size(), ", ",
+               request->info().sealedoffset(), ")");
     auto result = _kvs->createObject(convert(request));
     convertStatus(response, result);
     return grpc::Status::OK;
@@ -147,9 +145,9 @@ protected:
 
   grpc::Status Update(::grpc::ServerContext *context, const ::geds::rpc::Object *request,
                       ::geds::rpc::StatusResponse *response) override {
-    LOG_ACCESS << "update: " << request->id().bucket() << "/" << request->id().key() << ": "
-               << request->info().location() << " (" << request->info().size() << ", "
-               << request->info().sealedoffset() << ")" << std::endl;
+    LOG_ACCESS("update: ", request->id().bucket(), "/", request->id().key(), ": ",
+               request->info().location(), " (", request->info().size(), ", ",
+               request->info().sealedoffset(), ")");
     auto result = _kvs->updateObject(convert(request));
     convertStatus(response, result);
     return grpc::Status::OK;
@@ -157,7 +155,7 @@ protected:
 
   grpc::Status Delete(::grpc::ServerContext *context, const ::geds::rpc::ObjectID *request,
                       ::geds::rpc::StatusResponse *response) override {
-    LOG_ACCESS << "delete: " << request->bucket() << "/" << request->key() << std::endl;
+    LOG_ACCESS("delete: ", request->bucket(), "/", request->key());
     auto result = _kvs->deleteObject(convert(request));
     convertStatus(response, result);
     return grpc::Status::OK;
@@ -165,7 +163,7 @@ protected:
 
   grpc::Status DeletePrefix(::grpc::ServerContext *context, const ::geds::rpc::ObjectID *request,
                             ::geds::rpc::StatusResponse *response) override {
-    LOG_ACCESS << "delete prefix: " << request->bucket() << "/" << request->key() << std::endl;
+    LOG_ACCESS("delete prefix: ", request->bucket(), "/", request->key());
     auto result = _kvs->deleteObjectPrefix(convert(request));
     convertStatus(response, result);
     return grpc::Status::OK;
@@ -173,7 +171,7 @@ protected:
 
   grpc::Status Lookup(::grpc::ServerContext *context, const ::geds::rpc::ObjectID *request,
                       ::geds::rpc::ObjectResponse *response) override {
-    LOG_ACCESS << "lookup: " << request->bucket() << "/" << request->key() << std::endl;
+    LOG_ACCESS("lookup: ", request->bucket(), "/", request->key());
     auto status = _kvs->lookup(convert(request));
     if (status.ok()) {
       const auto &result = status.value();
@@ -198,8 +196,7 @@ protected:
 
   grpc::Status List(::grpc::ServerContext *context, const ::geds::rpc::ObjectListRequest *request,
                     ::geds::rpc::ObjectListResponse *response) override {
-    LOG_ACCESS << "list: " << request->prefix().bucket() << "/" << request->prefix().key()
-               << std::endl;
+    LOG_ACCESS("list: ", request->prefix().bucket(), "/", request->prefix().key());
     auto delimiter = (char)request->has_delimiter() ? request->delimiter() : 0;
     auto listing = _kvs->listObjects(convert(&request->prefix()), delimiter);
     if (listing.ok()) {
@@ -242,7 +239,7 @@ absl::Status GRPCServer::startAndWait() {
   // port.
   std::unique_ptr<grpc::Server> server(builder.BuildAndStart());
   std::clog << "Metadata Server (" << utility::GEDSVersion() << ")" << std::endl;
-  LOG_TIMESTAMP << "Server is listening on " << _serverAddress << std::endl;
+  geds::logging::LogTimestamp(std::clog, "Server is listening on ", _serverAddress);
   server->Wait();
   return absl::OkStatus();
 }

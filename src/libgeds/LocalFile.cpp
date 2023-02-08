@@ -58,7 +58,7 @@ absl::StatusOr<size_t> LocalFile::fileSize() const {
   if (fsync(_fd) != 0) {
     int error = errno;
     auto message = "Fsync on " + _path + " reported: " + strerror(error);
-    LOG_ERROR << message << std::endl;
+    LOG_ERROR(message);
     return absl::UnknownError(message);
   }
 
@@ -66,7 +66,7 @@ absl::StatusOr<size_t> LocalFile::fileSize() const {
   if (fstat(_fd, &statBuf) != 0) {
     int error = errno;
     auto message = "Fstat on " + _path + " reported: " + strerror(error);
-    LOG_ERROR << message << std::endl;
+    LOG_ERROR(message);
     return absl::UnknownError(message);
   }
   return statBuf.st_size;
@@ -99,7 +99,7 @@ absl::StatusOr<size_t> LocalFile::readBytes(uint8_t *bytes, size_t position, siz
   if (off == -1) {
     int err = errno;
     auto errorMessage = "lseek on " + _path + " failed: " + strerror(err);
-    LOG_ERROR << errorMessage << std::endl;
+    LOG_ERROR(errorMessage);
     return absl::UnknownError(errorMessage);
   }
 
@@ -123,7 +123,7 @@ absl::StatusOr<size_t> LocalFile::readBytes(uint8_t *bytes, size_t position, siz
     if (numBytes < 0) {
       int err = errno;
       auto errorMessage = "Error reading " + _path + ": " + strerror(err);
-      LOG_ERROR << errorMessage << std::endl;
+      LOG_ERROR(errorMessage);
       return absl::UnknownError(errorMessage);
     }
     offset += numBytes;
@@ -144,7 +144,7 @@ absl::Status LocalFile::truncate(size_t targetSize) {
   if (e < 0) {
     int err = errno;
     std::string errorMessage = "Unable to ftruncate file " + _path + ": " + strerror(err);
-    LOG_ERROR << errorMessage << std::endl;
+    LOG_ERROR(errorMessage);
     return absl::UnknownError(errorMessage);
   }
   _size = targetSize;
@@ -172,7 +172,7 @@ absl::Status LocalFile::writeBytes(const uint8_t *bytes, size_t position, size_t
   if (seek < 0) {
     int err = errno;
     std::string errorMessage = "lseek on " + _path + " failed due to " + strerror(err) + ".";
-    LOG_ERROR << errorMessage << std::endl;
+    LOG_ERROR(errorMessage);
     return absl::UnknownError(errorMessage);
   }
 
@@ -195,12 +195,12 @@ absl::Status LocalFile::writeBytes(const uint8_t *bytes, size_t position, size_t
     if (numBytes < 0) {
       int err = errno;
       std::string errorMessage = "Error writing " + _path + ": " + strerror(err);
-      LOG_ERROR << errorMessage << std::endl;
+      LOG_ERROR(errorMessage);
       return absl::UnknownError(errorMessage);
     }
     if (numBytes == 0) {
       std::string errorMessage = "Write on " + _path + " returned an EOF.";
-      LOG_ERROR << errorMessage << std::endl;
+      LOG_ERROR(errorMessage);
       return absl::UnknownError(errorMessage);
     }
     offset += numBytes;

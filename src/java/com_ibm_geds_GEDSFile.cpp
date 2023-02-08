@@ -23,7 +23,7 @@ JNIEXPORT void JNICALL Java_com_ibm_geds_GEDSFile_closeNative(JNIEnv * /* unused
   static auto counter = geds::Statistics::counter("Java GEDSFile: close");
 
   if (nativePtr == 0) {
-    LOG_DEBUG << "Double close on GEDSFile." << std::endl;
+    LOG_DEBUG("Double close on GEDSFile.");
     return;
   }
   auto *file = reinterpret_cast<GEDSFile *>(nativePtr); // NOLINT

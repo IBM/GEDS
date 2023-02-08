@@ -39,7 +39,7 @@ using std::string;
 
 #define CHECK_CONNECTED                                                                            \
   if (_connectionState != ConnectionState::Connected) {                                            \
-    LOG_ERROR << "Unable to connect" << std::endl;                                                 \
+    LOG_ERROR("Unable to connect");                                                                \
     return absl::FailedPreconditionError("Not connected.");                                        \
   }
 
@@ -70,7 +70,7 @@ absl::Status FileTransferService::connect() {
     return absl::UnavailableError("Could not open channel with " + nodeAddress +
                                   ". Reason: " + e.what());
   }
-  LOG_DEBUG << "About to check for available file transfer endpoints" << std::endl;
+  LOG_DEBUG("About to check for available file transfer endpoints");
 
   auto endpoints = availTransportEndpoints();
   for (auto &addr : *endpoints) {
@@ -107,8 +107,8 @@ FileTransferService::availTransportEndpoints() {
 
   auto status = _stub->GetAvailEndpoints(&context, request, &response);
   if (!status.ok()) {
-    LOG_ERROR << "Unable to execute grpc call, status: " << status.error_code() << " "
-              << status.error_details() << std::endl;
+    LOG_ERROR("Unable to execute grpc call, status: ", status.error_code(), " ",
+              status.error_details());
     return absl::UnknownError("Unable to execute command");
   }
 
@@ -140,7 +140,7 @@ absl::StatusOr<size_t> FileTransferService::readBytes(const std::string &bucket,
     return absl::UnavailableError("No TCP for " + nodeAddress);
   }
 
-  LOG_DEBUG << "Found TCP peer for " << nodeAddress << std::endl;
+  LOG_DEBUG("Found TCP peer for ", nodeAddress);
   auto prom = tcpPeer->sendRpcRequest((uint64_t)buffer, bucket + "/" + key, position, length);
   auto fut = prom->get_future();
   auto status = fut.get();

@@ -46,8 +46,7 @@ void HttpServer::accept() {
   _acceptor->async_accept(boost::asio::make_strand(_ioContext),
                           [&](boost::beast::error_code ec, boost::asio::ip::tcp::socket socket) {
                             if (ec) {
-                              LOG_ERROR << "Unable to accept " << ec.message() << " ABORT."
-                                        << std::endl;
+                              LOG_ERROR("Unable to accept ", ec.message(), " ABORT.");
                               return;
                             }
                             std::make_shared<HttpSession>(std::move(socket))->start();

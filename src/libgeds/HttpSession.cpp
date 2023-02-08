@@ -16,7 +16,7 @@ HttpSession::HttpSession(boost::asio::ip::tcp::socket &&socket) : _stream(std::m
 HttpSession::~HttpSession() { close(); }
 
 void HttpSession::start() {
-  LOG_DEBUG << "Start connection " << std::endl;
+  LOG_DEBUG("Start connection");
   auto self = shared_from_this();
   boost::asio::dispatch(_stream.get_executor(),
                         boost::beast::bind_front_handler(&HttpSession::awaitRequest, self));
@@ -34,7 +34,7 @@ void HttpSession::awaitRequest() {
           return;
         }
         if (ec) {
-          LOG_ERROR << "Failed reading stream" << ec.message() << std::endl;
+          LOG_ERROR("Failed reading stream", ec.message());
           return;
         }
         self->handleRequest();
@@ -107,7 +107,7 @@ void HttpSession::handleWrite() {
       _stream, _response,
       [self](boost::beast::error_code ec, std::size_t /* unused bytesTransferred */) {
         if (ec) {
-          LOG_ERROR << "Error " << ec.message() << std::endl;
+          LOG_ERROR("Error ", ec.message());
           return;
         }
         if (self->_request.keep_alive()) {
@@ -118,7 +118,7 @@ void HttpSession::handleWrite() {
 }
 
 void HttpSession::close() {
-  LOG_DEBUG << "Closing connection";
+  LOG_DEBUG("Closing connection");
 
   boost::beast::error_code ec;
   _stream.socket().shutdown(boost::asio::ip::tcp::socket::shutdown_send, ec);

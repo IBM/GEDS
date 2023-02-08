@@ -62,8 +62,8 @@ absl::StatusOr<size_t> GEDSRemoteFileHandle::readBytes(uint8_t *bytes, size_t po
     return read;
   }
   if (*read != length) {
-    LOG_DEBUG << "Reading " << identifier << " from remote got unexpected length " << *read
-              << " instead of " << length << std::endl;
+    LOG_DEBUG("Reading ", identifier, " from remote got unexpected length ", *read, " instead of ",
+              length);
   }
   *_statistics += *read;
   return *read;
