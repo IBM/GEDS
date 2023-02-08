@@ -83,8 +83,7 @@ std::shared_ptr<GEDS> GEDS::factory(std::string metadataServiceAddress,
 }
 
 GEDS::~GEDS() {
-  LOG_DEBUG("XXX GEDS Destructor. state: ", (int)_state);
-  ;
+  LOG_DEBUG("GEDS Destructor. state: ", (int)_state);
   if (_state == ServiceState::Running) {
     LOG_INFO("Stopping GEDS Service");
     (void)stop();
@@ -150,9 +149,8 @@ absl::Status GEDS::start() {
 absl::Status GEDS::stop() {
   GEDS_CHECK_SERVICE_RUNNING
   LOG_INFO("Stopping");
-  ;
   LOG_INFO("Printing statistics");
-  ;
+
   geds::Statistics::print();
   auto result = _metadataService.disconnect();
   if (!result.ok()) {

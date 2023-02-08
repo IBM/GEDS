@@ -53,7 +53,6 @@ JNIEXPORT void JNICALL Java_com_ibm_geds_GEDS_nativeStopGEDS(JNIEnv *env, jclass
     return;
   }
   LOG_INFO("Java Interop called: stop()");
-  ;
   auto container = reinterpret_cast<GEDSContainer *>(nativePtr); // NOLINT
   (void)container->element->stop();
 }

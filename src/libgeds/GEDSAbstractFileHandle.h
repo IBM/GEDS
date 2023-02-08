@@ -73,7 +73,7 @@ public:
   ~GEDSAbstractFileHandle() override {
     if (_isValid) {
       // TODO: Should we delete the file.
-      LOG_INFO("The file associated with", bucket, "/", key, " (", _file.path(),
+      LOG_INFO("The file associated with", identifier, " (", _file.path(),
                ") is still registered.");
     }
   }
