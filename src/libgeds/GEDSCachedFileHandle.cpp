@@ -79,14 +79,13 @@ absl::StatusOr<size_t> GEDSCachedFileHandle::readBytes(uint8_t *bytes, size_t po
     _blocks[idx] = std::make_shared<GEDSFile>(std::move(*(*newFile)->open()));
     auto sealStatus = (*newFile)->seal();
     if (!sealStatus.ok()) {
-      LOG_ERROR << "Unable to seal block " << bucket << "/" << key << " with " << idx << ": "
-                << sealStatus.message() << std::endl;
+      LOG_ERROR("Unable to seal block ", identifier, " with ", idx, ": ", sealStatus.message());
     }
     return *_blocks[idx];
   };
 
   auto purgeBlock = [&](size_t idx, GEDSFile &file) {
-    LOG_INFO << "PurgeBlock " << file.identifier() << std::endl;
+    LOG_INFO("PurgeBlock ", file.identifier());
     auto lock = std::lock_guard(_blockMutex[idx]);
     if (_blocks[idx].get() == nullptr) {
       return;
@@ -96,9 +95,9 @@ absl::StatusOr<size_t> GEDSCachedFileHandle::readBytes(uint8_t *bytes, size_t po
     if (e == t) {
       *_numPurgedBlocks += 1;
       _blocks[idx] = nullptr;
-      LOG_INFO << "About to purge block" << file.identifier() << std::endl;
+      LOG_INFO("About to purge block", file.identifier());
       (void)_gedsService->deleteObject(file.bucket(), file.key());
-      LOG_INFO << "Purged block " << file.identifier() << std::endl;
+      LOG_INFO("Purged block ", file.identifier());
     }
   };
 
@@ -128,8 +127,8 @@ absl::StatusOr<size_t> GEDSCachedFileHandle::readBytes(uint8_t *bytes, size_t po
       if (retryCount >= MAX_RETRIES) {
         return copyCount.status();
       }
-      LOG_INFO << "Unable to download block from " << identifier
-               << ". Reason: " << copyCount.status().message() << ". Retrying" << std::endl;
+      LOG_INFO("Unable to download block from ", identifier,
+               ". Reason: ", copyCount.status().message(), ". Retrying");
       // Purge block and retry.
       purgeBlock(idx, file);
       retryCount++;

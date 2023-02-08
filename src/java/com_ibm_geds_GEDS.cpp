@@ -52,7 +52,8 @@ JNIEXPORT void JNICALL Java_com_ibm_geds_GEDS_nativeStopGEDS(JNIEnv *env, jclass
     throwNullPointerException(env, "Invalid nativePtr.");
     return;
   }
-  LOG_INFO << "Java Interop called: stop()" << std::endl;
+  LOG_INFO("Java Interop called: stop()");
+  ;
   auto container = reinterpret_cast<GEDSContainer *>(nativePtr); // NOLINT
   (void)container->element->stop();
 }
@@ -368,11 +369,11 @@ JNIEXPORT jobjectArray JNICALL Java_com_ibm_geds_GEDS_nativeList(JNIEnv *env, jc
     auto jStatusClassInit = env->GetMethodID(jStatusClass, "<init>", "(Ljava/lang/String;JZ)V");
     const auto &resultVec = listStatus.value();
     if (resultVec.size() > INT_MAX) {
-      LOG_ERROR << "The result has size " << resultVec.size()
-                << " which is bigger than INT_MAX: " << INT_MAX << std::endl;
+      LOG_ERROR("The result has size ", resultVec.size(),
+                " which is bigger than INT_MAX: ", INT_MAX);
     }
     if (resultVec.empty()) {
-      LOG_DEBUG << "Empty result" << std::endl;
+      LOG_DEBUG("Empty result");
     }
     auto result = env->NewObjectArray(resultVec.size(), jStatusClass, nullptr);
     for (size_t i = 0; i < resultVec.size(); i++) {

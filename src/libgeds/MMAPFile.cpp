@@ -162,7 +162,7 @@ absl::StatusOr<size_t> MMAPFile::write(std::istream &stream, size_t position,
     length = lengthArg.value();
   }
   if (length == 0) {
-    LOG_DEBUG << "Stream is empty" << std::endl;
+    LOG_DEBUG("Stream is empty");
     return absl::OkStatus();
   }
   auto lock = getWriteLock();
@@ -182,7 +182,7 @@ absl::StatusOr<size_t> MMAPFile::write(std::istream &stream, size_t position,
   if (newSize > _size) {
     _size = newSize;
   }
-  LOG_DEBUG << "Wrote " << std::to_string(length) << " to " << _path << std::endl;
+  LOG_DEBUG("Wrote ", std::to_string(length), " to ", _path);
   return length;
 }
 
@@ -192,7 +192,7 @@ MMAPFile::~MMAPFile() {
     int err = munmap(_mmapPtr, _mmapSize);
     if (err != 0) {
       err = errno;
-      LOG_ERROR << "Unable to munmap " + _path + " reason: " + strerror(err) << std::endl;
+      LOG_ERROR("Unable to munmap ", _path, " reason: ", strerror(err));
     }
     _mmapPtr = nullptr;
     _mmapSize = 0;
@@ -203,8 +203,7 @@ MMAPFile::~MMAPFile() {
 
     auto removeStatus = removeFile(_path);
     if (!removeStatus.ok()) {
-      LOG_ERROR << "Unable to delete " << _path << " reason: " << removeStatus.message()
-                << std::endl;
+      LOG_ERROR("Unable to delete ", _path, " reason: ", removeStatus.message());
     }
   }
 }

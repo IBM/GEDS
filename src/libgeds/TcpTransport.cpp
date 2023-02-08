@@ -48,7 +48,7 @@ TcpTransport::~TcpTransport() { isServing = false; }
 
 void TcpTransport::start() {
   if (isServing) {
-    LOG_ERROR << "TCP service already started" << std::endl;
+    LOG_ERROR("TCP service already started");
     return;
   }
 
@@ -73,13 +73,13 @@ void TcpTransport::start() {
 
   ioStatsThread = std::make_unique<std::thread>([this] { this->updateIoStats(); });
 
-  LOG_DEBUG << "TCP service start" << std::endl;
+  LOG_DEBUG("TCP service start");
 }
 
 void TcpTransport::stop() {
   isServing = false;
 
-  LOG_DEBUG << "Stopping TCP Service" << std::endl;
+  LOG_DEBUG("Stopping TCP Service");
 
   std::vector<std::shared_ptr<TcpPeer>> tcpPeerV;
   tcpPeers.getall([&tcpPeerV](const unsigned int &, std::shared_ptr<TcpPeer> &tp) -> bool {
@@ -95,7 +95,7 @@ void TcpTransport::stop() {
   for (auto &t : rxThreads)
     t->join();
 
-  LOG_INFO << "TCP Transport stopped" << std::endl;
+  LOG_DEBUG("TCP Transport stopped");
 }
 
 TcpPeer::~TcpPeer() {
@@ -108,8 +108,8 @@ void TcpPeer::cleanup() {
   for (auto &endpoint : endpoints) {
     auto tep = endpoint.second;
     shutdown(tep->sock, SHUT_RDWR);
-    LOG_INFO << "Endpoint shutdown: socket: " << tep->sock << " sent: " << tep->tx_bytes
-             << " received: " << tep->rx_bytes << std::endl;
+    LOG_DEBUG("Endpoint shutdown: socket: ", tep->sock, " sent: ", tep->tx_bytes,
+              " received: ", tep->rx_bytes);
   }
   epMux.unlock();
 }
@@ -204,7 +204,7 @@ bool TcpPeer::processEndpointSend(std::shared_ptr<TcpEndpoint> tep) {
         }
       } else {
         if (errno != EWOULDBLOCK)
-          LOG_ERROR << "Send failed, errno: " << errno << std::endl;
+          LOG_ERROR("Send failed, errno: ", errno);
         break;
       }
     }
@@ -267,7 +267,7 @@ bool TcpPeer::processEndpointSend(std::shared_ptr<TcpEndpoint> tep) {
 void TcpTransport::tcpTxThread(unsigned int id) {
   struct epoll_event events[EPOLL_MAXEVENTS]; // NOLINT
 
-  LOG_DEBUG << "TX thread " << id << " starting" << std::endl;
+  LOG_DEBUG("TX thread ", id, " starting");
 
   int poll_fd = ::epoll_create1(0);
   if (poll_fd < 0) {
@@ -287,16 +287,15 @@ void TcpTransport::tcpTxThread(unsigned int id) {
       std::shared_ptr<TcpPeer> tcpPeer = nullptr;
 
       if (sock < 0) {
-        LOG_ERROR << "Invalid write socket: " << sock << " PeerId: " << ev->data.u64
-                  << ", evcnt: " << cnt << std::endl;
+        LOG_ERROR("Invalid write socket: ", sock, " PeerId: ", ev->data.u64, ", evcnt: ", cnt);
         continue;
       }
       auto it = tcpPeers.get(epId);
       if (it.has_value()) {
-        LOG_DEBUG << "Found TX peer for: " << sock << std::endl;
+        LOG_DEBUG("Found TX peer for: ", sock);
         tcpPeer = *it;
       } else {
-        LOG_DEBUG << "No TX peer for: " << sock << std::endl;
+        LOG_DEBUG("No TX peer for: ", sock);
         deactivateEndpoint(poll_fd, sock, ALL_CLOSED);
         continue;
       }
@@ -308,7 +307,7 @@ void TcpTransport::tcpTxThread(unsigned int id) {
         continue;
       }
       if (!(ev->events & EPOLLOUT)) {
-        LOG_DEBUG << "No OUT: " << sock << std::endl;
+        LOG_DEBUG("No OUT: ", sock);
         continue;
       }
       if (tcpPeer->SocketTxReady(sock))
@@ -321,7 +320,7 @@ void TcpTransport::tcpTxThread(unsigned int id) {
       }
     }
   } while (isServing);
-  LOG_INFO << "TX thread " << id << " exiting" << std::endl;
+  LOG_DEBUG("TX thread ", id, " exiting");
 }
 
 bool TcpPeer::SocketStateChange(int sock, uint32_t change) {
@@ -358,7 +357,7 @@ constexpr size_t MIN_SENDFILE_SIZE = 4096;
 void TcpPeer::TcpProcessRpcGet(uint64_t reqId, const std::string objName, size_t len, size_t off) {
   auto separator = objName.find('/');
   if (separator == std::string::npos) {
-    LOG_ERROR << "cannot open file: " << objName << " invalid format!" << std::endl;
+    LOG_ERROR("cannot open file: ", objName, " invalid format!");
     sendRpcReply(reqId, -1, 0, 0, EINVAL);
     return;
   }
@@ -367,13 +366,13 @@ void TcpPeer::TcpProcessRpcGet(uint64_t reqId, const std::string objName, size_t
   auto key = objName.substr(separator + 1);
   auto file = _geds->open(bucket, key);
   if (!file.ok()) {
-    LOG_ERROR << "cannot open file: " << objName << std::endl;
+    LOG_ERROR("cannot open file: ", objName);
     sendRpcReply(reqId, -1, 0, 0, EINVAL);
     return;
   }
   auto filesize = file->size();
   if (off > filesize) {
-    LOG_ERROR << "offset > filesize: " << off << " > " << filesize << std::endl;
+    LOG_ERROR("offset > filesize: ", off, " > ", filesize);
     sendRpcReply(reqId, -1, 0, 0, EINVAL);
     return;
   }
@@ -395,13 +394,13 @@ void TcpPeer::TcpProcessRpcGet(uint64_t reqId, const std::string objName, size_t
   auto buffer = new uint8_t[len];
   auto status = file->read(buffer, off, len);
   if (len != *status) {
-    LOG_ERROR << "file->read returned with an unexpected length!";
+    LOG_ERROR("file->read returned with an unexpected length!");
   }
   if (status.ok()) {
     sendRpcReply(reqId, -1, (uint64_t)buffer, *status, 0);
   } else {
     delete[] buffer;
-    LOG_ERROR << "cannot read file: " << objName << std::endl;
+    LOG_ERROR("cannot read file: ", objName);
     sendRpcReply(reqId, -1, 0, 0, EINVAL);
   }
 }
@@ -422,7 +421,7 @@ bool TcpPeer::processEndpointRecv(int sock) {
     epMux.unlock_shared();
   } else {
     epMux.unlock_shared();
-    LOG_ERROR << "No peer for this endpoint: " << sock << std::endl;
+    LOG_ERROR("No peer for this endpoint: ", sock);
     return false;
   }
   TcpRcvState *ctx = &tep->recv_ctx;
@@ -463,7 +462,7 @@ bool TcpPeer::processEndpointRecv(int sock) {
 
       if (ctx->hdr.type == GET_REQ) {
         if (to_recv == 0 || to_recv > (ssize_t)RPC_TCP_MAX_HDR) {
-          LOG_ERROR << "RPC GET_REQ header size invalid: " << ctx->hdr.hdrlen << std::endl;
+          LOG_ERROR("RPC GET_REQ header size invalid: ", ctx->hdr.hdrlen);
           rv = -EINVAL;
           break;
         }
@@ -483,11 +482,10 @@ bool TcpPeer::processEndpointRecv(int sock) {
       } else if (to_recv) {
         int type = ctx->hdr.type, error = ctx->hdr.error;
 
-        LOG_ERROR << "RPC unexpected header content:: "
-                  << "reqid: " << ctx->hdr.reqid << ", datalen: " << ctx->hdr.datalen
-                  << ", offset: " << ctx->hdr.offset << ", hdrlen: " << ctx->hdr.hdrlen
-                  << ", type: " << type << ", error: " << error
-                  << ", receive progress: " << ctx->progress << std::endl;
+        LOG_ERROR("RPC unexpected header content:: ", "reqid: ", ctx->hdr.reqid,
+                  ", datalen: ", ctx->hdr.datalen, ", offset: ", ctx->hdr.offset,
+                  ", hdrlen: ", ctx->hdr.hdrlen, ", type: ", type, ", error: ", error,
+                  ", receive progress: ", ctx->progress);
         rv = -EINVAL;
         break;
       }
@@ -519,9 +517,9 @@ bool TcpPeer::processEndpointRecv(int sock) {
          */
         auto it = recvQueue.getAndRemove(ctx->hdr.reqid);
         if (!it.has_value()) {
-          LOG_ERROR << "Socket: " << sock << ", Peer: " << Id
-                    << ": No corresponding receive for: " << ctx->hdr.reqid
-                    << ", recv's pending: " << recvQueue.size() << std::endl;
+          LOG_ERROR("Socket: ", sock, ", Peer: ", Id,
+                    ": No corresponding receive for: ", ctx->hdr.reqid,
+                    ", recv's pending: ", recvQueue.size());
           rv = -EINVAL;
           break;
         }
@@ -534,8 +532,8 @@ bool TcpPeer::processEndpointRecv(int sock) {
            * The peer shall not send any data here.
            */
           if (datalen) {
-            LOG_ERROR << "Protocol failure, no data in error reply expected, but indicated: "
-                      << datalen << " Ep: " << tep->sock << std::endl;
+            LOG_ERROR("Protocol failure, no data in error reply expected, but indicated: ", datalen,
+                      " Ep: ", tep->sock);
             ctx->hdr.datalen = 0;
           }
           auto message = "Error during GET_REPLY: " + std::to_string(ctx->hdr.error) +
@@ -576,7 +574,7 @@ bool TcpPeer::processEndpointRecv(int sock) {
       }
       break;
     default:
-      LOG_ERROR << "Unsupported RPC operation: " << op << std::endl;
+      LOG_ERROR("Unsupported RPC operation: ", op);
       return false;
     }
   } while (rv > 0);
@@ -585,10 +583,11 @@ bool TcpPeer::processEndpointRecv(int sock) {
     return true;
 
   if (rv == -ENOENT)
-    LOG_ERROR << "Socket close on read" << std::endl;
-  else
-    LOG_ERROR << "unexpected error: " << rv << " errno: " << errno << std::endl;
-
+    LOG_ERROR("Socket close on read");
+  else {
+    int err = errno;
+    LOG_ERROR("unexpected error: ", rv, " errno: ", err);
+  }
   return false;
 }
 
@@ -609,7 +608,7 @@ void TcpTransport::updateIoStats() {
 void TcpTransport::tcpRxThread(unsigned int id) {
   struct epoll_event events[EPOLL_MAXEVENTS]; // NOLINT
 
-  LOG_DEBUG << "RX thread " << id << " starting" << std::endl;
+  LOG_DEBUG("RX thread ", id, " starting");
 
   int poll_fd = ::epoll_create1(0);
   if (poll_fd < 0) {
@@ -630,15 +629,15 @@ void TcpTransport::tcpRxThread(unsigned int id) {
       std::shared_ptr<TcpPeer> tcpPeer = nullptr;
 
       if (sock < 0) {
-        LOG_ERROR << "Invalid read socket: " << sock << " PeerId: " << ev->data.u64 << std::endl;
+        LOG_ERROR("Invalid read socket: ", sock, " PeerId: ", ev->data.u64);
         continue;
       }
       auto it = tcpPeers.get(epId);
       if (it.has_value()) {
-        LOG_DEBUG << "Found peer for %d: " << sock << std::endl;
+        LOG_DEBUG("Found peer for %d: ", sock);
         tcpPeer = *it;
       } else {
-        LOG_ERROR << "No peer for: " << sock << std::endl;
+        LOG_ERROR("No peer for: ", sock);
         deactivateEndpoint(poll_fd, sock, ALL_CLOSED);
         continue;
       }
@@ -650,7 +649,7 @@ void TcpTransport::tcpRxThread(unsigned int id) {
         continue;
       }
       if (!(ev->events & EPOLLIN)) {
-        LOG_DEBUG << "No IN: " << sock << std::endl;
+        LOG_DEBUG("No IN: ", sock);
         continue;
       }
 
@@ -663,7 +662,7 @@ void TcpTransport::tcpRxThread(unsigned int id) {
       }
     }
   } while (isServing);
-  LOG_INFO << "RX thread " << id << " exiting" << std::endl;
+  LOG_DEBUG("RX thread ", id, " exiting");
 }
 
 std::shared_ptr<TcpTransport> TcpTransport::factory(std::shared_ptr<GEDS> geds) {
@@ -700,7 +699,7 @@ bool TcpTransport::activateEndpoint(std::shared_ptr<TcpEndpoint> tep,
     perror("epoll_ctl send: ");
     return false;
   }
-  LOG_DEBUG << "Registered socket " << tep->sock << " for epoll." << std::endl;
+  LOG_DEBUG("Registered socket ", tep->sock, " for epoll.");
   return true;
 }
 
@@ -740,7 +739,7 @@ bool TcpTransport::addEndpointPassive(int sock) {
   }
   tcpPeer->addEndpoint(tep);
   activateEndpoint(tep, tcpPeer);
-  LOG_DEBUG << "Server connected to " << hostname << "::" << in_peer->sin_port << std::endl;
+  LOG_DEBUG("Server connected to ", hostname, "::", in_peer->sin_port);
 
   return true;
 }
@@ -763,7 +762,7 @@ std::shared_ptr<TcpPeer> TcpTransport::getPeer(sockaddr *peer) {
     return tcpPeer;
   }
   if (peer->sa_family != AF_INET) {
-    LOG_ERROR << "Address family not supported: " << peer->sa_family << std::endl;
+    LOG_ERROR("Address family not supported: ", peer->sa_family);
     return nullptr;
   }
   for (unsigned int num_ep = 0; num_ep < num_proc; num_ep++) {
@@ -773,7 +772,7 @@ std::shared_ptr<TcpPeer> TcpTransport::getPeer(sockaddr *peer) {
     }
     rv = ::connect(sock, peer, addrlen);
     if (rv) {
-      LOG_DEBUG << "cannot connect " << hostname << std::endl;
+      LOG_DEBUG("cannot connect ", hostname);
       ::close(sock);
       return nullptr;
     }
@@ -783,7 +782,7 @@ std::shared_ptr<TcpPeer> TcpTransport::getPeer(sockaddr *peer) {
      */
     rv = ::fcntl(sock, F_SETFL, fcntl(sock, F_GETFL, 0) | O_NONBLOCK);
     if (rv) {
-      LOG_DEBUG << "cannot set socket non-blocking " << hostname << std::endl;
+      LOG_DEBUG("cannot set socket non-blocking ", hostname);
       close(sock);
       return nullptr;
     }
@@ -795,7 +794,7 @@ std::shared_ptr<TcpPeer> TcpTransport::getPeer(sockaddr *peer) {
     }
     std::shared_ptr<TcpEndpoint> tep = std::make_shared<TcpEndpoint>();
 
-    LOG_DEBUG << "connected " << hostname << "::" << inaddr->sin_port << std::endl;
+    LOG_DEBUG("connected ", hostname, "::", inaddr->sin_port);
     tep->sock = sock;
     if (num_ep == 0) {
       tcpPeer = std::make_shared<TcpPeer>(hostname, _geds);
@@ -804,7 +803,7 @@ std::shared_ptr<TcpPeer> TcpTransport::getPeer(sockaddr *peer) {
     tcpPeer->addEndpoint(tep);
     activateEndpoint(tep, tcpPeer);
   }
-  LOG_DEBUG << "Client connected to " << hostname << std::endl;
+  LOG_DEBUG("Client connected to ", hostname);
   return tcpPeer;
 }
 
@@ -866,7 +865,7 @@ int TcpPeer::sendRpcReply(uint64_t reqId, int in_fd, uint64_t start, size_t len,
     send_ok = processEndpointSend(tep);
     tep->send_ctx.stateMux.unlock();
   } else {
-    LOG_ERROR << "No active endpoint found" << std::endl;
+    LOG_ERROR("No active endpoint found");
   }
   if (send_ok)
     return 0;
@@ -904,10 +903,10 @@ TcpPeer::sendRpcRequest(uint64_t dest, std::string name, size_t off, size_t len)
     send_ok = processEndpointSend(tep);
     tep->send_ctx.stateMux.unlock();
   } else {
-    LOG_ERROR << "No active endpoint found" << std::endl;
+    LOG_ERROR("No active endpoint found");
   }
   if (!send_ok) {
-    LOG_ERROR << "RPC Req Send failed" << std::endl;
+    LOG_ERROR("RPC Req Send failed");
     recvQueue.remove(reqId);
     recvWork->p->set_value(absl::AbortedError("Unable to proceed: "));
   }

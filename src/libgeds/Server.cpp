@@ -46,7 +46,7 @@ class ServerImpl final : public geds::rpc::GEDSService::Service {
   ::grpc::Status GetAvailEndpoints(::grpc::ServerContext * /* unused context */,
                                    const ::geds::rpc::EmptyParams * /* unused request */,
                                    ::geds::rpc::AvailTransportEndpoints *response) override {
-    LOG_DEBUG << "About to report locally available file transfer endpoints" << std::endl;
+    LOG_DEBUG("About to report locally available file transfer endpoints");
 
     for (auto &endpoint : _server.TcpListenEp) {
       auto ep = response->add_endpoint();
@@ -58,8 +58,7 @@ class ServerImpl final : public geds::rpc::GEDSService::Service {
       }
       ep->set_address(endpoint.hostname);
       ep->set_port(laddr->sin_port);
-      LOG_DEBUG << "Report local endpoint: " << inet_ntoa(laddr->sin_addr)
-                << "::" << laddr->sin_port << std::endl;
+      LOG_DEBUG("Report local endpoint: ", inet_ntoa(laddr->sin_addr), "::", laddr->sin_port);
     }
     return grpc::Status::OK;
   }
@@ -100,7 +99,7 @@ void Server::TcpListenThread() {
    */
   sock = ::socket(AF_INET, SOCK_STREAM, 0);
   if (sock <= 0) {
-    LOG_ERROR << "socket call" << std::endl;
+    LOG_ERROR("socket call");
     return;
   }
   listener.socket = sock;
@@ -111,14 +110,14 @@ void Server::TcpListenThread() {
 
   rv = ::bind(sock, &listener.laddr, sizeof listener.laddr);
   if (rv) {
-    LOG_ERROR << "bind call: " << std::endl;
+    LOG_ERROR("bind call: ");
     perror("bind");
     close(sock);
     return;
   }
   rv = getsockname(sock, &listener.laddr, &addrlen);
   if (rv) {
-    LOG_ERROR << "getsockname call" << std::endl;
+    LOG_ERROR("getsockname call");
     close(sock);
     return;
   }
@@ -141,11 +140,11 @@ void Server::TcpListenThread() {
   }
   rv = ::listen(sock, 20);
   if (rv) {
-    LOG_ERROR << "listen call" << std::endl;
+    LOG_ERROR("listen call");
     close(sock);
     return;
   }
-  LOG_DEBUG << "TCP listener: " << listener.hostname << "::" << local->sin_port << std::endl;
+  LOG_DEBUG("TCP listener: ", listener.hostname, "::", local->sin_port);
   TcpListenEp.emplace(TcpListenEp.end(), listener);
 
   while (!TcpListenEp.empty()) {
@@ -156,7 +155,7 @@ void Server::TcpListenThread() {
     }
     if (_geds->_tcpTransport->addEndpointPassive(newsock) == false) {
       ::close(newsock);
-      LOG_ERROR << "Server: Adding new TCP client failed " << std::endl;
+      LOG_ERROR("Server: Adding new TCP client failed ");
     }
   }
   close(sock);
@@ -183,7 +182,7 @@ absl::Status Server::start(std::shared_ptr<GEDS> geds) {
   int selectedPort = 0;
   do {
     grpc::ServerBuilder builder;
-    LOG_DEBUG << "Trying port " << _port << std::endl;
+    LOG_DEBUG("Trying port ", _port);
     builder.AddListeningPort(address + ":" + std::to_string(_port),
                              grpc::InsecureServerCredentials(), &selectedPort);
     builder.RegisterService(_grpcService.get());
@@ -192,7 +191,7 @@ absl::Status Server::start(std::shared_ptr<GEDS> geds) {
     _grpcServer = builder.BuildAndStart();
   } while (selectedPort == 0);
   _port = selectedPort;
-  LOG_INFO << "GRPC Server started using " << _hostname << " and port " << _port << std::endl;
+  LOG_INFO("GRPC Server started using ", _hostname, " and port ", _port);
 
   _state = ServiceState::Running;
   // TODO: Check if _grpcServer->Wait() is required.

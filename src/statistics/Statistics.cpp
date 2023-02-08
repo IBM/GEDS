@@ -47,7 +47,7 @@ void Statistics::printStatistics() const {
   };
   _statistics.run(printFunction);
   msg << std::endl;
-  LOG_INFO << msg.str();
+  LOG_INFO(msg.str());
 }
 
 void Statistics::prometheusMetrics(std::stringstream &stream) const {

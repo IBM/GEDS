@@ -32,7 +32,7 @@ absl::StatusOr<std::shared_ptr<KVSBucket::Container>> KVSBucket::getObject(const
 absl::Status KVSBucket::createObject(const geds::Object &obj) {
   auto lock = getWriteLock();
   if (_map.find(utility::Path{obj.id.key}) != _map.end()) {
-    LOG_DEBUG << "Overwriting " << obj.id.key << " since it already exists!" << std::endl;
+    LOG_DEBUG("Overwriting ", obj.id.key, " since it already exists!");
   }
   _map[utility::Path{obj.id.key}] = std::make_shared<KVSBucket::Container>(obj.info);
   return absl::OkStatus();
