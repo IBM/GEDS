@@ -11,8 +11,6 @@ SET(SOURCES
         ConcurrentSet.h
         FormatISO8601.h
         Logging.h
-        LogNullSink.cpp
-        LogNullSink.h
         Path.h
         Path.cpp
         Platform.h
