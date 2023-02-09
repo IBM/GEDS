@@ -4,7 +4,7 @@
 #
 
 language: c++
-dist: jammy
+dist: focal
 
 services:
 - docker
