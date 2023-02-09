@@ -12,7 +12,7 @@ cd "${SCRIPT_DIR}"
 ROOT="$(pwd)"
 
 GEDS_VERSION=${GEDS_VERSION:-$(git describe --tags --match "v*" --dirty)}
-[[ "$GEDS_VERSION" =~ ^v ]] && GEDS_VERSION=$(echo $GEDS_VERSION | cut -c 3-)
+[[ "$GEDS_VERSION" =~ ^v ]] && GEDS_VERSION=$(echo $GEDS_VERSION | cut -c 2-)
 GEDS_VERSION=${GEDS_VERSION/-/+} # Workaround for pep440
 echo "Building python package with ${GEDS_VERSION}"
 

@@ -17,7 +17,7 @@ GIT_REVISION=$(git rev-parse --short HEAD)
 git diff-files --quiet || GIT_REVISION="${GIT_REVISION}-dirty"
 
 GEDS_VERSION=${TRAVIS_TAG:-$(git describe --tags --match "v*" --dirty)}
-[[ "$GEDS_VERSION" =~ ^v ]] && GEDS_VERSION=$(echo $GEDS_VERSION | cut -c 3-)
+[[ "$GEDS_VERSION" =~ ^v ]] && GEDS_VERSION=$(echo $GEDS_VERSION | cut -c 2-)
 
 IMAGE_NAME=geds-dev_${DOCKER_BUILD_TARGET}
 IMAGE=us.icr.io/zrlio/${IMAGE_NAME}
