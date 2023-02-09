@@ -30,6 +30,7 @@ before_install:
 
 script:
   - .travis/build-geds.sh
+  - .travis/build-public-images.sh
 
 cache:
   directories:

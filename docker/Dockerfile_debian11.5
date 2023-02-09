@@ -3,9 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-ARG GIT_REVISION
-FROM geds-build_debian11.5:${GIT_REVISION} as builder
-
 FROM debian:11.5
 
 ENV DEBIAN_FRONTEND noninteractive
@@ -21,7 +18,8 @@ RUN apt-get clean && apt-get update \
     && python3.9 /tmp/get-pip.py \
     && python3.9 -m pip install numpy
 
-COPY --from=builder /usr/local/opt/geds/ /usr/local/
+COPY travis_install/geds/ /usr/local/
+RUN ls /usr/local
 
 EXPOSE 4380
 EXPOSE 4381

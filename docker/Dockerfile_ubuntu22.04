@@ -3,9 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-ARG GIT_REVISION
-FROM geds-build_ubuntu22.04:${GIT_REVISION} as builder
-
 FROM ubuntu:22.04
 
 ENV DEBIAN_FRONTEND noninteractive
