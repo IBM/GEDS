@@ -3,7 +3,7 @@
 ## Environment variables
 
 GEDS can be configured using the following environment variables:
-- `GEDS_METADATASERVER`: GEDS Metadata Server, default: `geds-metadataserver:50001`.
+- `GEDS_METADATASERVER`: GEDS Metadata Server, default: `geds-metadataserver:4381`.
 - `GEDS_TMP`: GEDS Folder for ephemeral data, default: `/tmp/GEDS_XXXXXX`.
 - `GEDS_BLOCK_SIZE`: GEDS Block size in bytes (optional).
 

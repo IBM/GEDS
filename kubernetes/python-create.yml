@@ -9,9 +9,9 @@ spec:
     command: [ "python3.9", "/usr/local/python/create.py"  ]
     imagePullPolicy: Always
     ports:
-    - containerPort: 50003
+    - containerPort: 4382
     env:
     - name: GEDS_METADATASERVER
-      value: geds-metadataserver:50001
+      value: geds-metadataserver:4381
   imagePullSecrets:
     - name: zrlio
