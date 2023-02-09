@@ -5,6 +5,13 @@ GEDS is a distributed epehemeral datastore that enables flexible scaling of comp
 - [Building](doc/BUILDING.md)
 - [geds_smart_open Python package](src/python/geds_smart_open/README.md)
 
+## Ports
+
+GEDS uses the following default ports (see also `src/utility/Ports.h`).
+- **Web / Prometheus**: 4380
+- **Metadata Server**: 4381
+- **GEDS RPC**: 4382
+
 ## Benchmarking
 
 1. Start the metadata server on `$HOST`:
@@ -14,7 +21,7 @@ GEDS is a distributed epehemeral datastore that enables flexible scaling of comp
 2. Start the benchmarking server on a separate node
    ```
    GEDS_METADATASERVER_HOST=$HOST
-   GEDS_METADATASERVER_PORT=50001
+   GEDS_METADATASERVER_PORT=4381
    export GEDS_METADATASERVER=${GEDS_METADATASERVER_HOST}:${GEDS_METADATASERVER_PORT}
    cd $GEDS_INSTALL/python
    python3.9 serve_benchmark.py
@@ -22,6 +29,6 @@ GEDS is a distributed epehemeral datastore that enables flexible scaling of comp
 3. Run the benchmark command:
    ```bash
    GEDS_METADATASERVER_HOST=$HOST
-   GEDS_METADATASERVER_PORT=50001
+   GEDS_METADATASERVER_PORT=4381
    $GEDS_INSTALL/bin/benchmark --serverAddress $GEDS_METADATASERVER_HOST --serverPort $GEDS_METADATASERVER_PORT --outputFile output.csv
    ```

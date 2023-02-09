@@ -8,8 +8,8 @@
 
 #include <cstdint>
 
-const uint16_t defaultMetdataServerPort = 50001;
-const uint16_t defaultGEDSPort = 50002;
-const uint16_t defaultPrometheusPort = 10223;
+const uint16_t defaultPrometheusPort = 4380;
+const uint16_t defaultMetdataServerPort = 4381;
+const uint16_t defaultGEDSPort = 4382;
 
 #endif

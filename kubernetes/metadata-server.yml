@@ -6,7 +6,7 @@ spec:
   selector:
     app: geds-metadataserver
   ports:
-  - port: 50001
+  - port: 4381
   selector:
     app: geds-metadataserver
 ---
@@ -23,7 +23,7 @@ spec:
     image: us.icr.io/zrlio/geds-dev:latest
     imagePullPolicy: Always
     ports:
-    - containerPort: 50001
+    - containerPort: 4381
     command: [ "/usr/local/bin/metadataserver" ]
     resources:
       requests:

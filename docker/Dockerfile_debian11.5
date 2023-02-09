@@ -23,5 +23,6 @@ RUN apt-get clean && apt-get update \
 
 COPY --from=builder /usr/local/opt/geds/ /usr/local/
 
-EXPOSE 50001
-EXPOSE 50053
+EXPOSE 4380
+EXPOSE 4381
+EXPOSE 4382
