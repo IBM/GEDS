@@ -41,5 +41,7 @@ deploy:
   file_glob: true
   file: travis_artifacts/*
   skip_cleanup: true
+  api_key:
+    secure: n+35q9t7T6/HLXrNmM2hIGOWouuIX2n71OZCZGbeUwCz2jVVNYe3K+0nqUW910myrKOidioXyfih8i9nFiBDuzTtLw19sF/wxp+XgFiALFZ8q7mk4xL5O/8EB1K7u+OJzjOaDx3GFxu1XYIujImE0of3bnblN1m6D0CQ/SUs+4u8LlOOShJJ4CxU7paGSuRUDTCR0qCd7yI5AWVyRmI1HH/GDR7PmGn0m6gNLqYhOl37YjAroAhFkeBy78m71keXfG1oPAMKFSwm9m/z+hr2nx3U7XpBXUsskHX1By+GNc1IR9lKjWh61WVUSWpqXdrGNJIrN0zxf+BsdsFMi9TK7U6lkff02x0VYnAtXrTx2y3R0ueVDhy0/iWdHUytPGGZzdL1ip7yYTkBhaaj/EPxVOJsmUTcBYuVQd2GsOyraZKin8cOaThfynGyBiX8Kzf/GMAMM5vYudl/Dxy1rf9VTDID1c45u1yolG58elX5+ieJFnCW0r/fEn3peX/HFOECCDDqhgoCP/job1YNnQPf1Odc+WDhM9eE8vgm4Q998f7ewnKFxkS58kTnHMC22C+l1DefDflimj/XBdcByk1/PeGbMtOEDEc7g/vIwVJZQURnn6QUDKIfSo2ni5rcupRt1Q0eG2zfSbBBROZTZyHVzClCu2sJBxnM49KEpbyMQ98=
   on:
     tags: true
