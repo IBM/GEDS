@@ -13,7 +13,9 @@ ROOT="$(pwd)"
 
 source "${ROOT}/DEPENDENCIES"
 
-GEDS_VERSION=${TRAVIS_TAG:-$(git describe --tags --match "v*" --dirty | cut -c 2-)}
+GEDS_VERSION=${TRAVIS_TAG:-$(git describe --tags --match "v*" --dirty)}
+[[ "$GEDS_VERSION" =~ ^v ]] && GEDS_VERSION=$(echo $GEDS_VERSION | cut -c 3-)
+
 GIT_REVISION=$(git rev-parse --short HEAD)
 GRPC_DOCKER_IMAGE=${GRPC_DOCKER_IMAGE:-"geds_dependencies-${DOCKER_BUILD_TARGET}:${GIT_REVISION}"}
 CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-"Release"}
