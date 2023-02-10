@@ -31,6 +31,7 @@ else
         -f docker/Dockerfile-base_${DOCKER_BUILD_TARGET} .
 
     docker build -t ${GRPC_DOCKER_IMAGE} \
+         --build-arg CMAKE_BUILD_PARALLEL_LEVEL=$(($(nproc) + 1)) \
          --build-arg DOCKER_BUILD_TARGET=${DOCKER_BUILD_TARGET} \
          --build-arg GRPC_VERSION=${GRPC_VERSION} \
          --build-arg AWS_SDK_VERSION=${AWS_SDK_VERSION} \
