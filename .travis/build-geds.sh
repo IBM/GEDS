@@ -30,7 +30,7 @@ docker run \
     -e GEDS_VERSION=${GEDS_VERSION} \
     -e BUILD_FOLDER="/build/geds" \
     -e INSTALL_PREFIX="/install/" \
-    -e CMAKE_BUILD_PARALLEL_LEVEL=8 \
+    -e CMAKE_BUILD_PARALLEL_LEVEL=$(($(nproc) + 1)) \
     -e CMAKE_BUILD_TYPE="${CMAKE_BUILD_TYPE}" \
     -e RUN_TESTS=1 \
     -w "/build/geds" \

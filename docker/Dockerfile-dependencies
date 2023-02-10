@@ -8,6 +8,7 @@ FROM geds_build:${DOCKER_BUILD_TARGET}
 
 ARG CMAKE_CXX_STANDARD=20
 ARG CMAKE_VERSION=3.22.4
+ARG CMAKE_BUILD_PARALLEL_LEVEL=8
 
 # Install CMake
 RUN wget --quiet -O cmake.tar.gz https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-linux-x86_64.tar.gz \
@@ -63,6 +64,6 @@ RUN mkdir -p /build/boost \
     && cd "${BUILD_DIR}" \
     && tar xf boost.tar.gz --strip-components 1 \
     && ./bootstrap.sh --prefix="${INSTALL_PREFIX}" \
-    && ./b2 install \
+    && ./b2 install -j ${CMAKE_BUILD_PARALLEL_LEVEL} \
     && cd / \
     && rm -rf /build/boost
