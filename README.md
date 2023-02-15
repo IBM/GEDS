@@ -32,3 +32,17 @@ GEDS uses the following default ports (see also `src/utility/Ports.h`).
    GEDS_METADATASERVER_PORT=4381
    $GEDS_INSTALL/bin/benchmark --serverAddress $GEDS_METADATASERVER_HOST --serverPort $GEDS_METADATASERVER_PORT --outputFile output.csv
    ```
+
+### Contributing
+
+Contributing to this repository requires a signed contributor license agreement (see [GEDS_CLA_Corporate](GEDS_CLA_Corporate.doc) for corporate copyright holders or [GEDS_CLA_Individual](GEDS_CLA_Individual.doc)).
+
+All commits need to contain signed-off message to indicate that the submitter accepts the [DCO](DCO1.1.txt). Example
+```
+Commit message
+
+Signed-off-by: John Doe <john.doe@example.com>
+```
+The command `git commit -s` will automatically add the message to the end of the commit.
+
+This project welcomes external contributions. To contribute code or documentation, please submit a [pull request](https://github.com/IBM/GEDS/pulls).
