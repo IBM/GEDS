@@ -1,10 +1,6 @@
 /**
  * Copyright 2022- IBM Inc. All rights reserved
-<<<<<<< HEAD
  * SPDX-License-Identifier: Apache-2.0
-=======
- * SPDX-License-Identifier: Apache2.0
->>>>>>> 1638f77 (Contribute TcpTransport.)
  */
 
 #include <algorithm>
@@ -86,9 +82,11 @@ void TcpTransport::stop() {
   for (auto &ep : tcpPeerV)
     ep->cleanup();
 
+  LOG_DEBUG("Stopping txThreads");
   for (auto &t : txThreads)
     t->join();
 
+  LOG_DEBUG("Stopping rxThreads");
   for (auto &t : rxThreads)
     t->join();
 
@@ -101,9 +99,12 @@ TcpPeer::~TcpPeer() {
 }
 
 void TcpPeer::cleanup() {
+  LOG_DEBUG("Cleanup on ", endpoints.size(), " sockets");
   epMux.lock();
   for (auto &endpoint : endpoints) {
     auto tep = endpoint.second;
+    LOG_DEBUG("Shutdown ", tep->sock);
+
     shutdown(tep->sock, SHUT_RDWR);
     LOG_DEBUG("Endpoint shutdown: socket: ", tep->sock, " sent: ", tep->tx_bytes,
               " received: ", tep->rx_bytes);
@@ -273,7 +274,7 @@ void TcpTransport::tcpTxThread(unsigned int id) {
   }
   epoll_wfd[id] = poll_fd;
   do {
-    int cnt = ::epoll_wait(poll_fd, events, EPOLL_MAXEVENTS, -1);
+    int cnt = ::epoll_wait(poll_fd, events, EPOLL_MAXEVENTS, 100);
 
     for (int i = 0; i < cnt; i++) {
       struct epoll_event *ev = &events[i];
@@ -609,7 +610,7 @@ void TcpTransport::tcpRxThread(unsigned int id) {
   epoll_rfd[id] = poll_fd;
 
   do {
-    int cnt = ::epoll_wait(poll_fd, events, EPOLL_MAXEVENTS, -1);
+    int cnt = ::epoll_wait(poll_fd, events, EPOLL_MAXEVENTS, 100);
 
     for (int i = 0; i < cnt; i++) {
       struct epoll_event *ev = &events[i];
