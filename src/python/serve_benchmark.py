@@ -9,7 +9,7 @@ from time import sleep
 
 from pygeds import status, GEDS
 
-METADATA_SERVER = os.environ.get("GEDS_METADATASERVER", "zac13:50051")
+METADATA_SERVER = os.environ.get("GEDS_METADATASERVER", "zac13:4381")
 BUCKET_NAME = os.environ.get("BUCKET_NAME", "benchmark")
 MAX_THREADS = int(os.environ.get("MAX_THREADS", "16"))
 MAX_SIZE = int(os.environ.get("MAX_SIZE", "18"))

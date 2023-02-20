@@ -7,7 +7,7 @@ import os
 
 from pygeds import status, GEDS
 
-METADATA_SERVER = os.environ.get("GEDS_METADATASERVER", "zac13:50051")
+METADATA_SERVER = os.environ.get("GEDS_METADATASERVER", "zac13:4381")
 instance = GEDS(METADATA_SERVER)
 try:
     instance.start()
