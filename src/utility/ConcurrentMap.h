@@ -95,22 +95,14 @@ public:
     }
   }
 
-  void getall(std::function<bool(const K &, V &)> selector) {
-    auto lock = getWriteLock();
-    auto items = std::vector<K>();
-    for (auto it = _map.begin(); it != _map.end();) {
-      it = selector(it->first, it->second) ? std::next(it) : std::next(it);
-    }
-  }
-
-  void run(std::function<void(V &)> action) const {
+  void forall(std::function<void(V &)> action) const {
     auto lock = getReadLock();
     for (auto it : _map) {
       action(it.second);
     }
   }
 
-  void run(std::function<void(const K &, V &)> action) const {
+  void forall(std::function<void(const K &, V &)> action) const {
     auto lock = getReadLock();
     for (auto it : _map) {
       action(it.first, it.second);

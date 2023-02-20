@@ -45,13 +45,13 @@ void Statistics::printStatistics() const {
   auto printFunction = [&msg](const std::string &k, std::shared_ptr<StatisticsCounter> c) {
     msg << k << ", " << std::to_string(c->get()) << std::endl;
   };
-  _statistics.run(printFunction);
+  _statistics.forall(printFunction);
   msg << std::endl;
   LOG_INFO(msg.str());
 }
 
 void Statistics::prometheusMetrics(std::stringstream &stream) const {
-  _statistics.run([&stream](const std::string &, std::shared_ptr<StatisticsCounter> &counter) {
+  _statistics.forall([&stream](const std::string &, std::shared_ptr<StatisticsCounter> &counter) {
     stream << "# TYPE " << counter->prometheusLabel << " counter"
            << "\n" //
            << counter->prometheusLabel << " " << counter->get() << "\n";

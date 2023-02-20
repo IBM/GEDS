@@ -82,10 +82,7 @@ void TcpTransport::stop() {
   LOG_DEBUG("Stopping TCP Service");
 
   std::vector<std::shared_ptr<TcpPeer>> tcpPeerV;
-  tcpPeers.getall([&tcpPeerV](const unsigned int &, std::shared_ptr<TcpPeer> &tp) -> bool {
-    tcpPeerV.push_back(tp);
-    return true;
-  });
+  tcpPeers.forall([&tcpPeerV](std::shared_ptr<TcpPeer> &tp) { tcpPeerV.push_back(tp); });
   for (auto &ep : tcpPeerV)
     ep->cleanup();
 
@@ -594,13 +591,7 @@ bool TcpPeer::processEndpointRecv(int sock) {
 // TODO: Make this thread interruptiple by signal to make it killable if Transport goes away.
 void TcpTransport::updateIoStats() {
   do {
-    std::vector<std::shared_ptr<TcpPeer>> tcpPeerV;
-    tcpPeers.getall([&tcpPeerV](const unsigned int &, std::shared_ptr<TcpPeer> &tp) -> bool {
-      tcpPeerV.push_back(tp);
-      return true;
-    });
-    for (auto &peer : tcpPeerV)
-      peer->updateIoStats();
+    tcpPeers.forall([](std::shared_ptr<TcpPeer> &tp) { tp->updateIoStats(); });
     sleep(1);
   } while (isServing);
 }
