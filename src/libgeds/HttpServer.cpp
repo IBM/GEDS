@@ -14,6 +14,9 @@
 #include <boost/asio/strand.hpp>
 #include <boost/beast/core/bind_handler.hpp>
 #include <boost/beast/core/error.hpp>
+#include <boost/exception/diagnostic_information.hpp>
+#include <boost/exception/exception.hpp>
+#include <boost/exception_ptr.hpp>
 
 #include "HttpSession.h"
 #include "Logging.h"
@@ -26,13 +29,19 @@ absl::Status HttpServer::start() {
   if (_acceptor != nullptr) {
     return absl::UnknownError("The server is already running!");
   }
-  auto host = boost::asio::ip::make_address("0.0.0.0");
-  _acceptor = std::unique_ptr<boost::asio::ip::tcp::acceptor>(
-      new boost::asio::ip::tcp::acceptor(_ioContext, {host, _port}));
-  _thread = std::thread([&] {
-    accept();
-    _ioContext.run();
-  });
+  try {
+    auto host = boost::asio::ip::make_address("0.0.0.0");
+    _acceptor = std::unique_ptr<boost::asio::ip::tcp::acceptor>(
+        new boost::asio::ip::tcp::acceptor(_ioContext, {host, _port}));
+    _thread = std::thread([&] {
+      accept();
+      _ioContext.run();
+    });
+  } catch (boost::exception &e) {
+    // Workaround until GEDS properly supports multiple processes.
+    auto diag = boost::diagnostic_information(e, false);
+    return absl::InternalError("Unable to start webserver: " + diag);
+  }
   return absl::OkStatus();
 }
 
