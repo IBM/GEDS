@@ -224,6 +224,9 @@ protected:
         objectInfo->set_location(result.info.location);
         objectInfo->set_size(result.info.size);
         objectInfo->set_sealedoffset(result.info.sealedOffset);
+        if (result.info.metadata.has_value()) {
+          objectInfo->set_metadata(result.info.metadata.value());
+        }
       }
       for (const auto &prefix : listing->second) {
         response->add_commonprefixes(prefix);

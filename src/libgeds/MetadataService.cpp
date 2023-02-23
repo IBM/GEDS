@@ -378,8 +378,9 @@ MetadataService::listPrefix(const std::string &bucket, const std::string &keyPre
   objects.reserve(rpc_results.size());
   for (auto i : rpc_results) {
     auto obj_id = geds::ObjectID{i.id().bucket(), i.id().key()};
-    auto obj_info = geds::ObjectInfo{i.info().location(), i.info().size(), i.info().sealedoffset(),
-                                     std::nullopt};
+    auto obj_info = geds::ObjectInfo{
+        i.info().location(), i.info().size(), i.info().sealedoffset(),
+        i.info().has_metadata() ? std::make_optional(i.info().metadata()) : std::nullopt};
     objects.emplace_back(geds::Object{obj_id, obj_info});
   }
   return std::make_pair(objects, std::vector<std::string>{response.commonprefixes().begin(),
