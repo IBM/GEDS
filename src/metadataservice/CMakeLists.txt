@@ -6,10 +6,6 @@
 set(SOURCES
         GRPCServer.cpp
         GRPCServer.h
-        KVS.cpp
-        KVS.h
-        KVSBucket.cpp
-        KVSBucket.h
         ObjectStoreHandler.cpp
         ObjectStoreHandler.h
 )

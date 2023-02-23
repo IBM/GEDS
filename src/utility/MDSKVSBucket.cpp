@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include "KVSBucket.h"
+#include "MDSKVSBucket.h"
 
 #include <absl/status/status.h>
 #include <absl/status/statusor.h>
@@ -16,11 +16,10 @@
 #include "Object.h"
 #include "Path.h"
 
-KVSBucket::KVSBucket(const std::string &name) : _name(name) {}
+MDSKVSBucket::MDSKVSBucket(const std::string &name) : _name(name) {}
 
-KVSBucket::~KVSBucket() {}
-
-absl::StatusOr<std::shared_ptr<KVSBucket::Container>> KVSBucket::getObject(const std::string &key) {
+absl::StatusOr<std::shared_ptr<MDSKVSBucket::Container>>
+MDSKVSBucket::getObject(const std::string &key) {
   auto lock = getReadLock();
   auto it = _map.find(utility::Path{key});
   if (it == _map.end()) {
@@ -29,16 +28,16 @@ absl::StatusOr<std::shared_ptr<KVSBucket::Container>> KVSBucket::getObject(const
   return it->second;
 }
 
-absl::Status KVSBucket::createObject(const geds::Object &obj) {
+absl::Status MDSKVSBucket::createObject(const geds::Object &obj) {
   auto lock = getWriteLock();
   if (_map.find(utility::Path{obj.id.key}) != _map.end()) {
     LOG_DEBUG("Overwriting ", obj.id.key, " since it already exists!");
   }
-  _map[utility::Path{obj.id.key}] = std::make_shared<KVSBucket::Container>(obj.info);
+  _map[utility::Path{obj.id.key}] = std::make_shared<MDSKVSBucket::Container>(obj.info);
   return absl::OkStatus();
 }
 
-absl::Status KVSBucket::updateObject(const geds::Object &obj) {
+absl::Status MDSKVSBucket::updateObject(const geds::Object &obj) {
   auto data = getObject(obj.id.key);
   if (!data.ok()) {
     return data.status();
@@ -49,7 +48,7 @@ absl::Status KVSBucket::updateObject(const geds::Object &obj) {
   return absl::OkStatus();
 }
 
-absl::Status KVSBucket::deleteObject(const std::string &key) {
+absl::Status MDSKVSBucket::deleteObject(const std::string &key) {
   auto lock = getWriteLock();
   auto it = _map.find(utility::Path{key});
   if (it == _map.end()) {
@@ -59,7 +58,7 @@ absl::Status KVSBucket::deleteObject(const std::string &key) {
   return absl::OkStatus();
 }
 
-absl::Status KVSBucket::deleteObjectPrefix(const std::string &prefix) {
+absl::Status MDSKVSBucket::deleteObjectPrefix(const std::string &prefix) {
   auto lock = getWriteLock();
   auto [prefixStart, prefixEnd] = utility::prefixSearch(_map, prefix);
   if (prefixStart == _map.end()) {
@@ -70,7 +69,7 @@ absl::Status KVSBucket::deleteObjectPrefix(const std::string &prefix) {
   return absl::OkStatus();
 }
 
-absl::StatusOr<geds::Object> KVSBucket::lookup(const std::string &key) {
+absl::StatusOr<geds::Object> MDSKVSBucket::lookup(const std::string &key) {
   auto data = getObject(key);
   if (!data.ok()) {
     return data.status();
@@ -81,7 +80,7 @@ absl::StatusOr<geds::Object> KVSBucket::lookup(const std::string &key) {
 }
 
 absl::StatusOr<std::pair<std::vector<geds::Object>, std::vector<std::string>>>
-KVSBucket::listObjects(const std::string &keyPrefix, char delimiter) {
+MDSKVSBucket::listObjects(const std::string &keyPrefix, char delimiter) {
   auto lock = getReadLock();
   auto result = std::vector<geds::Object>();
   const auto prefixLength = keyPrefix.length();
