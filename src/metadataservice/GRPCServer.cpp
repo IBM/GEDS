@@ -33,11 +33,11 @@
   geds::logging::LogTimestamp(std::clog, context->peer(), ": ", __VA_ARGS__) // NOLINT
 
 class MetadataServiceImpl final : public geds::rpc::MetadataService::Service {
-  std::shared_ptr<KVS> _kvs;
+  std::shared_ptr<MDSKVS> _kvs;
   ObjectStoreHandler _objectStoreHandler;
 
 public:
-  MetadataServiceImpl(std::shared_ptr<KVS> kvs) : _kvs(kvs) {}
+  MetadataServiceImpl(std::shared_ptr<MDSKVS> kvs) : _kvs(kvs) {}
 
   geds::ObjectID convert(const ::geds::rpc::ObjectID *r) {
     return geds::ObjectID(r->bucket(), r->key());
@@ -240,7 +240,7 @@ protected:
 };
 
 GRPCServer::GRPCServer(std::string serverAddress)
-    : _kvs(std::make_shared<KVS>()), _grpcService(new MetadataServiceImpl(_kvs)),
+    : _kvs(std::make_shared<MDSKVS>()), _grpcService(new MetadataServiceImpl(_kvs)),
       _serverAddress(std::move(serverAddress)) {}
 
 GRPCServer::~GRPCServer() {}

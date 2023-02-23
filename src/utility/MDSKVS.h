@@ -3,8 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef GEDS_KVS_H
-#define GEDS_KVS_H
+#pragma once
 
 #include <map>
 #include <memory>
@@ -12,33 +11,24 @@
 #include <tuple>
 #include <vector>
 
+#include <absl/status/status.h>
 #include <absl/status/statusor.h>
 
-#include "Common.h"
-#include "KVSBucket.h"
+#include "MDSKVSBucket.h"
 #include "Object.h"
+#include "RWConcurrentObjectAdaptor.h"
 
-class KVS {
+class MDSKVS : public utility::RWConcurrentObjectAdaptor {
 private:
-  std::shared_mutex _mutex;
+  std::map<std::string, std::shared_ptr<MDSKVSBucket>> _map;
 
-  std::shared_lock<std::shared_mutex> getReadLock() {
-    return std::shared_lock<std::shared_mutex>(_mutex);
-  }
-
-  std::unique_lock<std::shared_mutex> getWriteLock() {
-    return std::unique_lock<std::shared_mutex>(_mutex);
-  }
-
-  std::map<std::string, std::shared_ptr<KVSBucket>> _map;
-
-  absl::StatusOr<std::shared_ptr<KVSBucket>> getBucket(const std::string &bucket);
-  absl::StatusOr<std::shared_ptr<KVSBucket>> getBucket(const geds::ObjectID &id);
+  absl::StatusOr<std::shared_ptr<MDSKVSBucket>> getBucket(const std::string &bucket);
+  absl::StatusOr<std::shared_ptr<MDSKVSBucket>> getBucket(const geds::ObjectID &id);
 
 public:
-  KVS();
+  MDSKVS();
 
-  ~KVS();
+  ~MDSKVS();
 
   /**
    * @brief Create bucket.
@@ -61,6 +51,7 @@ public:
    * @brief Check bucket status.
    */
   absl::Status bucketStatus(const std::string &bucket);
+  absl::Status bucketStatus(const std::string_view &bucket);
 
   /**
    * @brief Create object.
@@ -76,16 +67,19 @@ public:
    * @brief Delete object with `id`.
    */
   absl::Status deleteObject(const geds::ObjectID &id);
+  absl::Status deleteObject(const std::string &bucket, const std::string &key);
 
   /**
    * @brief Delete object in `id.bucket` with key starting with `id.key`.
    */
   absl::Status deleteObjectPrefix(const geds::ObjectID &id);
+  absl::Status deleteObjectPrefix(const std::string &bucket, const std::string &prefix);
 
   /**
    * @brief Lookup exact object.
    */
   absl::StatusOr<geds::Object> lookup(const geds::ObjectID &id);
+  absl::StatusOr<geds::Object> lookup(const std::string &bucket, const std::string &key);
 
   /**
    * @brief List objects and common prefixes starting with `id.key` as prefix and do not contain
@@ -94,6 +88,7 @@ public:
    */
   absl::StatusOr<std::pair<std::vector<geds::Object>, std::vector<std::string>>>
   listObjects(const geds::ObjectID &id, char delimiter = 0);
-};
 
-#endif // GEDS_KVS_H
+  absl::StatusOr<std::pair<std::vector<geds::Object>, std::vector<std::string>>>
+  listObjects(const std::string &bucket, const std::string &prefix, char delimiter = 0);
+};

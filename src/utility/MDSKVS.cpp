@@ -3,25 +3,21 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include <mutex>
-
-#include <absl/status/status.h>
-
-#include "KVS.h"
-#include "Object.h"
+#include "MDSKVS.h"
+#include "absl/status/status.h"
 
 #define QUOTE(str) #str
 #define STRINGIFY(str) QUOTE(str)
 
-KVS::KVS() {
+MDSKVS::MDSKVS() {
 #if defined(HAVE_DEFAULT_BUCKET) && HAVE_DEFAULT_BUCKET
   (void)createBucket(STRINGIFY(DEFAULT_BUCKET_NAME));
 #endif
 }
 
-KVS::~KVS() {}
+MDSKVS::~MDSKVS() {}
 
-absl::StatusOr<std::shared_ptr<KVSBucket>> KVS::getBucket(const std::string &bucket) {
+absl::StatusOr<std::shared_ptr<MDSKVSBucket>> MDSKVS::getBucket(const std::string &bucket) {
   auto lock = getReadLock();
   auto it = _map.find(bucket);
   if (it == _map.end()) {
@@ -30,20 +26,20 @@ absl::StatusOr<std::shared_ptr<KVSBucket>> KVS::getBucket(const std::string &buc
   return it->second;
 }
 
-absl::StatusOr<std::shared_ptr<KVSBucket>> KVS::getBucket(const geds::ObjectID &id) {
+absl::StatusOr<std::shared_ptr<MDSKVSBucket>> MDSKVS::getBucket(const geds::ObjectID &id) {
   return getBucket(id.bucket);
 }
 
-absl::Status KVS::createBucket(const std::string &bucket) {
+absl::Status MDSKVS::createBucket(const std::string &bucket) {
   auto lock = getWriteLock();
   if (_map.find(bucket) != _map.end()) {
     return absl::AlreadyExistsError("Bucket " + bucket + " already exists.");
   }
-  _map[bucket] = std::make_shared<KVSBucket>(bucket);
+  _map[bucket] = std::make_shared<MDSKVSBucket>(bucket);
   return absl::OkStatus();
 }
 
-absl::Status KVS::deleteBucket(const std::string &bucket) {
+absl::Status MDSKVS::deleteBucket(const std::string &bucket) {
   auto lock = getWriteLock();
   auto it = _map.find(bucket);
   if (it == _map.end()) {
@@ -53,7 +49,7 @@ absl::Status KVS::deleteBucket(const std::string &bucket) {
   return absl::OkStatus();
 }
 
-absl::StatusOr<std::vector<std::string>> KVS::listBuckets() {
+absl::StatusOr<std::vector<std::string>> MDSKVS::listBuckets() {
   auto lock = getReadLock();
   std::vector<std::string> result;
   result.reserve(_map.size());
@@ -63,7 +59,7 @@ absl::StatusOr<std::vector<std::string>> KVS::listBuckets() {
   return result;
 }
 
-absl::Status KVS::bucketStatus(const std::string &bucket) {
+absl::Status MDSKVS::bucketStatus(const std::string &bucket) {
   auto lock = getReadLock();
   if (_map.find(bucket) != _map.end()) {
     return absl::OkStatus();
@@ -71,7 +67,7 @@ absl::Status KVS::bucketStatus(const std::string &bucket) {
   return absl::NotFoundError("Bucket " + bucket + " does not exist.");
 }
 
-absl::Status KVS::createObject(const geds::Object &obj) {
+absl::Status MDSKVS::createObject(const geds::Object &obj) {
   auto bucket = getBucket(obj.id);
   if (!bucket.ok()) {
     return bucket.status();
@@ -79,7 +75,7 @@ absl::Status KVS::createObject(const geds::Object &obj) {
   return bucket.value()->createObject(obj);
 }
 
-absl::Status KVS::updateObject(const geds::Object &obj) {
+absl::Status MDSKVS::updateObject(const geds::Object &obj) {
   auto bucket = getBucket(obj.id);
   if (!bucket.ok()) {
     return bucket.status();
@@ -87,15 +83,22 @@ absl::Status KVS::updateObject(const geds::Object &obj) {
   return bucket.value()->updateObject(obj);
 }
 
-absl::Status KVS::deleteObject(const geds::ObjectID &id) {
+absl::Status MDSKVS::deleteObject(const geds::ObjectID &id) {
   auto bucket = getBucket(id);
   if (!bucket.ok()) {
     return bucket.status();
   }
   return bucket.value()->deleteObject(id.key);
 }
+absl::Status MDSKVS::deleteObject(const std::string &bucket, const std::string &key) {
+  auto b = getBucket(bucket);
+  if (!b.ok()) {
+    return b.status();
+  }
+  return (*b)->deleteObject(key);
+}
 
-absl::Status KVS::deleteObjectPrefix(const geds::ObjectID &id) {
+absl::Status MDSKVS::deleteObjectPrefix(const geds::ObjectID &id) {
   auto bucket = getBucket(id);
   if (!bucket.ok()) {
     return bucket.status();
@@ -103,7 +106,15 @@ absl::Status KVS::deleteObjectPrefix(const geds::ObjectID &id) {
   return bucket.value()->deleteObjectPrefix(id.key);
 }
 
-absl::StatusOr<geds::Object> KVS::lookup(const geds::ObjectID &id) {
+absl::Status MDSKVS::deleteObjectPrefix(const std::string &bucket, const std::string &prefix) {
+  auto b = getBucket(bucket);
+  if (!b.ok()) {
+    return b.status();
+  }
+  return (*b)->deleteObjectPrefix(prefix);
+}
+
+absl::StatusOr<geds::Object> MDSKVS::lookup(const geds::ObjectID &id) {
   auto bucket = getBucket(id);
   if (!bucket.ok()) {
     return bucket.status();
@@ -111,11 +122,28 @@ absl::StatusOr<geds::Object> KVS::lookup(const geds::ObjectID &id) {
   return bucket.value()->lookup(id.key);
 }
 
+absl::StatusOr<geds::Object> MDSKVS::lookup(const std::string &bucket, const std::string &key) {
+  auto b = getBucket(bucket);
+  if (!b.ok()) {
+    return b.status();
+  }
+  return (*b)->lookup(key);
+}
+
 absl::StatusOr<std::pair<std::vector<geds::Object>, std::vector<std::string>>>
-KVS::listObjects(const geds::ObjectID &id, char delimiter) {
+MDSKVS::listObjects(const geds::ObjectID &id, char delimiter) {
   auto bucket = getBucket(id);
   if (!bucket.ok()) {
     return bucket.status();
   }
   return bucket.value()->listObjects(id.key, delimiter);
+}
+
+absl::StatusOr<std::pair<std::vector<geds::Object>, std::vector<std::string>>>
+MDSKVS::listObjects(const std::string &bucket, const std::string &prefix, char delimiter) {
+  auto b = getBucket(bucket);
+  if (!b.ok()) {
+    return b.status();
+  }
+  return (*b)->listObjects(prefix, delimiter);
 }
