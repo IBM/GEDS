@@ -6,7 +6,6 @@
 # Dependencies for GEDS
 add_subdirectory(common)
 add_subdirectory(utility)
-add_subdirectory(grpchelloworld)
 add_subdirectory(protos)
 add_subdirectory(statistics)
 add_subdirectory(s3)
