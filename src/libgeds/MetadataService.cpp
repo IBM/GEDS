@@ -76,7 +76,8 @@ absl::Status MetadataService::disconnect() {
 }
 
 absl::Status MetadataService::registerObjectStoreConfig(const ObjectStoreConfig &mapping) {
-  METADATASERVICE_CHECK_CONNECTED
+  METADATASERVICE_CHECK_CONNECTED;
+
   geds::rpc::ObjectStoreConfig request;
   geds::rpc::StatusResponse response;
   grpc::ClientContext context;
@@ -96,7 +97,8 @@ absl::Status MetadataService::registerObjectStoreConfig(const ObjectStoreConfig 
 
 absl::StatusOr<std::vector<std::shared_ptr<ObjectStoreConfig>>>
 MetadataService::listObjectStoreConfigs() {
-  METADATASERVICE_CHECK_CONNECTED
+  METADATASERVICE_CHECK_CONNECTED;
+
   geds::rpc::EmptyParams request;
   geds::rpc::AvailableObjectStoreConfigs response;
   grpc::ClientContext context;
@@ -114,7 +116,8 @@ MetadataService::listObjectStoreConfigs() {
 }
 
 absl::StatusOr<std::string> MetadataService::getConnectionInformation() {
-  METADATASERVICE_CHECK_CONNECTED
+  METADATASERVICE_CHECK_CONNECTED;
+
   geds::rpc::EmptyParams request;
   geds::rpc::ConnectionInformation response;
   grpc::ClientContext context;
@@ -130,7 +133,8 @@ absl::StatusOr<std::string> MetadataService::getConnectionInformation() {
 }
 
 absl::Status MetadataService::createBucket(const std::string_view &bucket) {
-  METADATASERVICE_CHECK_CONNECTED
+  METADATASERVICE_CHECK_CONNECTED;
+
   geds::rpc::Bucket request;
   request.set_bucket(std::string{bucket});
 
@@ -146,7 +150,8 @@ absl::Status MetadataService::createBucket(const std::string_view &bucket) {
 }
 
 absl::Status MetadataService::deleteBucket(const std::string_view &bucket) {
-  METADATASERVICE_CHECK_CONNECTED
+  METADATASERVICE_CHECK_CONNECTED;
+
   geds::rpc::Bucket request;
   request.set_bucket(std::string{bucket});
 
@@ -162,7 +167,8 @@ absl::Status MetadataService::deleteBucket(const std::string_view &bucket) {
 }
 
 absl::StatusOr<std::vector<std::string>> MetadataService::listBuckets() {
-  METADATASERVICE_CHECK_CONNECTED
+  METADATASERVICE_CHECK_CONNECTED;
+
   geds::rpc::EmptyParams request;
 
   geds::rpc::BucketListResponse response;
@@ -187,7 +193,8 @@ absl::StatusOr<std::vector<std::string>> MetadataService::listBuckets() {
 }
 
 absl::Status MetadataService::lookupBucket(const std::string_view &bucket) {
-  METADATASERVICE_CHECK_CONNECTED
+  METADATASERVICE_CHECK_CONNECTED;
+
   geds::rpc::Bucket request;
   request.set_bucket(std::string{bucket});
 
@@ -203,7 +210,7 @@ absl::Status MetadataService::lookupBucket(const std::string_view &bucket) {
 }
 
 absl::Status MetadataService::createObject(const geds::Object &obj) {
-  METADATASERVICE_CHECK_CONNECTED
+  METADATASERVICE_CHECK_CONNECTED;
 
   geds::rpc::Object request;
   auto id = request.mutable_id();
@@ -225,7 +232,7 @@ absl::Status MetadataService::createObject(const geds::Object &obj) {
 }
 
 absl::Status MetadataService::updateObject(const geds::Object &obj) {
-  METADATASERVICE_CHECK_CONNECTED
+  METADATASERVICE_CHECK_CONNECTED;
 
   geds::rpc::Object request;
   auto id = request.mutable_id();
@@ -246,11 +253,13 @@ absl::Status MetadataService::updateObject(const geds::Object &obj) {
 }
 
 absl::Status MetadataService::deleteObject(const geds::ObjectID &id) {
+  METADATASERVICE_CHECK_CONNECTED;
+
   return deleteObject(id.bucket, id.key);
 }
 
 absl::Status MetadataService::deleteObject(const std::string &bucket, const std::string &key) {
-  METADATASERVICE_CHECK_CONNECTED
+  METADATASERVICE_CHECK_CONNECTED;
 
   geds::rpc::ObjectID request;
   request.set_bucket(bucket);
@@ -271,7 +280,7 @@ absl::Status MetadataService::deleteObjectPrefix(const geds::ObjectID &id) {
 }
 absl::Status MetadataService::deleteObjectPrefix(const std::string &bucket,
                                                  const std::string &key) {
-  METADATASERVICE_CHECK_CONNECTED
+  METADATASERVICE_CHECK_CONNECTED;
 
   geds::rpc::ObjectID request;
   request.set_bucket(bucket);
@@ -292,7 +301,7 @@ absl::StatusOr<geds::Object> MetadataService::lookup(const geds::ObjectID &id) {
 }
 absl::StatusOr<geds::Object> MetadataService::lookup(const std::string &bucket,
                                                      const std::string &key) {
-  METADATASERVICE_CHECK_CONNECTED
+  METADATASERVICE_CHECK_CONNECTED;
 
   geds::rpc::ObjectID request;
   request.set_bucket(bucket);
@@ -330,7 +339,7 @@ MetadataService::listPrefix(const std::string &bucket, const std::string &keyPre
 absl::StatusOr<std::pair<std::vector<geds::Object>, std::vector<std::string>>>
 MetadataService::listPrefix(const std::string &bucket, const std::string &keyPrefix,
                             char delimiter) {
-  METADATASERVICE_CHECK_CONNECTED
+  METADATASERVICE_CHECK_CONNECTED;
 
   geds::rpc::ObjectListRequest request;
   auto prefix = request.mutable_prefix();
