@@ -177,8 +177,8 @@ public:
    * @brief Open object located at bucket/key.
    */
   absl::StatusOr<GEDSFile> open(const std::string &bucket, const std::string &key);
-  absl::StatusOr<std::shared_ptr<GEDSFileHandle>> openAsFileHandle(const std::string &bucket,
-                                                                   const std::string &key);
+  absl::StatusOr<std::shared_ptr<GEDSFileHandle>>
+  openAsFileHandle(const std::string &bucket, const std::string &key, bool invalidate = false);
 
   /**
    * @brief Mark the file associated with fileHandle as sealed.
