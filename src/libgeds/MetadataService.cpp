@@ -48,7 +48,12 @@ absl::Status MetadataService::connect() {
   }
   try {
     assert(_channel.get() == nullptr);
-    _channel = grpc::CreateChannel(serverAddress, grpc::InsecureChannelCredentials());
+
+    auto arguments = grpc::ChannelArguments();
+    arguments.SetMaxReceiveMessageSize(64 * 1024 * 1024);
+
+    _channel =
+        grpc::CreateCustomChannel(serverAddress, grpc::InsecureChannelCredentials(), arguments);
     auto success = _channel->WaitForConnected(grpcDefaultDeadline());
     if (!success) {
       LOG_ERROR("Unable to connect to ", serverAddress);
