@@ -5,10 +5,10 @@
 
 import os
 
-from pygeds import status, GEDS
+from pygeds import status, GEDS, GEDSConfig
 
 METADATA_SERVER = os.environ.get("GEDS_METADATASERVER", "zac13:4381")
-instance = GEDS(METADATA_SERVER)
+instance = GEDS(GEDSConfig(METADATA_SERVER))
 try:
     instance.start()
 except status.StatusNotOk as e:

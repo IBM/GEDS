@@ -26,6 +26,7 @@
 #include "GEDS.h"
 #include "Platform.h"
 #include "Ports.h"
+#include "absl/flags/internal/flag.h"
 
 ABSL_FLAG(std::string, serverAddress, "localhost", "Metadata server address.");
 ABSL_FLAG(uint16_t, serverPort, defaultMetdataServerPort, "Metadata server port.");
@@ -173,8 +174,10 @@ int main(int argc, char **argv) {
   for (size_t i = 0; i <= absl::GetFlag(FLAGS_maxFactor); i++) {
     for (size_t j = 1; j < absl::GetFlag(FLAGS_maxThreads); j++) {
       // Create a new GEDS instance for each iteration to measure performance.
-      auto geds = GEDS::factory(serverAddress, FLAGS_gedsRoot.CurrentValue(), std::nullopt,
-                                absl::GetFlag(FLAGS_port));
+      auto config = GEDSConfig(serverAddress);
+      config.port = absl::GetFlag(FLAGS_port);
+      config.localStoragePath = FLAGS_gedsRoot.CurrentValue();
+      auto geds = GEDS::factory(config);
       auto status = geds->start();
       if (!status.ok()) {
         std::cout << "Unable to start GEDS:" << status.message() << std::endl;
