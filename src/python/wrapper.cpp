@@ -21,6 +21,7 @@
 #include <pybind11_abseil/status_casters.h>
 
 #include "GEDS.h"
+#include "GEDSConfig.h"
 #include "GEDSFile.h"
 #include "GEDSFileStatus.h"
 #include "Platform.h"
@@ -32,19 +33,25 @@ PYBIND11_MODULE(pygeds, m) {
   m.doc() = "GEDS plugin"; // optional module docstring
   auto statusModule = pybind11::google::ImportStatusModule();
 
+  py::class_<GEDSConfig>(m, "GEDSConfig")
+      .def(py::init([](std::string metadata_service_address) {
+        return std::make_unique<GEDSConfig>(metadata_service_address);
+      }))
+      .def_readwrite("metadata_service_address", &GEDSConfig::metadataServiceAddress)
+      .def_readwrite("listen_address", &GEDSConfig::listenAddress)
+      .def_readwrite("hostname", &GEDSConfig::hostname)
+      .def_readwrite("port", &GEDSConfig::port)
+      .def_readwrite("port_http_server", &GEDSConfig::portHttpServer)
+      .def_readwrite("local_storage_path", &GEDSConfig::localStoragePath)
+      .def_readwrite("cache_block_size", &GEDSConfig::cacheBlockSize);
+
   py::class_<GEDS, std::shared_ptr<GEDS>>(m, "GEDS")
       .def_property_readonly_static(
           "default_port", [](py::object /* self */) -> uint16_t { return defaultGEDSPort; })
       .def_property_readonly_static(
           "default_metadata_server_port",
           [](py::object /* self */) -> uint16_t { return defaultMetdataServerPort; })
-      .def_property_readonly_static(
-          "default_block_size", [](py::object /* self */) -> size_t { return Default_BlockSize; })
-      .def(py::init<std::string, std::optional<std::string>, std::optional<std::string>,
-                    std::optional<uint16_t>, std::optional<size_t>>(),
-           py::arg("metadata_service_address"), py::arg("path_prefix") = std::nullopt,
-           py::arg("hostname") = std::nullopt, py::arg("port") = std::nullopt,
-           py::arg("block_size") = std::nullopt)
+      .def(py::init<GEDSConfig>())
       .def("start", &GEDS::start)
       .def("stop", &GEDS::stop)
       .def(

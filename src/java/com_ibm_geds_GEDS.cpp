@@ -11,6 +11,7 @@
 #include <string>
 
 #include "GEDS.h"
+#include "GEDSConfig.h"
 #include "JavaError.h"
 #include "Logging.h"
 #include "Ports.h"
@@ -32,11 +33,18 @@ JNIEXPORT jlong JNICALL Java_com_ibm_geds_GEDS_initGEDS(JNIEnv *env, jclass,
   auto pathPrefix = env->GetStringUTFChars(pathPrefixJava, nullptr);
   auto pathPrefixStr = std::string{pathPrefix};
   auto metadataServiceAddress = env->GetStringUTFChars(metadataServiceAddressJava, nullptr);
-  auto geds = GEDS::factory(std::string{metadataServiceAddress},
-                            pathPrefixStr == "" ? std::nullopt : std::make_optional(pathPrefixStr),
-                            hostnameStr == "" ? std::nullopt : std::make_optional(hostnameStr),
-                            port == 0 ? std::nullopt : std::make_optional(port),
-                            blockSize == 0 ? std::nullopt : std::make_optional(blockSize));
+  auto config = GEDSConfig(metadataServiceAddress);
+  config.hostname = hostnameStr != "" ? std::make_optional(hostnameStr) : std::nullopt;
+  if (port != 0) {
+    config.port = port;
+  }
+  if (blockSize != 0) {
+    config.cacheBlockSize = blockSize;
+  }
+  if (pathPrefixStr != "") {
+    config.localStoragePath = pathPrefixStr;
+  }
+  auto geds = GEDS::factory(std::move(config));
   env->ReleaseStringUTFChars(pathPrefixJava, pathPrefix);
   env->ReleaseStringUTFChars(metadataServiceAddressJava, metadataServiceAddress);
   env->ReleaseStringUTFChars(hostnameJava, hostname);
