@@ -6,8 +6,10 @@
 syntax = "proto3";
 
 package geds.rpc;
+option go_package = "./;protos";
 
 import "status.proto";
+
 
 message EmptyParams {
   // Empty
@@ -24,7 +26,7 @@ message ObjectStoreConfig {
   string accessKey = 3;
   string secretKey = 4;
 }
-message AvailableObjectStoreConfigs { repeated ObjectStoreConfig mappings = 1; }
+message AvailableObjectStoreConfigs {repeated ObjectStoreConfig mappings = 1;}
 
 message ObjectID {
   string bucket = 1;
@@ -42,7 +44,7 @@ message Object {
   ObjectInfo info = 2;
 }
 
-message Bucket { string bucket = 1; }
+message Bucket {string bucket = 1;}
 
 message BucketListResponse {
   repeated string results = 1;
@@ -65,6 +67,24 @@ message ObjectResponse {
   optional StatusResponse error = 2;
 }
 
+enum SubscriptionType {
+  NOTYPE = 0;
+  BUCKET = 1;
+  OBJECT = 2;
+  PREFIX = 3;
+}
+
+message SubscriptionEvent {
+  SubscriptionType subscriptionType = 1;
+  string subscriberID = 2;
+  string bucketID = 3;
+  string key = 4;
+}
+
+message SubscriptionStreamEvent {
+  string subscriberID = 1;
+}
+
 service MetadataService {
   rpc GetConnectionInformation(EmptyParams) returns (ConnectionInformation);
   rpc RegisterObjectStore(ObjectStoreConfig) returns (StatusResponse);
@@ -79,6 +99,11 @@ service MetadataService {
   rpc DeletePrefix(ObjectID) returns (StatusResponse);
   rpc Lookup(ObjectID) returns (ObjectResponse);
   rpc List(ObjectListRequest) returns (ObjectListResponse);
+
+  rpc CreateOrUpdateObjectStream(stream Object) returns (StatusResponse);
+  rpc Subscribe(SubscriptionEvent) returns (StatusResponse);
+  rpc SubscribeStream(SubscriptionStreamEvent) returns (stream Object);
+  rpc Unsubscribe(SubscriptionEvent) returns (StatusResponse);
 }
 
 enum FileTransferProtocol {
@@ -92,6 +117,6 @@ message TransportEndpoint {
   uint32 port = 3; // No uint16_t available
 }
 
-message AvailTransportEndpoints { repeated TransportEndpoint endpoint = 1; }
+message AvailTransportEndpoints {repeated TransportEndpoint endpoint = 1;}
 
-service GEDSService { rpc GetAvailEndpoints(EmptyParams) returns (AvailTransportEndpoints); }
+service GEDSService {rpc GetAvailEndpoints(EmptyParams) returns (AvailTransportEndpoints);}

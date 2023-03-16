@@ -6,7 +6,7 @@ import (
 	"github.com/IBM/gedsmds/internal/keyvaluestore"
 	"github.com/IBM/gedsmds/internal/logger"
 	"github.com/IBM/gedsmds/internal/pubsub"
-	"github.com/IBM/gedsmds/protos/protos"
+	"github.com/IBM/gedsmds/protos"
 )
 
 func InitService() *Service {

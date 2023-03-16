@@ -1,7 +1,7 @@
 package keyvaluestore
 
 import (
-	"github.com/IBM/gedsmds/protos/protos"
+	"github.com/IBM/gedsmds/protos"
 	"strings"
 )
 

@@ -3,7 +3,7 @@ package mdsservice
 import (
 	"context"
 	"github.com/IBM/gedsmds/internal/mdsprocessor"
-	"github.com/IBM/gedsmds/protos/protos"
+	"github.com/IBM/gedsmds/protos"
 	"io"
 )
 

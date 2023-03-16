@@ -2,7 +2,7 @@ package db
 
 import (
 	"github.com/IBM/gedsmds/internal/logger"
-	"github.com/IBM/gedsmds/protos/protos"
+	"github.com/IBM/gedsmds/protos"
 	"github.com/golang/protobuf/proto"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/util"

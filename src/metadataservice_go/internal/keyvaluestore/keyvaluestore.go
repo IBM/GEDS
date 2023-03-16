@@ -5,7 +5,7 @@ import (
 	"github.com/IBM/gedsmds/internal/config"
 	"github.com/IBM/gedsmds/internal/keyvaluestore/db"
 	"github.com/IBM/gedsmds/internal/logger"
-	"github.com/IBM/gedsmds/protos/protos"
+	"github.com/IBM/gedsmds/protos"
 	"golang.org/x/exp/maps"
 	"strings"
 	"sync"

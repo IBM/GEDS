@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/IBM/gedsmds/internal/connection/connpool"
 	"github.com/IBM/gedsmds/internal/logger"
-	"github.com/IBM/gedsmds/protos/protos"
+	"github.com/IBM/gedsmds/protos"
 	"io"
 	"strconv"
 )

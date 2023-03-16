@@ -92,10 +92,10 @@ git-pull:
 ## protos: generate the protos
 protos:
 	@echo "Generating the Protos ..."
-	@rm -rf ./protos/protos;
-	@mkdir ./protos/protos
-	@protoc -I ./protos ./protos/*.proto  --go_out=./protos/protos
-	@protoc -I ./protos ./protos/*.proto  --go-grpc_out=require_unimplemented_servers=false:./protos/protos
+	@rm -rf ./protos;
+	@mkdir ./protos
+	@protoc --experimental_allow_proto3_optional -I ../protos ../protos/*.proto  --go_out=./protos
+	@protoc --experimental_allow_proto3_optional -I ../protos ../protos/*.proto  --go-grpc_out=require_unimplemented_servers=false:./protos
 
 
 .PHONY: build-docker-images
