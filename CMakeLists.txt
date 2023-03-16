@@ -293,8 +293,6 @@ add_custom_target(build-all
     geds
     geds_cmd
     metadataserver
-    helloworld_client
-    helloworld_server
     test_metadataserver
     pygeds
 

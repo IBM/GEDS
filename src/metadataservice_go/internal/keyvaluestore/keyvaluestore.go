@@ -167,6 +167,7 @@ func (kv *Service) CreateObject(object *protos.Object) error {
 	kv.NewBucketIfNotExist(object.Id)
 	kv.buckets[object.Id.Bucket].objects[object.Id.Key] = newObject
 	kv.bucketsLock.Unlock()
+	logger.InfoLogger.Println(object)
 	if config.Config.PersistentStorageEnabled {
 		kv.dbConnection.ObjectChan <- &db.OperationParams{
 			Object: object,

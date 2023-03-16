@@ -130,10 +130,10 @@ absl::Status GEDS::start() {
   _tcpTransport = TcpTransport::factory(shared_from_this());
   _tcpTransport->start();
 
-  result = _httpServer.start();
-  if (!result.ok()) {
-    LOG_ERROR("Unable to start webserver.");
-  }
+//  result = _httpServer.start();
+//  if (!result.ok()) {
+//    LOG_ERROR("Unable to start webserver.");
+//  }
 
   // Update state.
   _state = ServiceState::Running;
