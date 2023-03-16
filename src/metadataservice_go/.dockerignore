@@ -1,0 +1,12 @@
+# Ignored files for docker images
+
+.git
+.DS_Store
+.idea
+deployment
+docs
+build
+configs
+!configs/app.env.secret
+env
+data
