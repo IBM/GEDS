@@ -4,7 +4,7 @@
 
 app.env
 *.db
-/build/placeholder.md
+/build/*
 !/build/placeholder.md
 /data/*
 !/data/placeholder.md
