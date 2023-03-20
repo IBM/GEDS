@@ -12,11 +12,11 @@ RUN make build-mds
 
 FROM alpine:3.17
 
-ENV GEDSMDS_SERVER_PORT=50001
+ENV GEDSMDS_SERVER_PORT=50004
 
 WORKDIR /gedsmds
-COPY --from=builder /src/gedsmds/build/gedsmds_linux/gedsmds .
-COPY --from=builder /src/gedsmds/configs/app.env.secret ./app.env
+COPY --from=builder /gedsmds/build/gedsmds_linux/gedsmds .
+COPY --from=builder /gedsmds/configs/app.env.secret ./app.env
 
 EXPOSE $GEDSMDS_SERVER_PORT
 CMD ["./gedsmds"]

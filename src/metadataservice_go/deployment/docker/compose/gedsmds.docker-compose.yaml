@@ -14,7 +14,7 @@ services:
 #      - '/home/ubuntu/gedsmds/configs:/gedsmds/configs'
 #    build:
 #      context: .
-#      dockerfile: gedsmds.dockerfile
+#      dockerfile: geds-mds-go.dockerfile
 #    deploy:
 #      restart_policy:
 #        condition: on-failure

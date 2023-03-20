@@ -102,12 +102,11 @@ protos:
 ## build-docker-images: build docker images
 build-docker-images:
 	@echo "Building Docker images ..."
-	@docker build --force-rm -t ${DOCKER_NS_ENV}/gedsmds -f ./deployment/docker/images/gedsmds.dockerfile .
-	@docker tag ${DOCKER_NS_ENV}/gedsmds ${DOCKER_NS_ENV}/gedsmds:${DOCKER_TAG_ENV}
+	@docker build --force-rm -t ${DOCKER_REGISTRY}/geds-mds-go -f ./deployment/docker/images/geds-mds-go.dockerfile .
+	@docker tag ${DOCKER_REGISTRY}/geds-mds-go ${DOCKER_REGISTRY}/geds-mds-go:${DOCKER_TAG_ENV}
 
 .PHONY: push-docker-images
 ## push-docker-images: push docker images
 push-docker-images:
 	@echo "Pushing Docker images ..."
-	@docker login --username ${DOCKER_USERNAME_ENV} --password ${DOCKER_PASSWORD_ENV}
-	@docker push ${DOCKER_NS_ENV}/gedsmds:${DOCKER_TAG_ENV}
+	@docker push ${DOCKER_REGISTRY}/geds-mds-go:${DOCKER_TAG_ENV}
