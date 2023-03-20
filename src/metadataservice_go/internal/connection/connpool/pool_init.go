@@ -6,7 +6,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/keepalive"
-	"net"
 	"time"
 )
 
@@ -39,18 +38,4 @@ func GetMDSConnectionsStream() map[string]*Pool {
 
 func SleepAndContinue() {
 	time.Sleep(2 * time.Second)
-}
-
-func GetOutboundIP() string {
-	conn, err := net.Dial("udp", "8.8.8.8:80")
-	if err != nil {
-		logger.ErrorLogger.Println(err)
-	}
-	defer func(conn net.Conn) {
-		if errCon := conn.Close(); errCon != nil {
-			logger.ErrorLogger.Println(errCon)
-		}
-	}(conn)
-	localAddr := conn.LocalAddr().(*net.UDPAddr)
-	return localAddr.IP.String()
 }

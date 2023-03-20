@@ -22,16 +22,12 @@ func init() {
 			log.Fatal(err)
 		}
 	}
-	err := os.Mkdir(LogsPath, os.ModePerm)
-	//if err != nil {
-	//	log.Fatal(err)
-	//}
 	logFile, err := os.OpenFile(LogsPath+"log.log", os.O_CREATE|os.O_APPEND|os.O_WRONLY, os.ModePerm)
 	if err != nil {
 		log.Fatal(err)
 	}
+	InfoLogger = log.New(io.MultiWriter(os.Stdout), "INFO: ", log.Ldate|log.Ltime|log.Lshortfile)
 	multiWriter := io.MultiWriter(os.Stdout, logFile)
-	InfoLogger = log.New(multiWriter, "INFO: ", log.Ldate|log.Ltime|log.Lshortfile)
 	ErrorLogger = log.New(multiWriter, "ERROR: ", log.Ldate|log.Ltime|log.Lshortfile)
 	FatalLogger = log.New(multiWriter, "FATAL: ", log.Ldate|log.Ltime|log.Lshortfile)
 	WarningLogger = log.New(multiWriter, "WARNING: ", log.Ldate|log.Ltime|log.Lshortfile)
