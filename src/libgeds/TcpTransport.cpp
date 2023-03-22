@@ -90,7 +90,14 @@ void TcpTransport::stop() {
   for (auto &t : rxThreads)
     t->join();
 
-  uint8_t* buffer;
+  ioStatsThread->join();
+  ioStatsThread = nullptr;
+
+  tcpPeers.clear();
+  txThreads.clear();
+  rxThreads.clear();
+
+  uint8_t *buffer;
   while (_buffers.pop(buffer)) {
     delete[] buffer;
   }
