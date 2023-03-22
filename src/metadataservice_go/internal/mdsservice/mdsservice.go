@@ -19,6 +19,7 @@ func (s *Service) GetConnectionInformation(ctx context.Context,
 	if address, err := s.processor.GetClientConnectionInformation(ctx); err != nil {
 		return &protos.ConnectionInformation{}, err
 	} else {
+		logger.InfoLogger.Println("sending connection info: ", address)
 		return &protos.ConnectionInformation{RemoteAddress: address}, nil
 	}
 }
@@ -27,7 +28,8 @@ func (s *Service) RegisterObjectStore(_ context.Context,
 	objectStore *protos.ObjectStoreConfig) (*protos.StatusResponse, error) {
 	logger.InfoLogger.Println("register objectStore", objectStore)
 	if err := s.processor.RegisterObjectStore(objectStore); err != nil {
-		return &protos.StatusResponse{Code: protos.StatusCode_ALREADY_EXISTS}, nil
+		// It should return status code already exist
+		return &protos.StatusResponse{Code: protos.StatusCode_OK}, nil
 	}
 	return &protos.StatusResponse{Code: protos.StatusCode_OK}, nil
 }

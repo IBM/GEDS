@@ -37,6 +37,7 @@ func (kv *Service) NewBucketIfNotExist(objectID *protos.ObjectID) {
 
 func (kv *Service) populateCache() {
 	if config.Config.PersistentStorageEnabled && config.Config.RepopulateCacheEnabled {
+		logger.InfoLogger.Println("populating the cache")
 		go kv.populateObjectStoreConfig()
 		go kv.populateBuckets()
 	}
@@ -126,12 +127,12 @@ func (kv *Service) DeleteBucket(bucket *protos.Bucket) error {
 	}
 	delete(kv.buckets, bucket.Bucket)
 	if config.Config.PersistentStorageEnabled {
+		// delete the bucket and all objects in it.
 		kv.dbConnection.BucketChan <- &db.OperationParams{
 			Bucket: bucket,
 			Type:   db.DELETE,
 		}
 	}
-	// delete objects in bucket
 	return nil
 }
 
@@ -225,35 +226,34 @@ func (kv *Service) DeleteObject(objectID *protos.ObjectID) error {
 }
 
 func (kv *Service) DeleteObjectPrefix(objectID *protos.ObjectID) ([]*protos.Object, error) {
-	var objects []*protos.Object
+	var deletedObjects []*protos.Object
 	// this will be slow, needs to be optimized
-	// needs the cache to be repopulated
 	kv.bucketsLock.Lock()
 	if _, ok := kv.buckets[objectID.Bucket]; ok {
 		for key, object := range kv.buckets[objectID.Bucket].objects {
 			if strings.HasPrefix(key, objectID.Key) {
-				objects = append(objects, object.object)
-				delete(kv.buckets, objectID.Key)
+				deletedObjects = append(deletedObjects, object.object)
+				delete(kv.buckets[objectID.Bucket].objects, objectID.Key)
 			}
 		}
 	}
 	kv.bucketsLock.Unlock()
 	if config.Config.PersistentStorageEnabled {
-		for _, object := range objects {
+		for _, object := range deletedObjects {
 			kv.dbConnection.ObjectChan <- &db.OperationParams{
 				Object: object,
 				Type:   db.DELETE,
 			}
 		}
 	}
-	return objects, nil
+	return deletedObjects, nil
 }
 
 func (kv *Service) LookupObject(objectID *protos.ObjectID) (*protos.ObjectResponse, error) {
 	kv.bucketsLock.RLock()
 	defer kv.bucketsLock.RUnlock()
 	if kv.buckets[objectID.Bucket] == nil {
-		return nil, errors.New("object does not exist")
+		return nil, errors.New("bucket's object does not exist")
 	}
 	if _, ok := kv.buckets[objectID.Bucket].objects[objectID.Key]; !ok {
 		return nil, errors.New("object does not exist")
