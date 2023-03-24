@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include <atomic>
 #include <cstddef>
 #include <cstdint>
 #include <istream>
@@ -13,7 +14,6 @@
 #include <shared_mutex>
 #include <string>
 #include <vector>
-#include <atomic>
 
 #include <absl/status/status.h>
 #include <absl/status/statusor.h>

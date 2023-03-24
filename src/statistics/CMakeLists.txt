@@ -8,6 +8,8 @@ SET(SOURCES
     Statistics.h
     StatisticsCounter.cpp
     StatisticsCounter.h
+    StatisticsGauge.cpp
+    StatisticsGauge.h
     StatisticsHistogram.h
     StatisticsItem.cpp
     StatisticsItem.h

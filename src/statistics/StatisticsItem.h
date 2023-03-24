@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include <cstddef>
 #include <sstream>
 #include <string>
 
@@ -20,7 +21,16 @@ public:
   virtual void printForPrometheus(std::stringstream &stream) const = 0;
   virtual void printForConsole(std::stringstream &stream) const = 0;
 
-  StatisticsItem virtual &operator+=(size_t value) = 0;
+  StatisticsItem virtual &operator++(int) { return *this += 1; }
+  StatisticsItem virtual &operator++() { return *this += 1; }
+  StatisticsItem virtual &operator+=(size_t v) = 0;
+
+  StatisticsItem virtual &operator--(int) { return *this -= 1; }
+  StatisticsItem virtual &operator--() { return *this -= 1; }
+  StatisticsItem virtual &operator-=(size_t) {
+    // Noop
+    return *this;
+  }
 };
 
 } // namespace geds
