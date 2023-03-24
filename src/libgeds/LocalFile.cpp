@@ -37,6 +37,14 @@ LocalFile::LocalFile(std::string pathArg, bool overwrite) : _path(std::move(path
     int error = errno;
     throw std::runtime_error{"Unable to open " + _path + ". Reason: " + strerror(error)};
   }
+  auto seek = ::lseek64(_fd, 0, SEEK_SET);
+  if (seek < 0) {
+    int err = errno;
+    std::string errorMessage = "lseek on " + _path + " failed due to " + strerror(err) + ".";
+    LOG_ERROR(errorMessage);
+    throw std::runtime_error{errorMessage};
+  }
+
   auto size = fileSize();
   if (!size.ok()) {
     throw std::runtime_error{"Unable to determine size on " + _path +
@@ -54,7 +62,7 @@ LocalFile::~LocalFile() {
 
 absl::StatusOr<size_t> LocalFile::fileSize() const {
   CHECK_FILE_OPEN
-  auto lock = getLock();
+  auto lock = getReadLock();
   if (fsync(_fd) != 0) {
     int error = errno;
     auto message = "Fsync on " + _path + " reported: " + strerror(error);
@@ -85,7 +93,7 @@ absl::StatusOr<size_t> LocalFile::readBytes(uint8_t *bytes, size_t position, siz
   if (length == 0) {
     return 0;
   }
-  auto lock = getLock();
+  auto lock = getReadLock();
 
   if (position > _size) {
     return 0;
@@ -93,14 +101,6 @@ absl::StatusOr<size_t> LocalFile::readBytes(uint8_t *bytes, size_t position, siz
   length = std::min(length, _size - position);
   if (length == 0) {
     return 0;
-  }
-
-  auto off = ::lseek64(_fd, position, SEEK_SET);
-  if (off == -1) {
-    int err = errno;
-    auto errorMessage = "lseek on " + _path + " failed: " + strerror(err);
-    LOG_ERROR(errorMessage);
-    return absl::UnknownError(errorMessage);
   }
 
   size_t offset = 0;
@@ -116,7 +116,7 @@ absl::StatusOr<size_t> LocalFile::readBytes(uint8_t *bytes, size_t position, siz
     // Loop and check for EINTR.
     ssize_t numBytes = 0;
     do {
-      numBytes = ::read(_fd, &bytes[offset], count);
+      numBytes = ::pread64(_fd, &bytes[offset], count, position + offset);
     } while (numBytes == -1 && errno == EINTR);
 
     // Error is unrecoverable.
@@ -139,7 +139,7 @@ absl::StatusOr<size_t> LocalFile::readBytes(uint8_t *bytes, size_t position, siz
 absl::Status LocalFile::truncate(size_t targetSize) {
   CHECK_FILE_OPEN
 
-  auto lock = getLock();
+  auto lock = getWriteLock();
   int e = ftruncate64(_fd, targetSize);
   if (e < 0) {
     int err = errno;
@@ -160,20 +160,12 @@ absl::Status LocalFile::writeBytes(const uint8_t *bytes, size_t position, size_t
     return absl::OkStatus();
   }
 
-  auto lock = getLock();
+  auto lock = getWriteLock();
   if (position > 0 && _size < position) {
-    auto status = truncate(position);
+    auto status = truncate(position + length);
     if (!status.ok()) {
       return status;
     }
-  }
-
-  auto seek = ::lseek64(_fd, position, SEEK_SET);
-  if (seek < 0) {
-    int err = errno;
-    std::string errorMessage = "lseek on " + _path + " failed due to " + strerror(err) + ".";
-    LOG_ERROR(errorMessage);
-    return absl::UnknownError(errorMessage);
   }
 
   size_t offset = 0;
@@ -189,7 +181,7 @@ absl::Status LocalFile::writeBytes(const uint8_t *bytes, size_t position, size_t
     // Loop and check for EINTR.
     ssize_t numBytes = 0;
     do {
-      numBytes = ::write(_fd, &bytes[offset], count);
+      numBytes = ::pwrite64(_fd, &bytes[offset], count, position + offset);
     } while (numBytes == -1 && errno == EINTR);
     // Error is unrecoverable.
     if (numBytes < 0) {
