@@ -27,8 +27,8 @@
 #include "Platform.h"
 #include "Ports.h"
 
-ABSL_FLAG(std::string, serverAddress, "localhost", "Metadata server address.");
-ABSL_FLAG(uint16_t, serverPort, defaultMetdataServerPort, "Metadata server port.");
+ABSL_FLAG(std::string, address, "localhost:" + std::to_string(defaultMetdataServerPort),
+          "Metadata server address.");
 ABSL_FLAG(uint16_t, port, defaultGEDSPort, "Local service port.");
 ABSL_FLAG(std::string, gedsRoot, "/tmp/GEDS_XXXXXX", "GEDS root folder.");
 ABSL_FLAG(std::string, bucket, "benchmark", "Bucket used for benchmarking.");
@@ -157,7 +157,6 @@ BenchmarkResult benchmark(std::shared_ptr<GEDS> geds, size_t factor, size_t numT
 
 int main(int argc, char **argv) {
   absl::ParseCommandLine(argc, argv);
-  auto serverAddress = FLAGS_serverAddress.CurrentValue() + ":" + FLAGS_serverPort.CurrentValue();
 
   std::ofstream f(FLAGS_outputFile.CurrentValue());
   if (!f.is_open()) {
@@ -173,8 +172,8 @@ int main(int argc, char **argv) {
   for (size_t i = 0; i <= absl::GetFlag(FLAGS_maxFactor); i++) {
     for (size_t j = 1; j < absl::GetFlag(FLAGS_maxThreads); j++) {
       // Create a new GEDS instance for each iteration to measure performance.
-      auto geds = GEDS::factory(serverAddress, FLAGS_gedsRoot.CurrentValue(), std::nullopt,
-                                absl::GetFlag(FLAGS_port));
+      auto geds = GEDS::factory(FLAGS_address.CurrentValue(), FLAGS_gedsRoot.CurrentValue(),
+                                std::nullopt, absl::GetFlag(FLAGS_port));
       auto status = geds->start();
       if (!status.ok()) {
         std::cout << "Unable to start GEDS:" << status.message() << std::endl;
