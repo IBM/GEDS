@@ -13,6 +13,7 @@
 #include <shared_mutex>
 #include <string>
 #include <vector>
+#include <atomic>
 
 #include <absl/status/status.h>
 #include <absl/status/statusor.h>
@@ -21,12 +22,12 @@
 
 namespace geds::filesystem {
 
-class LocalFile : utility::RWConcurrentObjectAdaptor {
+class LocalFile {
   const std::string _path;
 
   int _fd{-1};
 
-  size_t _size{0};
+  std::atomic<size_t> _size{0};
 
   /**
    * @brief Seek commands require locking of the file.

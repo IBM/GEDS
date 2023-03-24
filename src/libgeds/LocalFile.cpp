@@ -37,13 +37,6 @@ LocalFile::LocalFile(std::string pathArg, bool overwrite) : _path(std::move(path
     int error = errno;
     throw std::runtime_error{"Unable to open " + _path + ". Reason: " + strerror(error)};
   }
-  auto seek = ::lseek64(_fd, 0, SEEK_SET);
-  if (seek < 0) {
-    int err = errno;
-    std::string errorMessage = "lseek on " + _path + " failed due to " + strerror(err) + ".";
-    LOG_ERROR(errorMessage);
-    throw std::runtime_error{errorMessage};
-  }
 
   auto size = fileSize();
   if (!size.ok()) {
@@ -55,6 +48,11 @@ LocalFile::LocalFile(std::string pathArg, bool overwrite) : _path(std::move(path
 
 LocalFile::~LocalFile() {
   if (_fd >= 0) {
+    if (fsync(_fd) != 0) {
+      int error = errno;
+      auto message = "Fsync on " + _path + " reported: " + strerror(error);
+      LOG_ERROR(message);
+    }
     (void)::close(_fd);
   }
   _fd = -1;
@@ -62,7 +60,6 @@ LocalFile::~LocalFile() {
 
 absl::StatusOr<size_t> LocalFile::fileSize() const {
   CHECK_FILE_OPEN
-  auto lock = getReadLock();
   if (fsync(_fd) != 0) {
     int error = errno;
     auto message = "Fsync on " + _path + " reported: " + strerror(error);
@@ -93,7 +90,6 @@ absl::StatusOr<size_t> LocalFile::readBytes(uint8_t *bytes, size_t position, siz
   if (length == 0) {
     return 0;
   }
-  auto lock = getReadLock();
 
   if (position > _size) {
     return 0;
@@ -139,7 +135,7 @@ absl::StatusOr<size_t> LocalFile::readBytes(uint8_t *bytes, size_t position, siz
 absl::Status LocalFile::truncate(size_t targetSize) {
   CHECK_FILE_OPEN
 
-  auto lock = getWriteLock();
+  _size = targetSize;
   int e = ftruncate64(_fd, targetSize);
   if (e < 0) {
     int err = errno;
@@ -147,7 +143,6 @@ absl::Status LocalFile::truncate(size_t targetSize) {
     LOG_ERROR(errorMessage);
     return absl::UnknownError(errorMessage);
   }
-  _size = targetSize;
   return absl::OkStatus();
 }
 
@@ -158,14 +153,6 @@ absl::Status LocalFile::writeBytes(const uint8_t *bytes, size_t position, size_t
   }
   if (length == 0) {
     return absl::OkStatus();
-  }
-
-  auto lock = getWriteLock();
-  if (position > 0 && _size < position) {
-    auto status = truncate(position + length);
-    if (!status.ok()) {
-      return status;
-    }
   }
 
   size_t offset = 0;
@@ -197,9 +184,15 @@ absl::Status LocalFile::writeBytes(const uint8_t *bytes, size_t position, size_t
     }
     offset += numBytes;
   }
-  _size = std::max(_size, position + offset);
+
+  // See: https://stackoverflow.com/a/16190791/592024
+  size_t oldSize = _size;
+  size_t newSize = position + offset;
+  while (oldSize < newSize && !_size.compare_exchange_weak(oldSize, newSize)) {
+  }
   return absl::OkStatus();
 }
+
 absl::StatusOr<size_t> LocalFile::write(std::istream &stream, size_t position,
                                         std::optional<size_t> lengthOpt) {
   auto buffer = std::vector<char>(4096, 0);
