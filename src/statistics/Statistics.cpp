@@ -11,6 +11,7 @@
 
 #include "Logging.h"
 #include "StatisticsCounter.h"
+#include "StatisticsGauge.h"
 #include "StatisticsHistogram.h"
 
 namespace geds {
@@ -27,13 +28,31 @@ void Statistics::print() {
 
 std::shared_ptr<StatisticsCounter> Statistics::createCounter(const std::string &label) {
   auto &instance = Statistics::get();
+  auto value = instance._counters.get(label);
+  if (value.has_value()) {
+    return *value;
+  }
   auto item = StatisticsCounter::factory(label);
   return instance._counters.insertOrExists(label, item);
+}
+
+std::shared_ptr<StatisticsGauge> Statistics::createGauge(const std::string &label) {
+  auto &instance = Statistics::get();
+  auto value = instance._gauges.get(label);
+  if (value.has_value()) {
+    return *value;
+  }
+  auto item = StatisticsGauge::factory(label);
+  return instance._gauges.insertOrExists(label, item);
 }
 
 std::shared_ptr<StatisticsHistogram>
 Statistics::createHistogram(const std::string &label, const std::vector<size_t> &buckets) {
   auto &instance = Statistics::get();
+  auto value = instance._histograms.get(label);
+  if (value.has_value()) {
+    return *value;
+  }
   auto item = StatisticsHistogram::factory(label, buckets);
   return instance._histograms.insertOrExists(label, item);
 }
@@ -75,19 +94,19 @@ void Statistics::printStatistics() const {
   std::stringstream msg;
   msg << "GEDS Statistics:" << std::endl;
   msg << "Name, Value" << std::endl;
-  _counters.forall([&msg](std::shared_ptr<StatisticsCounter> &c) { c->printForConsole(msg); });
-  _histograms.forall([&msg](std::shared_ptr<StatisticsHistogram> &c) { c->printForConsole(msg); });
+  _counters.forall([&msg](auto &c) { c->printForConsole(msg); });
+  _gauges.forall([&msg](auto &c) { c->printForConsole(msg); });
+  _histograms.forall([&msg](auto &c) { c->printForConsole(msg); });
   msg << std::endl;
   LOG_INFO(msg.str());
 }
 
 void Statistics::prometheusMetrics(std::stringstream &stream) const {
-  _counters.forall([&stream](const std::string &, std::shared_ptr<StatisticsCounter> &item) {
-    item->printForPrometheus(stream);
-  });
-  _histograms.forall([&stream](const std::string &, std::shared_ptr<StatisticsHistogram> &item) {
-    item->printForPrometheus(stream);
-  });
+  _counters.forall(
+      [&stream](const std::string &, auto &item) { item->printForPrometheus(stream); });
+  _gauges.forall([&stream](const std::string &, auto &item) { item->printForPrometheus(stream); });
+  _histograms.forall(
+      [&stream](const std::string &, auto &item) { item->printForPrometheus(stream); });
 }
 
 } // namespace geds

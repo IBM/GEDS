@@ -62,7 +62,7 @@ public:
   }
 
   static std::shared_ptr<StatisticsHistogram> factory(std::string labelArg,
-                                                 const std::vector<size_t> &buckets) {
+                                                      const std::vector<size_t> &buckets) {
     return std::shared_ptr<StatisticsHistogram>(
         new StatisticsHistogram(std::move(labelArg), std::move(buckets)));
   }

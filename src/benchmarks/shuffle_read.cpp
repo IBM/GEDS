@@ -88,7 +88,7 @@ void runExecutorThread(std::shared_ptr<GEDS> geds, const std::string &bucket, si
     totalBytesRead += *success;
   }
   LOG_DEBUG("Executor ", executorId, " finished all ", nTasks,
-           " tasks. Total bytes read: ", totalBytesRead);
+            " tasks. Total bytes read: ", totalBytesRead);
 }
 
 int main(int argc, char **argv) {
