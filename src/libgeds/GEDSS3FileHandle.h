@@ -10,7 +10,6 @@
 #include "Object.h"
 #include "S3Endpoint.h"
 #include "Statistics.h"
-#include "StatisticsCounter.h"
 #include <optional>
 
 class GEDSS3FileHandle : public GEDSFileHandle {
@@ -24,7 +23,7 @@ protected:
   size_t _size;
   bool _isValid{true};
   std::shared_ptr<geds::StatisticsCounter> _readStatistics =
-      geds::Statistics::counter("GEDSS3FileHandle: bytes read");
+      geds::Statistics::createCounter("GEDSS3FileHandle: bytes read");
 
 private:
   GEDSS3FileHandle(std::shared_ptr<GEDS> gedsService,

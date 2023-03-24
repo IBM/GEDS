@@ -39,7 +39,6 @@
 #include "S3ObjectStores.h"
 #include "Server.h"
 #include "Statistics.h"
-#include "StatisticsCounter.h"
 #include "TcpTransport.h"
 
 const char Default_GEDSFolderDelimiter = '/';
@@ -92,9 +91,9 @@ class GEDS : public std::enable_shared_from_this<GEDS>, utility::RWConcurrentObj
   geds::s3::ObjectStores _objectStores;
 
   std::shared_ptr<geds::StatisticsCounter> _statisticsFilesOpened =
-      geds::Statistics::counter("GEDS: files opened");
+      geds::Statistics::createCounter("GEDS: files opened");
   std::shared_ptr<geds::StatisticsCounter> _statisticsFilesCreated =
-      geds::Statistics::counter("GEDS: files created");
+      geds::Statistics::createCounter("GEDS: files created");
 
   geds::HttpServer _httpServer;
 

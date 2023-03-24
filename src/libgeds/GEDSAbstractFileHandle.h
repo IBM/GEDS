@@ -39,11 +39,13 @@ private:
   GEDSAbstractFileHandle(std::shared_ptr<GEDS> gedsService, std::string bucketArg,
                          std::string keyArg, std::string pathArg)
       : GEDSFileHandle(gedsService, std::move(bucketArg), std::move(keyArg)),
-        _file(T(std::move(pathArg))), _readStatistics(geds::Statistics::counter(
+        _file(T(std::move(pathArg))), _readStatistics(geds::Statistics::createCounter(
                                           "GEDS" + _file.statisticsLabel() + "Handle: bytes read")),
-        _writeStatistics(
-            geds::Statistics::counter("GEDS" + _file.statisticsLabel() + "Handle: bytes written")) {
-    geds::Statistics::counter("GEDS" + _file.statisticsLabel() + "Handle: count")->increase();
+        _writeStatistics(geds::Statistics::createCounter("GEDS" + _file.statisticsLabel() +
+                                                         "Handle: bytes written")) {
+    static auto counter =
+        geds::Statistics::createCounter("GEDS" + _file.statisticsLabel() + "Handle: count");
+    *counter += 1;
   }
 
 public:
