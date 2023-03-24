@@ -17,9 +17,11 @@
 #include <absl/status/status.h>
 #include <absl/status/statusor.h>
 
+#include "RWConcurrentObjectAdaptor.h"
+
 namespace geds::filesystem {
 
-class LocalFile {
+class LocalFile : utility::RWConcurrentObjectAdaptor {
   const std::string _path;
 
   int _fd{-1};
@@ -30,7 +32,6 @@ class LocalFile {
    * @brief Seek commands require locking of the file.
    */
   mutable std::recursive_mutex __mutex;
-  auto getLock() const { return std::lock_guard(__mutex); }
 
 protected:
   absl::StatusOr<size_t> fileSize() const;
