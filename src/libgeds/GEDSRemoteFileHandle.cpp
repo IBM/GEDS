@@ -17,7 +17,8 @@ GEDSRemoteFileHandle::GEDSRemoteFileHandle(
     std::shared_ptr<geds::FileTransferService> fileTransferService)
     : GEDSFileHandle(gedsService, object.id.bucket, object.id.key),
       _fileTransferService(fileTransferService), _info(object.info) {
-  geds::Statistics::counter("GEDSRemoteFileHandle: count")->increase();
+  static auto counter = geds::Statistics::createCounter("GEDSRemoteFileHandle: count");
+  *counter += 1;
 }
 
 GEDSRemoteFileHandle::~GEDSRemoteFileHandle() {}

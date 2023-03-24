@@ -316,7 +316,7 @@ absl::StatusOr<GEDSFile> GEDS::open(const std::string &bucket, const std::string
   LOG_DEBUG("open ", bucket, "/", key);
   auto fh = openAsFileHandle(bucket, key);
   if (fh.ok()) {
-    _statisticsFilesOpened->increase();
+    *_statisticsFilesOpened += 1;
     return (*fh)->open();
   }
   return fh.status();

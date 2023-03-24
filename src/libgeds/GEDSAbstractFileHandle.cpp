@@ -6,7 +6,6 @@
 #include "GEDSAbstractFileHandle.h"
 
 #include "GEDS.h"
-#include "StatisticsCounter.h"
 
 namespace geds::service {
 std::string getLocalPath(std::shared_ptr<GEDS> geds, const std::string &bucket,

@@ -30,13 +30,13 @@ class GEDSCachedFileHandle : public GEDSFileHandle {
   std::vector<std::mutex> _blockMutex;
 
   std::shared_ptr<geds::StatisticsCounter> _readStatistics =
-      geds::Statistics::counter("GEDSCachedFileHandle: bytes read");
+      geds::Statistics::createCounter("GEDSCachedFileHandle: bytes read");
   std::shared_ptr<geds::StatisticsCounter> _cacheSize =
-      geds::Statistics::counter("GEDSCachedFileHandle: local cache size");
+      geds::Statistics::createCounter("GEDSCachedFileHandle: local cache size");
   std::shared_ptr<geds::StatisticsCounter> _numCachedBlocks =
-      geds::Statistics::counter("GEDSCachedFileHandle: number of locally cached blocks");
+      geds::Statistics::createCounter("GEDSCachedFileHandle: number of locally cached blocks");
   std::shared_ptr<geds::StatisticsCounter> _numPurgedBlocks =
-      geds::Statistics::counter("GEDSCachedFileHandle: number of purged blocks");
+      geds::Statistics::createCounter("GEDSCachedFileHandle: number of purged blocks");
   // private:
 public:
   GEDSCachedFileHandle(std::shared_ptr<GEDS> gedsService, std::string bucketArg, std::string keyArg,

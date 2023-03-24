@@ -18,7 +18,7 @@ class GEDSRemoteFileHandle : public GEDSFileHandle {
 
   bool _isValid{true};
   std::shared_ptr<geds::StatisticsCounter> _statistics =
-      geds::Statistics::counter("GEDSRemoteFileHandle: bytes read");
+      geds::Statistics::createCounter("GEDSRemoteFileHandle: bytes read");
 
 private:
   // Constructors are private to enable `shared_from_this`.
