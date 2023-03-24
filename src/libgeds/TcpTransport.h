@@ -24,7 +24,7 @@
 #include <utility>
 
 #include <absl/status/statusor.h>
-#include <boost/lockfree/queue.hpp>
+#include <boost/lockfree/stack.hpp>
 
 #include "ConcurrentMap.h"
 #include "ConcurrentQueue.h"
@@ -194,7 +194,7 @@ class TcpTransport : public std::enable_shared_from_this<TcpTransport> {
 
 private:
   std::shared_ptr<GEDS> _geds;
-  boost::lockfree::queue<uint8_t *, boost::lockfree::fixed_sized<false>> _buffers{MAX_IO_THREADS};
+  boost::lockfree::stack<uint8_t *, boost::lockfree::fixed_sized<false>> _buffers{MAX_IO_THREADS};
 
   void tcpTxThread(unsigned int id);
   void tcpRxThread(unsigned int id);
