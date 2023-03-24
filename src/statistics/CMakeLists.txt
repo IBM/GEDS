@@ -4,10 +4,13 @@
 #
 
 SET(SOURCES
-    Statistics.h
     Statistics.cpp
-    StatisticsCounter.h
+    Statistics.h
     StatisticsCounter.cpp
+    StatisticsCounter.h
+    StatisticsHistogram.h
+    StatisticsItem.cpp
+    StatisticsItem.h
 )
 
 add_library(geds_statistics STATIC ${SOURCES})
