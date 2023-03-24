@@ -10,24 +10,21 @@
 #include <memory>
 #include <string>
 
+#include "StatisticsItem.h"
+
 namespace geds {
 
-class StatisticsCounter {
+class StatisticsCounter : public StatisticsItem {
   mutable std::atomic<size_t> _count;
-  StatisticsCounter(std::string labelArg = "");
+  StatisticsCounter(std::string labelArg);
 
 public:
-  const std::string label;
-  const std::string prometheusLabel;
+  ~StatisticsCounter() override = default;
+  void printForPrometheus(std::stringstream &stream) const override;
+  void printForConsole(std::stringstream &stream) const override;
 
-  void increase(size_t s = 1);
-  [[nodiscard]] size_t get() const;
+  StatisticsCounter &operator+=(size_t value) override;
 
-  [[nodiscard]] std::string getAsString() const;
-
-  StatisticsCounter &operator+=(size_t value);
-  StatisticsCounter &operator++();
-
-  static std::shared_ptr<StatisticsCounter> factory(std::string labelArg = "");
+  static std::shared_ptr<StatisticsCounter> factory(std::string labelArg);
 };
 } // namespace geds

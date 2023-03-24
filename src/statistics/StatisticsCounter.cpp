@@ -4,27 +4,23 @@
  */
 
 #include "StatisticsCounter.h"
+#include "StatisticsItem.h"
 #include <memory>
 
 #include <boost/algorithm/string/case_conv.hpp>
 #include <boost/algorithm/string/replace.hpp>
 
-static std::string createPrometheusLabel(std::string label) {
-  boost::replace_all(label, ":", "_");
-  boost::replace_all(label, " ", "_");
-  boost::to_lower(label);
-  return label;
-}
-
 namespace geds {
-StatisticsCounter::StatisticsCounter(std::string labelArg)
-    : label(std::move(labelArg)), prometheusLabel(createPrometheusLabel(label)) {}
+StatisticsCounter::StatisticsCounter(std::string labelArg) : StatisticsItem(std::move(labelArg)) {}
 
-void StatisticsCounter::increase(size_t s) { _count += s; }
-
-size_t StatisticsCounter::get() const { return _count.load(); }
-
-std::string StatisticsCounter::getAsString() const { return label + " " + std::to_string(_count); }
+void StatisticsCounter::printForPrometheus(std::stringstream &stream) const {
+  stream << "# TYPE " << prometheusLabel << " counter"
+         << "\n" //
+         << prometheusLabel << " " << _count << "\n";
+}
+void StatisticsCounter::printForConsole(std::stringstream &stream) const {
+  stream << label << ", " << _count << "\n";
+}
 
 std::shared_ptr<StatisticsCounter> StatisticsCounter::factory(std::string labelArg) {
   return std::shared_ptr<StatisticsCounter>(new StatisticsCounter(std::move(labelArg)));
@@ -32,10 +28,6 @@ std::shared_ptr<StatisticsCounter> StatisticsCounter::factory(std::string labelA
 
 StatisticsCounter &StatisticsCounter::operator+=(size_t value) {
   _count += value;
-  return *this;
-}
-StatisticsCounter &StatisticsCounter::operator++() {
-  ++_count;
   return *this;
 }
 
