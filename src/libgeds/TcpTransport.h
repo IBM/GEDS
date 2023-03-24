@@ -29,6 +29,8 @@
 #include "ConcurrentMap.h"
 #include "ConcurrentQueue.h"
 #include "FileTransferProtocol.h"
+#include "Statistics.h"
+#include "StatisticsGauge.h"
 
 class GEDS;
 
@@ -150,8 +152,14 @@ private:
   TcpTransport &_tcpTransport;
   std::string hostname;
   std::atomic_uint64_t rpcReqId = 0;
+
   utility::ConcurrentQueue<std::shared_ptr<SocketSendWork>> sendQueue;
+  std::shared_ptr<StatisticsGauge> sendQueue_stats =
+      Statistics::createGauge("GEDS: TcpTransport sendQueue length");
   utility::ConcurrentMap<uint64_t, std::shared_ptr<SocketRecvWork>> recvQueue;
+  std::shared_ptr<StatisticsGauge> recvQueue_stats =
+      Statistics::createGauge("GEDS: TcpTransport recvQueue length");
+
   std::map<int, std::shared_ptr<TcpEndpoint>> endpoints;
   mutable std::shared_mutex epMux;
 

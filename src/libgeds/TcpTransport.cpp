@@ -161,6 +161,8 @@ bool TcpPeer::processEndpointSend(std::shared_ptr<TcpEndpoint> tep) {
         // Stop processing
         return true;
       }
+      (*sendQueue_stats)--;
+
       ctx->state = PROC_HDR;
 
       auto work = *workOpt;
@@ -528,6 +530,7 @@ bool TcpPeer::processEndpointRecv(int sock) {
           rv = -EINVAL;
           break;
         }
+        (*recvQueue_stats)--;
         auto work = *it;
         ctx->va = work->va;
         ctx->p = work->p;
@@ -857,6 +860,7 @@ int TcpPeer::sendRpcReply(uint64_t reqId, int in_fd, uint64_t start, size_t len,
   sendWork->type = GET_REPLY;
   sendWork->error = status;
   sendQueue.emplace(sendWork);
+  (*sendQueue_stats)++;
 
   auto tep = getLeastUsedTx(len);
   if (tep) {
@@ -884,6 +888,7 @@ TcpPeer::sendRpcRequest(uint64_t dest, std::string name, size_t off, size_t len)
   recvWork->len = len;
   recvWork->p = std::make_shared<std::promise<absl::StatusOr<size_t>>>();
   recvQueue.insertOrReplace(reqId, recvWork);
+  (*recvQueue_stats)++;
 
   auto sendWork = std::shared_ptr<SocketSendWork>(new SocketSendWork{});
   sendWork->reqId = reqId;
@@ -895,6 +900,7 @@ TcpPeer::sendRpcRequest(uint64_t dest, std::string name, size_t off, size_t len)
   sendWork->error = 0;
   sendWork->type = GET_REQ;
   sendQueue.emplace(sendWork);
+  (*sendQueue_stats)++;
 
   auto tep = getLeastUsedTx(len);
   if (tep) {
@@ -907,6 +913,7 @@ TcpPeer::sendRpcRequest(uint64_t dest, std::string name, size_t off, size_t len)
   if (!send_ok) {
     LOG_ERROR("RPC Req Send failed");
     recvQueue.remove(reqId);
+    (*recvQueue_stats)--;
     recvWork->p->set_value(absl::AbortedError("Unable to proceed: "));
   }
   return recvWork->p;
