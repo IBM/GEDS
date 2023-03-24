@@ -90,8 +90,9 @@ void TcpTransport::stop() {
   for (auto &t : rxThreads)
     t->join();
 
-  ioStatsThread->join();
-  ioStatsThread = nullptr;
+  // Introduces a performance regression in the I/O Benchmark.
+  // ioStatsThread->join();
+  // ioStatsThread = nullptr;
 
   tcpPeers.clear();
   txThreads.clear();
