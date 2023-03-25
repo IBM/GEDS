@@ -18,11 +18,11 @@ namespace geds {
 
 class StatisticsHistogram : public StatisticsItem {
   std::atomic<size_t> _sum;
-  std::atomic<size_t> _total;
+  std::atomic<size_t> _totalCount;
   std::vector<std::atomic<size_t>> _count;
   const std::vector<size_t> &_buckets;
   StatisticsHistogram(std::string labelArg, const std::vector<size_t> &buckets)
-      : StatisticsItem(std::move(labelArg)), _count(buckets.size() + 1), _buckets(buckets) {
+      : StatisticsItem(std::move(labelArg)), _count(buckets.size()), _buckets(buckets) {
     for (auto &c : _count) {
       c = (size_t)0;
     }
@@ -35,29 +35,29 @@ public:
     for (size_t i = 0; i < _buckets.size(); i++) {
       stream << prometheusLabel << "_bucket{le=\"" << _buckets[i] << "\"} " << _count[i] << "\n";
     }
-    stream << prometheusLabel << "_bucket{le=\"+Inf\"}" << _count[_buckets.size()] << "\n"
+    stream << prometheusLabel << "_bucket{le=\"+Inf\"} " << _totalCount << "\n"
            << prometheusLabel << "_sum " << _sum << "\n"
-           << prometheusLabel << "_count " << _total << std::endl;
+           << prometheusLabel << "_count " << _totalCount << std::endl;
   }
 
   void printForConsole(std::stringstream &stream) const override {
-    stream << label << ", " << _total << ", sum " << _sum << ", ";
+    stream << label << ", " << _totalCount << ", sum " << _sum << ", ";
     for (size_t i = 0; i < _buckets.size(); i++) {
       stream << " {le=" << _buckets[i] << "} " << _count[i] << ", ";
     }
-    stream << " {le=+Inf }" << _count[_buckets.size()] << std::endl;
+    stream << " {le=+Inf} " << _totalCount << std::endl;
   }
 
-  StatisticsItem &operator+=(size_t value) override {
+  StatisticsHistogram &operator+=(size_t value) override {
+    // https://prometheus.io/docs/concepts/metric_types/#histogram
     _sum += value;
-    _total += 1;
+    _totalCount += 1; // Corresponds to <basename>_bucket{le="+Inf"}
     for (size_t i = 0; i < _buckets.size(); i++) {
-      if (value < _buckets[i]) {
-        return *this;
+      if (value > _buckets[i]) {
+        continue;
       }
       _count[i] += 1;
     }
-    _count[_buckets.size()] += 1;
     return *this;
   }
 
