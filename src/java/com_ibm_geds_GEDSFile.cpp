@@ -45,16 +45,27 @@ JNIEXPORT void JNICALL Java_com_ibm_geds_GEDSFile_closeNative(JNIEnv * /* unused
  */
 JNIEXPORT jstring JNICALL Java_com_ibm_geds_GEDSFile_metadataNative__J(JNIEnv *env, jobject,
                                                                        jlong nativePtr) {
+  static auto timer = geds::Statistics::createNanoSecondHistogram("Java GEDSFile: metadata");
+  auto timerBegin = std::chrono::high_resolution_clock::now();
+
   if (nativePtr == 0) {
     throwNullPointerException(env, "The pointer representation is NULL!");
     return nullptr;
   }
   auto *file = reinterpret_cast<GEDSFile *>(nativePtr); // NOLINT
   auto metadata = file->metadata();
+
   if (metadata->empty()) {
+    *timer += std::chrono::duration_cast<std::chrono::nanoseconds>(
+                  std::chrono::high_resolution_clock::now() - timerBegin)
+                  .count();
     return nullptr;
   }
   auto result = env->NewStringUTF(metadata.value().data());
+
+  *timer += std::chrono::duration_cast<std::chrono::nanoseconds>(
+                std::chrono::high_resolution_clock::now() - timerBegin)
+                .count();
   return result;
 }
 
@@ -66,6 +77,9 @@ JNIEXPORT jstring JNICALL Java_com_ibm_geds_GEDSFile_metadataNative__J(JNIEnv *e
 JNIEXPORT jbyteArray JNICALL Java_com_ibm_geds_GEDSFile_metadataAsByteArrayNative(JNIEnv *env,
                                                                                   jobject,
                                                                                   jlong nativePtr) {
+  static auto timer = geds::Statistics::createNanoSecondHistogram("Java GEDSFile: metadata");
+  auto timerBegin = std::chrono::high_resolution_clock::now();
+
   if (nativePtr == 0) {
     throwNullPointerException(env, "The pointer representation is NULL!");
     return nullptr;
@@ -86,6 +100,10 @@ JNIEXPORT jbyteArray JNICALL Java_com_ibm_geds_GEDSFile_metadataAsByteArrayNativ
   std::memcpy(destbuffer, resp.data(), resp.size());
   // 0:  copy back the content and free the elems buffer (ignored if not a copy).
   env->ReleasePrimitiveArrayCritical(result, destbuffer, 0);
+
+  *timer += std::chrono::duration_cast<std::chrono::nanoseconds>(
+                std::chrono::high_resolution_clock::now() - timerBegin)
+                .count();
   return result;
 }
 
@@ -96,6 +114,10 @@ JNIEXPORT jbyteArray JNICALL Java_com_ibm_geds_GEDSFile_metadataAsByteArrayNativ
  */
 JNIEXPORT void JNICALL Java_com_ibm_geds_GEDSFile_setMetadataNative__JLjava_lang_String_2Z(
     JNIEnv *env, jobject, jlong nativePtr, jstring jmetadata, jboolean seal) {
+  static auto counter = geds::Statistics::createIOHistogram("Java GEDSFile: setMetadata bytes");
+  static auto timer = geds::Statistics::createNanoSecondHistogram("Java GEDSFile: setMetadata");
+  auto timerBegin = std::chrono::high_resolution_clock::now();
+
   if (nativePtr == 0) {
     throwNullPointerException(env, "The pointer representation is NULL!");
     return;
@@ -106,12 +128,18 @@ JNIEXPORT void JNICALL Java_com_ibm_geds_GEDSFile_setMetadataNative__JLjava_lang
     status = file->setMetadata(std::nullopt, seal);
   } else {
     auto metadata = env->GetStringUTFChars(jmetadata, nullptr);
+    size_t length = strlen(metadata);
     status = file->setMetadata(metadata, strlen(metadata), seal);
+    *counter += length;
     env->ReleaseStringUTFChars(jmetadata, metadata);
   }
   if (!status.ok()) {
     throwIOException(env, status.message());
   }
+
+  *timer += std::chrono::duration_cast<std::chrono::nanoseconds>(
+                std::chrono::high_resolution_clock::now() - timerBegin)
+                .count();
   return;
 }
 
@@ -123,6 +151,10 @@ JNIEXPORT void JNICALL Java_com_ibm_geds_GEDSFile_setMetadataNative__JLjava_lang
 JNIEXPORT void JNICALL Java_com_ibm_geds_GEDSFile_setMetadataNative__JLjava_nio_ByteBuffer_2IIZ(
     JNIEnv *env, jobject, jlong nativePtr, jobject jBuffer, jint offset, jint length,
     jboolean seal) {
+  static auto counter = geds::Statistics::createIOHistogram("Java GEDSFile: setMetadata bytes");
+  static auto timer = geds::Statistics::createNanoSecondHistogram("Java GEDSFile: setMetadata");
+  auto timerBegin = std::chrono::high_resolution_clock::now();
+
   if (nativePtr == 0) {
     throwNullPointerException(env, "The pointer representation is NULL!");
     return;
@@ -145,6 +177,10 @@ JNIEXPORT void JNICALL Java_com_ibm_geds_GEDSFile_setMetadataNative__JLjava_nio_
   if (!status.ok()) {
     throwIOException(env, status.message());
   }
+
+  *timer += std::chrono::duration_cast<std::chrono::nanoseconds>(
+                std::chrono::high_resolution_clock::now() - timerBegin)
+                .count();
   return;
 }
 
@@ -156,6 +192,10 @@ JNIEXPORT void JNICALL Java_com_ibm_geds_GEDSFile_setMetadataNative__JLjava_nio_
 JNIEXPORT void JNICALL Java_com_ibm_geds_GEDSFile_setMetadataNative__J_3BIIZ(
     JNIEnv *env, jobject, jlong nativePtr, jbyteArray jBuffer, jint offset, jint length,
     jboolean seal) {
+  static auto counter = geds::Statistics::createIOHistogram("Java GEDSFile: setMetadata bytes");
+  static auto timer = geds::Statistics::createNanoSecondHistogram("Java GEDSFile: setMetadata");
+  auto timerBegin = std::chrono::high_resolution_clock::now();
+
   if (nativePtr == 0) {
     throwNullPointerException(env, "The pointer representation is NULL!");
     return;
@@ -178,6 +218,10 @@ JNIEXPORT void JNICALL Java_com_ibm_geds_GEDSFile_setMetadataNative__J_3BIIZ(
   if (!status.ok()) {
     throwIOException(env, status.message());
   }
+
+  *timer += std::chrono::duration_cast<std::chrono::nanoseconds>(
+                std::chrono::high_resolution_clock::now() - timerBegin)
+                .count();
   return;
 }
 
