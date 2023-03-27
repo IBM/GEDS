@@ -29,8 +29,10 @@ GEDSCachedFileHandle::GEDSCachedFileHandle(std::shared_ptr<GEDS> gedsService, st
 
   auto fileOpenStatus = _remoteFileHandle->open();
   if (!fileOpenStatus.ok()) {
-    throw std::runtime_error("Unable to open GEDSFile from filehandle: " +
-                             std::string{fileOpenStatus.status().message()});
+    auto message = "Unable to open GEDSFile from filehandle: " +
+                   std::string{fileOpenStatus.status().message()};
+    LOG_ERROR(message);
+    throw std::runtime_error(message);
   }
   _remoteFile = std::make_shared<GEDSFile>(std::move(*fileOpenStatus));
 

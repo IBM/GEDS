@@ -69,7 +69,9 @@ GEDS::GEDS(std::string metadataServiceAddress, std::optional<std::string> pathPr
   std::error_code ec;
   auto success = std::filesystem::create_directories(_pathPrefix, ec);
   if (!success && ec.value() != 0) {
-    throw std::runtime_error("Unable to create prefix " + _pathPrefix + ". Reason " + ec.message());
+    auto message = "Unable to create prefix " + _pathPrefix + ". Reason " + ec.message();
+    LOG_ERROR(message);
+    throw std::runtime_error(message);
   }
 }
 

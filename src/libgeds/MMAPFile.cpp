@@ -32,7 +32,9 @@ MMAPFile::MMAPFile(std::string pathArg, bool overwrite) : _path(std::move(pathAr
   _fd = ::open(_path.c_str(), mode, S_IRUSR | S_IWUSR);
   if (_fd < 0) {
     int error = errno;
-    throw std::runtime_error{"Unable to open " + _path + ". Reason: " + strerror(error)};
+    auto message = "Unable to open " + _path + ". Reason: " + strerror(error);
+    LOG_ERROR(message);
+    throw std::runtime_error{message};
   }
 }
 

@@ -24,6 +24,7 @@
 #include <absl/status/status.h>
 
 #include "GEDS.h"
+#include "Logging.h"
 #include "Platform.h"
 #include "Ports.h"
 
@@ -94,7 +95,9 @@ void runBenchmarkThread(std::shared_ptr<GEDS> geds, size_t threadId, size_t fact
              milliseconds});
 
     if (!status.ok()) {
-      throw new std::runtime_error("Error: " + std::string{status.status().message()});
+      auto message = "Error: " + std::string{status.status().message()};
+      LOG_ERROR(message);
+      throw new std::runtime_error(message);
     }
   }
 }
