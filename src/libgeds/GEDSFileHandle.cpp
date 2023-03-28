@@ -127,4 +127,8 @@ absl::Status GEDSFileHandle::seal() {
   return absl::UnavailableError("Seal operation is not available.");
 }
 
-absl::StatusOr<GEDSFile> GEDSFileHandle::open() { return GEDSFile(shared_from_this()); }
+absl::StatusOr<GEDSFile> GEDSFileHandle::open() {
+  // Avoid race-conditions when marking files as unused.
+  auto lock = lockFile();
+  return GEDSFile(shared_from_this());
+}
