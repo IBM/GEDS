@@ -7,13 +7,13 @@
 #include <cstddef>
 #include <gtest/gtest.h>
 
-#include "KVS.h"
+#include "MDSKVS.h"
 #include "Object.h"
 
 constexpr size_t NUM_ELEMENTS = 9;
 
 TEST(KVS, Basic) {
-  auto kvs = KVS();
+  auto kvs = MDSKVS();
 
   auto bucket = "testBasic";
   EXPECT_EQ(kvs.createBucket(bucket).code(), absl::StatusCode::kOk);
@@ -55,7 +55,7 @@ TEST(KVS, Basic) {
 }
 
 TEST(KVS, Delete) {
-  auto kvs = KVS();
+  auto kvs = MDSKVS();
 
   auto bucket = "testDelete";
   EXPECT_EQ(kvs.createBucket(bucket).code(), absl::StatusCode::kOk);

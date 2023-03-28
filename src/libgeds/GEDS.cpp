@@ -371,8 +371,8 @@ absl::StatusOr<GEDSFile> GEDS::open(const std::string &bucket, const std::string
   return fh.status();
 }
 
-absl::StatusOr<std::shared_ptr<GEDSFileHandle>> GEDS::openAsFileHandle(const std::string &bucket,
-                                                                       const std::string &key) {
+absl::StatusOr<std::shared_ptr<GEDSFileHandle>>
+GEDS::openAsFileHandle(const std::string &bucket, const std::string &key, bool invalidate) {
   const auto path = getPath(bucket, key);
 
   GEDS_CHECK_SERVICE_RUNNING
@@ -390,7 +390,7 @@ absl::StatusOr<std::shared_ptr<GEDSFileHandle>> GEDS::openAsFileHandle(const std
   }
 
   // File is not available locally. Lookup in metadata service instead.
-  auto status_file = _metadataService.lookup(bucket, key);
+  auto status_file = _metadataService.lookup(bucket, key, invalidate);
   if (!status_file.ok()) {
     // The file is not registered.
     // Try open file on s3:
@@ -429,6 +429,9 @@ absl::StatusOr<std::shared_ptr<GEDSFileHandle>> GEDS::openAsFileHandle(const std
   }
 
   if (!fileHandle.ok()) {
+    if (!invalidate) {
+      return openAsFileHandle(bucket, key, true);
+    }
     // Delete object if the file does not exist.
     if (fileHandle.status().code() == absl::StatusCode::kNotFound) {
       LOG_INFO("Deleting ", bucket, "/", key, " associated with ", object.info.location,

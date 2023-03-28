@@ -11,6 +11,10 @@ SET(SOURCES
         ConcurrentSet.h
         FormatISO8601.h
         Logging.h
+        MDSKVS.h
+        MDSKVS.cpp
+        MDSKVSBucket.h
+        MDSKVSBucket.cpp
         Path.h
         Path.cpp
         Platform.h
@@ -21,6 +25,11 @@ SET(SOURCES
 )
 
 add_library(geds_utility STATIC ${SOURCES})
+target_link_libraries(geds_utility
+        PUBLIC
+        ${GRPC_LIBRARIES}
+        geds_proto
+)
 target_include_directories(geds_utility
         PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}
