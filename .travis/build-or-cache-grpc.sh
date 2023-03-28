@@ -25,13 +25,15 @@ if [ -f "${GRPC_CACHED}" ]; then
     docker tag ${GRPC_DOCKER_IMAGE} geds_dependencies-${DOCKER_BUILD_TARGET}:${GIT_REVISION}
 else
     echo "Cached docker image does not exist in ${GRPC_CACHED}."
+    CMAKE_BUILD_PARALLEL_LEVEL=$(($(nproc) + 1))
+    echo "Using ${CMAKE_BUILD_PARALLEL_LEVEL} threads"
 
     BASE_BUILD_IMAGE="geds_build:${DOCKER_BUILD_TARGET}"
     docker build -t ${BASE_BUILD_IMAGE} \
         -f docker/Dockerfile-base_${DOCKER_BUILD_TARGET} .
 
     docker build -t ${GRPC_DOCKER_IMAGE} \
-         --build-arg CMAKE_BUILD_PARALLEL_LEVEL=$(($(nproc) + 1)) \
+         --build-arg CMAKE_BUILD_PARALLEL_LEVEL=${CMAKE_BUILD_PARALLEL_LEVEL} \
          --build-arg DOCKER_BUILD_TARGET=${DOCKER_BUILD_TARGET} \
          --build-arg GRPC_VERSION=${GRPC_VERSION} \
          --build-arg AWS_SDK_VERSION=${AWS_SDK_VERSION} \
