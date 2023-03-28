@@ -1,12 +1,15 @@
 package mdsprocessor
 
 import (
+	"context"
+	"errors"
 	"github.com/IBM/gedsmds/internal/config"
-	"github.com/IBM/gedsmds/internal/connection/connpool"
 	"github.com/IBM/gedsmds/internal/keyvaluestore"
 	"github.com/IBM/gedsmds/internal/logger"
 	"github.com/IBM/gedsmds/internal/pubsub"
 	"github.com/IBM/gedsmds/protos"
+	"google.golang.org/grpc/peer"
+	"strings"
 )
 
 func InitService() *Service {
@@ -17,8 +20,12 @@ func InitService() *Service {
 	}
 }
 
-func (s *Service) GetConnectionInformation() string {
-	return connpool.GetOutboundIP()
+func (s *Service) GetClientConnectionInformation(ctx context.Context) (string, error) {
+	if peerInfo, ok := peer.FromContext(ctx); !ok {
+		return "", errors.New("client IP could not be parsed")
+	} else {
+		return strings.Split(peerInfo.Addr.String(), ":")[0], nil
+	}
 }
 
 func (s *Service) RegisterObjectStore(objectStore *protos.ObjectStoreConfig) error {
@@ -119,7 +126,6 @@ func (s *Service) LookupObject(objectID *protos.ObjectID) (*protos.ObjectRespons
 			Error: &protos.StatusResponse{Code: protos.StatusCode_NOT_FOUND},
 		}, nil
 	}
-	object.Error = &protos.StatusResponse{Code: protos.StatusCode_OK}
 	return object, nil
 }
 

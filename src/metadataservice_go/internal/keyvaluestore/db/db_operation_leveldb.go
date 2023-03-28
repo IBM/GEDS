@@ -115,6 +115,17 @@ func (o *Operations) DeleteBucket(bucket *protos.Bucket) {
 	if err := o.dbBucket.Delete([]byte(o.createBucketKey(bucket)), nil); err != nil {
 		logger.ErrorLogger.Println(err)
 	}
+	iter := o.dbObject.NewIterator(util.BytesPrefix([]byte(o.createObjectKeyPrefixWithBucket(&protos.Object{
+		Id: &protos.ObjectID{
+			Bucket: bucket.Bucket,
+		},
+	}))), nil)
+	for iter.Next() {
+		if err := o.dbObject.Delete(iter.Key(), nil); err != nil {
+			logger.ErrorLogger.Println(err)
+		}
+	}
+	iter.Release()
 }
 
 func (o *Operations) GetBucket(bucketQuery *protos.Bucket) (*protos.Bucket, error) {
