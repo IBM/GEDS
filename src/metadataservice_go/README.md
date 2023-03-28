@@ -1,6 +1,4 @@
-
-
-# GEDS Metadata Server Go
+#GEDS Metadata Server Go
 
 Features:
 1. Implementation of APIs: [Link](https://github.com/IBM/GEDS/issues/14)
