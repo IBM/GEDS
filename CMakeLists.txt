@@ -17,6 +17,8 @@ option(HAVE_RDMA_SUPPORT "Supports RDMA" OFF)
 option(HAVE_DEFAULT_BUCKET "Creates a default (default) bucket." ON)
 option(HAVE_PROMETHEUS_HISTOGRAM_BUCKETS "Enable Prometheus Histogram Buckets." OFF)
 
+option(ENABLE_PROFILING "Compile with -pg to enable gprof." OFF)
+
 set(DEFAULT_BUCKET_NAME "default" CACHE STRING "Name of the default bucket.")
 set(BOOST_VERSION "1.80.0" CACHE STRING "Boost version")
 
@@ -28,6 +30,13 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 if(HAVE_PROMETHEUS_HISTOGRAM_BUCKETS)
     add_compile_definitions(HAVE_PROMETHEUS_HISTOGRAM_BUCKETS=1)
+endif()
+
+if (ENABLE_PROFILING)
+    message(STATUS "ENABLE_PROFILING:     ${ENABLE_PROFILING}")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pg")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pg")
+    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -pg")
 endif()
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
