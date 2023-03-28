@@ -11,17 +11,18 @@ import (
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"google.golang.org/grpc"
-	"net/http"
-	//_ "google.golang.org/grpc/encoding/gzip"
 	"net"
+	"net/http"
 )
 
 func main() {
-	go prometheusServer()
-	mdsServer()
-}
-
-func mdsServer() {
+	metrics := &prommetrics.Metrics{}
+	if config.Config.PrometheusEnabled {
+		registry := prometheus.NewRegistry()
+		registry.MustRegister(collectors.NewGoCollector())
+		metrics = prommetrics.InitMetrics(registry)
+		go prometheusServer(promhttp.HandlerFor(registry, promhttp.HandlerOpts{Registry: registry}))
+	}
 	lis, err := net.Listen("tcp", config.Config.MDSPort)
 	if err != nil {
 		logger.FatalLogger.Fatalln(err)
@@ -29,7 +30,7 @@ func mdsServer() {
 	opts := []grpc.ServerOption{grpc.KeepaliveEnforcementPolicy(serverconfig.KAEP),
 		grpc.KeepaliveParams(serverconfig.KASP)}
 	grpcServer := grpc.NewServer(opts...)
-	serviceInstance := mdsservice.NewService()
+	serviceInstance := mdsservice.NewService(metrics)
 	protos.RegisterMetadataServiceServer(grpcServer, serviceInstance)
 	logger.InfoLogger.Println("Metadata Server is listening on port", config.Config.MDSPort)
 	err = grpcServer.Serve(lis)
@@ -38,12 +39,8 @@ func mdsServer() {
 	}
 }
 
-func prometheusServer() {
+func prometheusServer(handler http.Handler) {
 	logger.InfoLogger.Println("Prometheus endpoint is listening on port", config.Config.PrometheusPort)
-	registry := prometheus.NewRegistry()
-	registry.MustRegister(collectors.NewGoCollector())
-	prommetrics.InitMetrics(registry)
-	handler := promhttp.HandlerFor(registry, promhttp.HandlerOpts{Registry: registry})
 	http.Handle("/metrics", handler)
 	err := http.ListenAndServe(config.Config.PrometheusPort, nil)
 	if err != nil {

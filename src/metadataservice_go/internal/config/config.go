@@ -15,6 +15,7 @@ type Configuration struct {
 	PubSubEnabled            bool   `mapstructure:"PUBSUB_ENABLED"`
 	PersistentStorageEnabled bool   `mapstructure:"PERSISTENT_STORAGE_ENABLED"`
 	RepopulateCacheEnabled   bool   `mapstructure:"REPOPULATE_CACHE_ENABLED"`
+	PrometheusEnabled        bool   `mapstructure:"PROMETHEUS_ENABLED"`
 }
 
 func init() {

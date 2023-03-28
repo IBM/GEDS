@@ -4,13 +4,15 @@ import (
 	"context"
 	"github.com/IBM/gedsmds/internal/logger"
 	"github.com/IBM/gedsmds/internal/mdsprocessor"
+	"github.com/IBM/gedsmds/internal/prommetrics"
 	"github.com/IBM/gedsmds/protos"
 	"io"
 )
 
-func NewService() *Service {
+func NewService(metrics *prommetrics.Metrics) *Service {
 	return &Service{
 		processor: mdsprocessor.InitService(),
+		metrics:   metrics,
 	}
 }
 
@@ -71,6 +73,7 @@ func (s *Service) LookupBucket(_ context.Context, bucket *protos.Bucket) (*proto
 
 func (s *Service) Create(_ context.Context, object *protos.Object) (*protos.StatusResponse, error) {
 	logger.InfoLogger.Println("create object", object)
+	s.metrics.IncrementCreateObject()
 	if err := s.processor.CreateObject(object); err != nil {
 		return &protos.StatusResponse{Code: protos.StatusCode_ALREADY_EXISTS}, nil
 	}
@@ -79,6 +82,7 @@ func (s *Service) Create(_ context.Context, object *protos.Object) (*protos.Stat
 
 func (s *Service) Update(_ context.Context, object *protos.Object) (*protos.StatusResponse, error) {
 	logger.InfoLogger.Println("update object", object)
+	s.metrics.IncrementUpdateObject()
 	if err := s.processor.UpdateObject(object); err != nil {
 		return &protos.StatusResponse{Code: protos.StatusCode_INTERNAL}, nil
 	}
@@ -87,6 +91,7 @@ func (s *Service) Update(_ context.Context, object *protos.Object) (*protos.Stat
 
 func (s *Service) Delete(_ context.Context, objectID *protos.ObjectID) (*protos.StatusResponse, error) {
 	logger.InfoLogger.Println("delete object", objectID)
+	s.metrics.IncrementDeleteObject()
 	if err := s.processor.DeleteObject(objectID); err != nil {
 		return &protos.StatusResponse{Code: protos.StatusCode_NOT_FOUND}, nil
 	}
@@ -95,6 +100,7 @@ func (s *Service) Delete(_ context.Context, objectID *protos.ObjectID) (*protos.
 
 func (s *Service) DeletePrefix(_ context.Context, objectID *protos.ObjectID) (*protos.StatusResponse, error) {
 	logger.InfoLogger.Println("delete object", objectID)
+	s.metrics.IncrementDeleteObject()
 	if err := s.processor.DeletePrefix(objectID); err != nil {
 		return &protos.StatusResponse{Code: protos.StatusCode_NOT_FOUND}, nil
 	}
@@ -103,6 +109,7 @@ func (s *Service) DeletePrefix(_ context.Context, objectID *protos.ObjectID) (*p
 
 func (s *Service) Lookup(_ context.Context, objectID *protos.ObjectID) (*protos.ObjectResponse, error) {
 	logger.InfoLogger.Println("lookup object", objectID)
+	s.metrics.IncrementLookupObject()
 	object, err := s.processor.LookupObject(objectID)
 	if err != nil {
 		return &protos.ObjectResponse{
@@ -114,6 +121,7 @@ func (s *Service) Lookup(_ context.Context, objectID *protos.ObjectID) (*protos.
 
 func (s *Service) List(_ context.Context, objectListRequest *protos.ObjectListRequest) (*protos.ObjectListResponse, error) {
 	logger.InfoLogger.Println("list objects")
+	s.metrics.IncrementListObject()
 	return s.processor.List(objectListRequest)
 }
 
