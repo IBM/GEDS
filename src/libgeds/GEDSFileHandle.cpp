@@ -23,7 +23,9 @@ GEDSFileHandle::GEDSFileHandle(std::shared_ptr<GEDS> gedsService, std::string bu
 
 GEDSFileHandle::~GEDSFileHandle() {
   if (_openCount.load() != 0) {
-    geds::Statistics::counter("GEDS: closed filehandles with dangling references")->increase();
+    static auto danglingRefsCounter =
+        geds::Statistics::createCounter("GEDS: closed filehandles with dangling references");
+    *danglingRefsCounter += 1;
     LOG_ERROR("The file handle " + identifier + " has still dangling references.");
   }
 }

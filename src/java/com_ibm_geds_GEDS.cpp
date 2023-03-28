@@ -74,7 +74,7 @@ JNIEXPORT jint JNICALL Java_com_ibm_geds_GEDS_getDefaultMetdataServerPort(JNIEnv
 // NOLINTNEXTLINE(modernize-use-trailing-return-type)
 JNIEXPORT jlong JNICALL Java_com_ibm_geds_GEDS_nativeCreate(JNIEnv *env, jclass, jlong nativePtr,
                                                             jstring jBucket, jstring jKey) {
-  static auto counter = geds::Statistics::counter("Java GEDS: create");
+  static auto counter = geds::Statistics::createCounter("Java GEDS: create");
 
   if (nativePtr == 0) {
     return throwNullPointerException(env, "Invalid nativePtr.");
@@ -99,7 +99,7 @@ JNIEXPORT jboolean JNICALL Java_com_ibm_geds_GEDS_nativeRename(JNIEnv *env, jcla
                                                                jstring jSrcBucket, jstring jSrcKey,
                                                                jstring jDestBucket,
                                                                jstring jDestKey) {
-  static auto counter = geds::Statistics::counter("Java GEDS: rename");
+  static auto counter = geds::Statistics::createCounter("Java GEDS: rename");
 
   if (nativePtr == 0) {
     return throwNullPointerException(env, "Invalid nativePtr.");
@@ -131,7 +131,7 @@ JNIEXPORT jboolean JNICALL Java_com_ibm_geds_GEDS_nativeRename(JNIEnv *env, jcla
 JNIEXPORT jboolean JNICALL
 Java_com_ibm_geds_GEDS_nativeRenamePrefix(JNIEnv *env, jclass, jlong nativePtr, jstring jSrcBucket,
                                           jstring jSrcKey, jstring jDestBucket, jstring jDestKey) {
-  static auto counter = geds::Statistics::counter("Java GEDS: rename prefix");
+  static auto counter = geds::Statistics::createCounter("Java GEDS: rename prefix");
 
   if (nativePtr == 0) {
     return throwNullPointerException(env, "Invalid nativePtr.");
@@ -221,7 +221,7 @@ Java_com_ibm_geds_GEDS_nativeCopyPrefix(JNIEnv *env, jclass, jlong nativePtr, js
 // NOLINTNEXTLINE(modernize-use-trailing-return-type)
 JNIEXPORT jlong JNICALL Java_com_ibm_geds_GEDS_nativeOpen(JNIEnv *env, jclass, jlong nativePtr,
                                                           jstring jBucket, jstring jKey) {
-  static auto counter = geds::Statistics::counter("Java GEDS: open");
+  static auto counter = geds::Statistics::createCounter("Java GEDS: open");
 
   if (nativePtr == 0) {
     return throwNullPointerException(env, "Invalid nativePtr.");
@@ -250,7 +250,7 @@ JNIEXPORT jlong JNICALL Java_com_ibm_geds_GEDS_nativeOpen(JNIEnv *env, jclass, j
 JNIEXPORT jboolean JNICALL Java_com_ibm_geds_GEDS_nativeCreateBucket(JNIEnv *env, jclass,
                                                                      jlong nativePtr,
                                                                      jstring jBucket) {
-  static auto counter = geds::Statistics::counter("Java GEDS: create bucket");
+  static auto counter = geds::Statistics::createCounter("Java GEDS: create bucket");
 
   if (nativePtr == 0) {
     return throwNullPointerException(env, "Invalid nativePtr.");
@@ -275,7 +275,7 @@ JNIEXPORT jboolean JNICALL Java_com_ibm_geds_GEDS_nativeMkdirs(JNIEnv *env, jcla
     throwNullPointerException(env, "Invalid nativePtr.");
     return false;
   }
-  static auto counter = geds::Statistics::counter("Java GEDS: mkdirs");
+  static auto counter = geds::Statistics::createCounter("Java GEDS: mkdirs");
 
   auto container = reinterpret_cast<GEDSContainer *>(nativePtr); // NOLINT
 
@@ -295,7 +295,7 @@ JNIEXPORT jboolean JNICALL Java_com_ibm_geds_GEDS_nativeMkdirs(JNIEnv *env, jcla
 // NOLINTNEXTLINE(modernize-use-trailing-return-type)
 JNIEXPORT jboolean JNICALL Java_com_ibm_geds_GEDS_nativeDelete(JNIEnv *env, jclass, jlong nativePtr,
                                                                jstring jBucket, jstring jKey) {
-  static auto counter = geds::Statistics::counter("Java GEDS: delete");
+  static auto counter = geds::Statistics::createCounter("Java GEDS: delete");
 
   if (nativePtr == 0) {
     return throwNullPointerException(env, "Invalid nativePtr.");
@@ -324,7 +324,7 @@ JNIEXPORT jboolean JNICALL Java_com_ibm_geds_GEDS_nativeDeletePrefix(JNIEnv *env
                                                                      jlong nativePtr,
                                                                      jstring jBucket,
                                                                      jstring jKey) {
-  static auto counter = geds::Statistics::counter("Java GEDS: delete prefix");
+  static auto counter = geds::Statistics::createCounter("Java GEDS: delete prefix");
 
   if (nativePtr == 0) {
     return throwNullPointerException(env, "Invalid nativePtr.");
@@ -348,7 +348,7 @@ JNIEXPORT jboolean JNICALL Java_com_ibm_geds_GEDS_nativeDeletePrefix(JNIEnv *env
 JNIEXPORT jobjectArray JNICALL Java_com_ibm_geds_GEDS_nativeList(JNIEnv *env, jclass,
                                                                  jlong nativePtr, jstring jBucket,
                                                                  jstring jKey, jchar delimiter) {
-  static auto counter = geds::Statistics::counter("Java GEDS: list");
+  static auto counter = geds::Statistics::createCounter("Java GEDS: list");
 
   if (nativePtr == 0) {
     throwNullPointerException(env, "Invalid nativePtr.");
@@ -390,7 +390,7 @@ JNIEXPORT jobjectArray JNICALL Java_com_ibm_geds_GEDS_nativeList(JNIEnv *env, jc
 JNIEXPORT jobject JNICALL Java_com_ibm_geds_GEDS_nativeStatus(JNIEnv *env, jclass, jlong nativePtr,
                                                               jstring jBucket, jstring jKey,
                                                               jchar delimiter) {
-  static auto counter = geds::Statistics::counter("Java GEDS: status");
+  static auto counter = geds::Statistics::createCounter("Java GEDS: status");
 
   if (nativePtr == 0) {
     throwNullPointerException(env, "Invalid nativePtr.");

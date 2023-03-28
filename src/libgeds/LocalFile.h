@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include <atomic>
 #include <cstddef>
 #include <cstdint>
 #include <istream>
@@ -17,6 +18,8 @@
 #include <absl/status/status.h>
 #include <absl/status/statusor.h>
 
+#include "RWConcurrentObjectAdaptor.h"
+
 namespace geds::filesystem {
 
 class LocalFile {
@@ -24,13 +27,12 @@ class LocalFile {
 
   int _fd{-1};
 
-  size_t _size{0};
+  std::atomic<size_t> _size{0};
 
   /**
    * @brief Seek commands require locking of the file.
    */
   mutable std::recursive_mutex __mutex;
-  auto getLock() const { return std::lock_guard(__mutex); }
 
 protected:
   absl::StatusOr<size_t> fileSize() const;

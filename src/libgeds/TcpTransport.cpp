@@ -36,6 +36,9 @@
 #include "Object.h"
 #include "TcpTransport.h"
 
+constexpr size_t MIN_SENDFILE_SIZE = 4096;
+constexpr size_t BUFFER_ALIGNMENT = 32;
+
 namespace geds {
 
 TcpTransport::TcpTransport(std::shared_ptr<GEDS> geds) : _geds(geds) {}
@@ -61,12 +64,11 @@ void TcpTransport::start() {
   num_proc = std::min(num_proc, MAX_IO_THREADS);
   isServing = true;
 
-  for (unsigned int id = 0; id < MAX_IO_THREADS; id++)
+  for (unsigned int id = 0; id < MAX_IO_THREADS; id++) {
     txThreads.push_back(std::make_unique<std::thread>([this, id] { this->tcpTxThread(id); }));
-
-  for (unsigned int id = 0; id < MAX_IO_THREADS; id++)
     rxThreads.push_back(std::make_unique<std::thread>([this, id] { this->tcpRxThread(id); }));
-
+    _buffers.push(new (std::align_val_t(BUFFER_ALIGNMENT)) uint8_t[MIN_SENDFILE_SIZE]);
+  }
   ioStatsThread = std::make_unique<std::thread>([this] { this->updateIoStats(); });
 
   LOG_DEBUG("TCP service start");
@@ -88,6 +90,18 @@ void TcpTransport::stop() {
   for (auto &t : rxThreads)
     t->join();
 
+  // Introduces a performance regression in the I/O Benchmark.
+  // ioStatsThread->join();
+  // ioStatsThread = nullptr;
+
+  tcpPeers.clear();
+  txThreads.clear();
+  rxThreads.clear();
+
+  uint8_t *buffer;
+  while (_buffers.pop(buffer)) {
+    delete[] buffer;
+  }
   LOG_DEBUG("TCP Transport stopped");
 }
 
@@ -147,6 +161,8 @@ bool TcpPeer::processEndpointSend(std::shared_ptr<TcpEndpoint> tep) {
         // Stop processing
         return true;
       }
+      (*sendQueue_stats)--;
+
       ctx->state = PROC_HDR;
 
       auto work = *workOpt;
@@ -239,7 +255,7 @@ bool TcpPeer::processEndpointSend(std::shared_ptr<TcpEndpoint> tep) {
        * The caller should take care actually.
        */
       if (sent == data_to_send)
-        delete[](uint8_t *) ctx->va;
+        _tcpTransport.releaseBuffer((uint8_t *)ctx->va);
     }
     if (sent == data_to_send) {
       tep->tx_bytes += ctx->hdr.datalen;
@@ -345,8 +361,6 @@ bool TcpPeer::SocketStateChange(int sock, uint32_t change) {
   return dead;
 }
 
-constexpr size_t MIN_SENDFILE_SIZE = 4096;
-
 void TcpPeer::TcpProcessRpcGet(uint64_t reqId, const std::string objName, size_t len, size_t off) {
   auto separator = objName.find('/');
   if (separator == std::string::npos) {
@@ -384,7 +398,7 @@ void TcpPeer::TcpProcessRpcGet(uint64_t reqId, const std::string objName, size_t
     sendRpcReply(reqId, in_fd, off, len, 0);
     return;
   }
-  auto buffer = new uint8_t[len];
+  auto buffer = _tcpTransport.getBuffer();
   auto status = file->read(buffer, off, len);
   if (len != *status) {
     LOG_ERROR("file->read returned with an unexpected length!");
@@ -392,7 +406,7 @@ void TcpPeer::TcpProcessRpcGet(uint64_t reqId, const std::string objName, size_t
   if (status.ok()) {
     sendRpcReply(reqId, -1, (uint64_t)buffer, *status, 0);
   } else {
-    delete[] buffer;
+    _tcpTransport.releaseBuffer(buffer);
     LOG_ERROR("cannot read file: ", objName);
     sendRpcReply(reqId, -1, 0, 0, EINVAL);
   }
@@ -516,6 +530,7 @@ bool TcpPeer::processEndpointRecv(int sock) {
           rv = -EINVAL;
           break;
         }
+        (*recvQueue_stats)--;
         auto work = *it;
         ctx->va = work->va;
         ctx->p = work->p;
@@ -719,7 +734,7 @@ bool TcpTransport::addEndpointPassive(int sock) {
   unsigned int epId = SStringHash(hostname);
   auto it = tcpPeers.get(epId);
   if (!it.has_value()) {
-    tcpPeer = std::make_shared<TcpPeer>(hostname, _geds);
+    tcpPeer = std::make_shared<TcpPeer>(hostname, _geds, *this);
     tcpPeers.insertOrReplace(epId, tcpPeer);
   } else {
     tcpPeer = *it;
@@ -784,7 +799,7 @@ std::shared_ptr<TcpPeer> TcpTransport::getPeer(sockaddr *peer) {
     LOG_DEBUG("connected ", hostname, "::", inaddr->sin_port);
     tep->sock = sock;
     if (num_ep == 0) {
-      tcpPeer = std::make_shared<TcpPeer>(hostname, _geds);
+      tcpPeer = std::make_shared<TcpPeer>(hostname, _geds, *this);
       tcpPeers.insertOrReplace(epId, tcpPeer);
     }
     tcpPeer->addEndpoint(tep);
@@ -845,6 +860,7 @@ int TcpPeer::sendRpcReply(uint64_t reqId, int in_fd, uint64_t start, size_t len,
   sendWork->type = GET_REPLY;
   sendWork->error = status;
   sendQueue.emplace(sendWork);
+  (*sendQueue_stats)++;
 
   auto tep = getLeastUsedTx(len);
   if (tep) {
@@ -872,6 +888,7 @@ TcpPeer::sendRpcRequest(uint64_t dest, std::string name, size_t off, size_t len)
   recvWork->len = len;
   recvWork->p = std::make_shared<std::promise<absl::StatusOr<size_t>>>();
   recvQueue.insertOrReplace(reqId, recvWork);
+  (*recvQueue_stats)++;
 
   auto sendWork = std::shared_ptr<SocketSendWork>(new SocketSendWork{});
   sendWork->reqId = reqId;
@@ -883,6 +900,7 @@ TcpPeer::sendRpcRequest(uint64_t dest, std::string name, size_t off, size_t len)
   sendWork->error = 0;
   sendWork->type = GET_REQ;
   sendQueue.emplace(sendWork);
+  (*sendQueue_stats)++;
 
   auto tep = getLeastUsedTx(len);
   if (tep) {
@@ -895,9 +913,20 @@ TcpPeer::sendRpcRequest(uint64_t dest, std::string name, size_t off, size_t len)
   if (!send_ok) {
     LOG_ERROR("RPC Req Send failed");
     recvQueue.remove(reqId);
+    (*recvQueue_stats)--;
     recvWork->p->set_value(absl::AbortedError("Unable to proceed: "));
   }
   return recvWork->p;
 }
 
+uint8_t *TcpTransport::getBuffer() {
+  uint8_t *result;
+  auto success = _buffers.pop(result);
+  if (!success) {
+    return new (std::align_val_t(BUFFER_ALIGNMENT)) uint8_t[MIN_SENDFILE_SIZE];
+  }
+  return result;
+}
+
+void TcpTransport::releaseBuffer(uint8_t *buffer) { _buffers.push(buffer); }
 } // namespace geds

@@ -7,24 +7,28 @@
 
 #include <atomic>
 #include <cstddef>
+#include <cstdint>
 #include <memory>
-#include <string>
 
 #include "StatisticsItem.h"
 
 namespace geds {
 
-class StatisticsCounter : public StatisticsItem {
-  mutable std::atomic<size_t> _count;
-  StatisticsCounter(std::string labelArg);
+class StatisticsGauge : public StatisticsItem {
+
+  std::atomic<int64_t> _value;
+  StatisticsGauge(std::string labelArg);
 
 public:
-  ~StatisticsCounter() override = default;
+  ~StatisticsGauge() override = default;
+
   void printForPrometheus(std::stringstream &stream) const override;
   void printForConsole(std::stringstream &stream) const override;
 
-  StatisticsCounter &operator+=(size_t value) override;
+  StatisticsGauge &operator+=(size_t v) override;
+  StatisticsGauge &operator-=(size_t v) override;
 
-  static std::shared_ptr<StatisticsCounter> factory(std::string labelArg);
+  static std::shared_ptr<StatisticsGauge> factory(std::string labelArg);
 };
+
 } // namespace geds

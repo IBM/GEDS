@@ -1,10 +1,6 @@
 /**
  * Copyright 2022- IBM Inc. All rights reserved
-<<<<<<< HEAD
  * SPDX-License-Identifier: Apache-2.0
-=======
- * SPDX-License-Identifier: Apache2.0
->>>>>>> 1638f77 (Contribute TcpTransport.)
  */
 
 #ifndef _TCP_TRANSPORT_H
@@ -28,10 +24,13 @@
 #include <utility>
 
 #include <absl/status/statusor.h>
+#include <boost/lockfree/stack.hpp>
 
 #include "ConcurrentMap.h"
 #include "ConcurrentQueue.h"
 #include "FileTransferProtocol.h"
+#include "Statistics.h"
+#include "StatisticsGauge.h"
 
 class GEDS;
 
@@ -142,6 +141,7 @@ using epoll_epid_t = union EpollEpId {
   struct ep_id id;
 };
 
+class TcpTransport;
 class TcpPeer : public std::enable_shared_from_this<TcpPeer> {
 
 private:
@@ -149,10 +149,17 @@ private:
 
   unsigned int Id;
   std::shared_ptr<GEDS> _geds;
+  TcpTransport &_tcpTransport;
   std::string hostname;
   std::atomic_uint64_t rpcReqId = 0;
+
   utility::ConcurrentQueue<std::shared_ptr<SocketSendWork>> sendQueue;
+  std::shared_ptr<StatisticsGauge> sendQueue_stats =
+      Statistics::createGauge("GEDS: TcpTransport sendQueue length");
   utility::ConcurrentMap<uint64_t, std::shared_ptr<SocketRecvWork>> recvQueue;
+  std::shared_ptr<StatisticsGauge> recvQueue_stats =
+      Statistics::createGauge("GEDS: TcpTransport recvQueue length");
+
   std::map<int, std::shared_ptr<TcpEndpoint>> endpoints;
   mutable std::shared_mutex epMux;
 
@@ -178,15 +185,15 @@ public:
     endpoints.emplace(tep->sock, tep);
     epMux.unlock();
   };
-  TcpPeer(std::string name, std::shared_ptr<GEDS> geds)
-      : Id(SStringHash(name)), _geds(std::move(geds)), hostname(std::move(name)){};
+  TcpPeer(std::string name, std::shared_ptr<GEDS> geds, TcpTransport &tcpTransport)
+      : Id(SStringHash(name)), _geds(std::move(geds)), _tcpTransport(tcpTransport),
+        hostname(std::move(name)){};
   TcpPeer(const TcpPeer &other) = delete;
   TcpPeer(TcpPeer &&other) = delete;
   TcpPeer &operator=(const TcpPeer &other) = delete;
   TcpPeer &operator=(TcpPeer &&other) = delete;
   ~TcpPeer();
 };
-
 constexpr unsigned int MAX_PEERS = 8096;
 constexpr unsigned int MAX_IO_THREADS = 8;
 constexpr unsigned int EPOLL_MAXEVENTS = MAX_PEERS / MAX_IO_THREADS;
@@ -195,6 +202,7 @@ class TcpTransport : public std::enable_shared_from_this<TcpTransport> {
 
 private:
   std::shared_ptr<GEDS> _geds;
+  boost::lockfree::stack<uint8_t *, boost::lockfree::fixed_sized<false>> _buffers{MAX_IO_THREADS};
 
   void tcpTxThread(unsigned int id);
   void tcpRxThread(unsigned int id);
@@ -222,6 +230,9 @@ private:
 
 public:
   [[nodiscard]] static std::shared_ptr<TcpTransport> factory(std::shared_ptr<GEDS> geds);
+
+  uint8_t *getBuffer();
+  void releaseBuffer(uint8_t *buffer);
 
   virtual ~TcpTransport();
   TcpTransport(const TcpTransport &other) = delete;

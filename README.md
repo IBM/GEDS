@@ -30,7 +30,7 @@ GEDS uses the following default ports (see also `src/utility/Ports.h`).
    ```bash
    GEDS_METADATASERVER_HOST=$HOST
    GEDS_METADATASERVER_PORT=4381
-   $GEDS_INSTALL/bin/benchmark --serverAddress $GEDS_METADATASERVER_HOST --serverPort $GEDS_METADATASERVER_PORT --outputFile output.csv
+   $GEDS_INSTALL/bin/benchmark_io --address $GEDS_METADATASERVER_HOST --outputFile output.csv
    ```
 
 ### Contributing

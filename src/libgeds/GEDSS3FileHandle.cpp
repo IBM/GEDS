@@ -15,8 +15,6 @@
 #include "GEDSFileHandle.h"
 #include "GEDSS3FileHandle.h"
 #include "Logging.h"
-#include "StatisticsCounter.h"
-#include "absl/status/status.h"
 
 GEDSS3FileHandle::GEDSS3FileHandle(std::shared_ptr<GEDS> gedsService,
                                    std::shared_ptr<geds::s3::Endpoint> s3Endpoint,
@@ -25,7 +23,8 @@ GEDSS3FileHandle::GEDSS3FileHandle(std::shared_ptr<GEDS> gedsService,
                                    std::optional<size_t> fileSize)
     : GEDSFileHandle(gedsService, bucketArg, keyArg), s3Bucket(s3BucketArg), s3Key(s3KeyArg),
       location("s3://" + s3Bucket + "/" + s3Key), _s3Endpoint(s3Endpoint) {
-  geds::Statistics::counter("GEDSS3FileHandle: count")->increase();
+  static auto counter = geds::Statistics::createCounter("GEDSS3FileHandle: count");
+  *counter += 1;
   if (fileSize.has_value()) {
     _size = *fileSize;
   } else {
@@ -103,7 +102,7 @@ absl::StatusOr<size_t> GEDSS3FileHandle::readBytes(uint8_t *bytes, size_t positi
   if (!status.ok() || status.status().code() == absl::StatusCode::kNotFound) {
     _isValid = false;
   }
-  _readStatistics->increase(status.value_or(0));
+  *_readStatistics += status.value_or(0);
   return status;
 }
 

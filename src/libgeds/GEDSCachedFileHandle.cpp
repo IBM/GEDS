@@ -24,12 +24,15 @@ GEDSCachedFileHandle::GEDSCachedFileHandle(std::shared_ptr<GEDS> gedsService, st
                                            std::shared_ptr<GEDSFileHandle> remoteFileHandle)
     : GEDSFileHandle(gedsService, std::move(bucketArg), std::move(keyArg)),
       _remoteFileHandle(remoteFileHandle), _blockSize(gedsService->blockSize) {
-  geds::Statistics::counter("GEDSCachedFileHandle: count")->increase();
+  static auto counter = geds::Statistics::createCounter("GEDSCachedFileHandle: count");
+  *counter += 1;
 
   auto fileOpenStatus = _remoteFileHandle->open();
   if (!fileOpenStatus.ok()) {
-    throw std::runtime_error("Unable to open GEDSFile from filehandle: " +
-                             std::string{fileOpenStatus.status().message()});
+    auto message = "Unable to open GEDSFile from filehandle: " +
+                   std::string{fileOpenStatus.status().message()};
+    LOG_ERROR(message);
+    throw std::runtime_error(message);
   }
   _remoteFile = std::make_shared<GEDSFile>(std::move(*fileOpenStatus));
 

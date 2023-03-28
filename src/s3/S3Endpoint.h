@@ -24,9 +24,9 @@ namespace geds::s3 {
 
 class Endpoint {
   mutable std::shared_ptr<geds::StatisticsCounter> numBytesReadCount =
-      geds::Statistics::counter("S3Endpoint: bytes read");
+      geds::Statistics::createCounter("S3Endpoint: bytes read");
   mutable std::shared_ptr<geds::StatisticsCounter> totalRequestsSent =
-      geds::Statistics::counter("S3Endpoint: requests sent");
+      geds::Statistics::createCounter("S3Endpoint: requests sent");
 
 public:
   const std::string _endpointUrl;
