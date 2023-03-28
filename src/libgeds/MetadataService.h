@@ -17,6 +17,7 @@
 #include <grpcpp/grpcpp.h>
 
 #include "GEDSInternal.h"
+#include "MDSKVS.h"
 #include "Object.h"
 #include "ObjectStoreConfig.h"
 
@@ -26,6 +27,7 @@ namespace geds {
 
 class MetadataService {
   ConnectionState _connectionState;
+  MDSKVS _mdsCache;
   std::shared_ptr<grpc::Channel> _channel;
   std::unique_ptr<geds::rpc::MetadataService::Stub> _stub;
 
@@ -65,8 +67,9 @@ public:
   absl::Status deleteObjectPrefix(const geds::ObjectID &id);
   absl::Status deleteObjectPrefix(const std::string &bucket, const std::string &key);
 
-  absl::StatusOr<geds::Object> lookup(const geds::ObjectID &id);
-  absl::StatusOr<geds::Object> lookup(const std::string &bucket, const std::string &key);
+  absl::StatusOr<geds::Object> lookup(const geds::ObjectID &id, bool invalidate = false);
+  absl::StatusOr<geds::Object> lookup(const std::string &bucket, const std::string &key,
+                                      bool invalidate = false);
 
   /**
    * @brief List objects in `bucket` starting with `key` as prefix.

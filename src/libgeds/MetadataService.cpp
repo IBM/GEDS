@@ -211,7 +211,11 @@ absl::Status MetadataService::lookupBucket(const std::string_view &bucket) {
     return absl::UnavailableError("Unable to execute LookupBucket command: " +
                                   status.error_message());
   }
-  return convertStatus(response);
+  auto s = convertStatus(response);
+  if (!s.ok()) {
+    (void)_mdsCache.deleteBucket(std::string{bucket});
+  }
+  return s;
 }
 
 absl::Status MetadataService::createObject(const geds::Object &obj) {
@@ -272,6 +276,8 @@ absl::Status MetadataService::deleteObject(const geds::ObjectID &id) {
 absl::Status MetadataService::deleteObject(const std::string &bucket, const std::string &key) {
   METADATASERVICE_CHECK_CONNECTED;
 
+  (void)_mdsCache.deleteObject(bucket, key);
+
   geds::rpc::ObjectID request;
   request.set_bucket(bucket);
   request.set_key(key);
@@ -293,6 +299,8 @@ absl::Status MetadataService::deleteObjectPrefix(const std::string &bucket,
                                                  const std::string &key) {
   METADATASERVICE_CHECK_CONNECTED;
 
+  (void)_mdsCache.deleteObjectPrefix(bucket, key);
+
   geds::rpc::ObjectID request;
   request.set_bucket(bucket);
   request.set_key(key);
@@ -307,12 +315,19 @@ absl::Status MetadataService::deleteObjectPrefix(const std::string &bucket,
   return convertStatus(response);
 }
 
-absl::StatusOr<geds::Object> MetadataService::lookup(const geds::ObjectID &id) {
-  return lookup(id.bucket, id.key);
+absl::StatusOr<geds::Object> MetadataService::lookup(const geds::ObjectID &id, bool force) {
+  return lookup(id.bucket, id.key, force);
 }
 absl::StatusOr<geds::Object> MetadataService::lookup(const std::string &bucket,
-                                                     const std::string &key) {
+                                                     const std::string &key, bool invalidate) {
   METADATASERVICE_CHECK_CONNECTED;
+
+  if (!invalidate) {
+    auto c = _mdsCache.lookup(bucket, key);
+    if (c.ok()) {
+      return c;
+    }
+  }
 
   geds::rpc::ObjectID request;
   request.set_bucket(bucket);
@@ -333,7 +348,10 @@ absl::StatusOr<geds::Object> MetadataService::lookup(const std::string &bucket,
   auto obj_info = geds::ObjectInfo{
       r.info().location(), r.info().size(), r.info().sealedoffset(),
       (r.info().has_metadata() ? std::make_optional(r.info().metadata()) : std::nullopt)};
-  return geds::Object{obj_id, obj_info};
+
+  auto result = geds::Object{obj_id, obj_info};
+  (void)_mdsCache.createObject(result, true);
+  return result;
 }
 
 absl::StatusOr<std::vector<geds::Object>> MetadataService::listPrefix(const geds::ObjectID &id) {
@@ -381,7 +399,10 @@ MetadataService::listPrefix(const std::string &bucket, const std::string &keyPre
     auto obj_info = geds::ObjectInfo{
         i.info().location(), i.info().size(), i.info().sealedoffset(),
         i.info().has_metadata() ? std::make_optional(i.info().metadata()) : std::nullopt};
-    objects.emplace_back(geds::Object{obj_id, obj_info});
+
+    auto obj = geds::Object{obj_id, obj_info};
+    (void)_mdsCache.createObject(obj, true);
+    objects.emplace_back(std::move(obj));
   }
   return std::make_pair(objects, std::vector<std::string>{response.commonprefixes().begin(),
                                                           response.commonprefixes().end()});

@@ -56,7 +56,7 @@ public:
   /**
    * @brief Create object.
    */
-  absl::Status createObject(const geds::Object &obj);
+  absl::Status createObject(const geds::Object &obj, bool forceCreateBucket = false);
 
   /**
    * @brief Update object.

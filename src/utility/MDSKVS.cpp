@@ -67,12 +67,22 @@ absl::Status MDSKVS::bucketStatus(const std::string &bucket) {
   return absl::NotFoundError("Bucket " + bucket + " does not exist.");
 }
 
-absl::Status MDSKVS::createObject(const geds::Object &obj) {
+absl::Status MDSKVS::createObject(const geds::Object &obj, bool forceCreateBucket) {
   auto bucket = getBucket(obj.id);
   if (!bucket.ok()) {
-    return bucket.status();
+    if (!forceCreateBucket) {
+      return bucket.status();
+    }
+    auto s = createBucket(obj.id.bucket);
+    if (!s.ok()) {
+      return s;
+    }
+    bucket = getBucket(obj.id);
+    if (!bucket.ok()) {
+      return bucket.status();
+    }
   }
-  return bucket.value()->createObject(obj);
+  return (*bucket)->createObject(obj);
 }
 
 absl::Status MDSKVS::updateObject(const geds::Object &obj) {
@@ -88,6 +98,7 @@ absl::Status MDSKVS::deleteObject(const geds::ObjectID &id) {
   if (!bucket.ok()) {
     return bucket.status();
   }
+
   return bucket.value()->deleteObject(id.key);
 }
 absl::Status MDSKVS::deleteObject(const std::string &bucket, const std::string &key) {
