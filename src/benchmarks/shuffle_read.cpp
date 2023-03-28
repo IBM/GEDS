@@ -3,9 +3,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include <absl/flags/flag.h>
-#include <absl/flags/parse.h>
-#include <absl/status/status.h>
 #include <algorithm>
 #include <chrono>
 #include <cstdint>
@@ -17,6 +14,10 @@
 #include <string>
 #include <unistd.h>
 #include <vector>
+
+#include <absl/flags/flag.h>
+#include <absl/flags/parse.h>
+#include <absl/status/status.h>
 
 #include "GEDS.h"
 #include "GEDSFile.h"
