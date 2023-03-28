@@ -47,7 +47,7 @@ public:
 
   [[nodiscard]] const std::string &path() const { return _path; }
 
-  void notifyUnused(){};
+  void notifyUnused();
 
   [[nodiscard]] size_t size() const { return _size; }
 

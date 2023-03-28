@@ -62,6 +62,10 @@ LocalFile::~LocalFile() {
   _fd = -1;
 }
 
+void LocalFile::notifyUnused() {
+  // NOOP.
+}
+
 absl::StatusOr<size_t> LocalFile::fileSize() const {
   CHECK_FILE_OPEN
 
