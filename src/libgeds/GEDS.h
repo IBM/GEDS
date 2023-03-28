@@ -287,6 +287,11 @@ public:
   absl::StatusOr<std::shared_ptr<geds::s3::Endpoint>> getS3Endpoint(const std::string &s3Bucket);
   absl::StatusOr<std::shared_ptr<geds::FileTransferService>>
   getFileTransferService(const std::string &hostname);
+
+  void testSubscribe();
+  void testSubscribeStream();
+  void testUnsubscribe();
+  void publishSubscriptions();
 };
 
 #endif // GEDS_GEDS_H

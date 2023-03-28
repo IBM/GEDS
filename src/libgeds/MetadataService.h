@@ -19,6 +19,7 @@
 #include "GEDSInternal.h"
 #include "Object.h"
 #include "ObjectStoreConfig.h"
+#include "PubSub.h"
 
 #include "geds.grpc.pb.h"
 
@@ -28,6 +29,7 @@ class MetadataService {
   ConnectionState _connectionState;
   std::shared_ptr<grpc::Channel> _channel;
   std::unique_ptr<geds::rpc::MetadataService::Stub> _stub;
+  std::string uuid;
 
 public:
   const std::string serverAddress;
@@ -87,6 +89,11 @@ public:
    */
   absl::StatusOr<std::pair<std::vector<geds::Object>, std::vector<std::string>>>
   listFolder(const std::string &bucket, const std::string &keyPrefix);
+
+  absl::Status createOrUpdateObjectStream();
+  absl::Status subscribe(const geds::SubscriptionEvent &event);
+  absl::Status subscribeStream();
+  absl::Status unsubscribe(const geds::SubscriptionEvent &event);
 };
 
 } // namespace geds
