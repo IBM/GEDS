@@ -126,6 +126,14 @@ public:
     return status;
   }
 
+  void notifyUnused() override {
+    auto lock = lockFile();
+    if (_openCount > 0) {
+      return;
+    }
+    _file.notifyUnused();
+  };
+
   bool isValid() const override { return _isValid; }
 
   absl::StatusOr<int> rawFd() const override { return _file.rawFd(); }
