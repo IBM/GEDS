@@ -36,6 +36,59 @@ public class GEDSFile {
         }
     }
 
+    public String metadata() throws IOException {
+        checkClosed();
+        return metadataNative(nativePtr);
+    }
+
+    public byte[] metadataAsByteArray() throws IOException {
+        checkClosed();
+        return metadataAsByteArrayNative(nativePtr);
+    }
+
+    public void setMetadata(String metadata) throws IOException {
+        setMetadata(metadata, true);
+    }
+
+    public void setMetadata(String metadata, boolean seal) throws IOException {
+        checkClosed();
+        setMetadataNative(nativePtr, metadata, seal);
+    }
+
+    public void setMetadata(ByteBuffer buffer) throws IOException {
+        setMetadata(buffer, true);
+    }
+
+    public void setMetadata(ByteBuffer buffer, boolean seal) throws IOException {
+        checkClosed();
+        // Use nullptr to override the metadata to nonexistent.
+        if (buffer == null) {
+            setMetadataNative(nativePtr, buffer, 0, 0, seal);
+            return;
+        }
+
+        checkByteBuffer(buffer);
+        int offset = buffer.position();
+        int length = buffer.remaining();
+        setMetadataNative(nativePtr, buffer, offset, length, seal);
+        return;
+    }
+
+    public void setMetadata(byte[] buffer, int offset, int length) throws IOException {
+        setMetadata(buffer, offset, length, true);
+    }
+
+    public void setMetadata(byte[] buffer, int offset, int length, boolean seal) throws IOException {
+        checkClosed();
+        // Use nullptr to override the metadata to nonexistent.
+        if (buffer == null) {
+            setMetadataNative(nativePtr, buffer, 0, 0, seal);
+            return;
+        }
+        checkBuffer(buffer, offset, length);
+        setMetadataNative(nativePtr, buffer, offset, length, seal);
+    }
+
     public long size() throws IOException {
         checkClosed();
         return sizeNative(nativePtr);
@@ -75,7 +128,8 @@ public class GEDSFile {
     }
 
     /**
-     * Reads up to buf.remaining() bytes at buf.position() into buffer. buf.remaining() can be
+     * Reads up to buf.remaining() bytes at buf.position() into buffer.
+     * buf.remaining() can be
      * controlled by configuring buf.limit().
      */
     public int read(long position, ByteBuffer buf) throws IOException {
@@ -144,17 +198,35 @@ public class GEDSFile {
 
     private native void closeNative(long nativePtr) throws IOException;
 
-    private native int readNative(long nativePtr, long position, byte[] buffer, int offset, int length) throws IOException;
-
-    private native void writeNative(long nativePtr, long position, byte[] buffer, int offset, int length) throws IOException;
-
     /*
-     * Note: We are expecting that the client extracts the offset/length from the byte buffer since
-     * we do not want to extract the data when we're in the native layer.
+     * Note: We are expecting that the client extracts the offset/length from the
+     * byte buffers since we do not want to extract the data when we're in the
+     * native layer.
      */
-    private native int readNative(long nativePtr, long position, ByteBuffer buffer, int offset, int length) throws IOException;
 
-    private native void writeNative(long nativePtr, long position, ByteBuffer buffer, int offset, int length) throws IOException;
+    private native String metadataNative(long nativePtr);
+
+    private native byte[] metadataAsByteArrayNative(long nativePtr);
+
+    private native void setMetadataNative(long nativePtr, String metadata, boolean seal);
+
+    private native void setMetadataNative(long nativePtr, ByteBuffer buffer, int offset, int length, boolean seal)
+            throws IOException;
+
+    private native void setMetadataNative(long nativePtr, byte[] buffer, int offset, int length, boolean seal)
+            throws IOException;
+
+    private native int readNative(long nativePtr, long position, byte[] buffer, int offset, int length)
+            throws IOException;
+
+    private native int readNative(long nativePtr, long position, ByteBuffer buffer, int offset, int length)
+            throws IOException;
+
+    private native void writeNative(long nativePtr, long position, byte[] buffer, int offset, int length)
+            throws IOException;
+
+    private native void writeNative(long nativePtr, long position, ByteBuffer buffer, int offset, int length)
+            throws IOException;
 
     private native void sealNative(long nativePtr) throws IOException;
 

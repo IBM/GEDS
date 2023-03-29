@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <stdexcept>
+#include <string>
 #include <vector>
 
 #include "GEDS.h"
@@ -17,9 +18,12 @@
 #include "Statistics.h"
 
 GEDSFileHandle::GEDSFileHandle(std::shared_ptr<GEDS> gedsService, std::string bucketArg,
-                               std::string keyArg)
+                               std::string keyArg, std::optional<std::string> metadataArg)
     : enable_shared_from_this(), bucket(std::move(bucketArg)), key(std::move(keyArg)),
-      identifier(bucket + "/" + key), _gedsService(gedsService) {}
+      identifier(bucket + "/" + key), _metadata(std::move(metadataArg)), _gedsService(gedsService) {
+  LOG_DEBUG("Created filehandle ", identifier, " with metadata ",
+            _metadata.has_value() ? std::to_string(_metadata.value().size()) + "bytes" : "<none>");
+}
 
 GEDSFileHandle::~GEDSFileHandle() {
   if (_openCount.load() != 0) {
@@ -50,6 +54,13 @@ std::chrono::system_clock::time_point GEDSFileHandle::lastReleased() const { ret
 
 size_t GEDSFileHandle::roundToNearestMultiple(size_t number, size_t factor) const {
   return ((number + factor - 1) / factor) * factor;
+}
+
+const std::optional<std::string> &GEDSFileHandle::metadata() const { return _metadata; }
+
+absl::Status GEDSFileHandle::setMetadata(std::optional<std::string> /* unused metadata */,
+                                         bool /* unused seal */) {
+  return absl::UnavailableError("Cannot set metadata on read-only file.");
 }
 
 absl::StatusOr<size_t> GEDSFileHandle::readBytes(uint8_t * /* unused bytes */,

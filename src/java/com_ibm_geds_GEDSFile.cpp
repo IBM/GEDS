@@ -38,6 +38,149 @@ JNIEXPORT void JNICALL Java_com_ibm_geds_GEDSFile_closeNative(JNIEnv * /* unused
                 .count();
 }
 
+/*
+ * Class:     com_ibm_geds_GEDSFile
+ * Method:    metadataNative
+ * Signature: (J)Ljava/lang/String;
+ */
+JNIEXPORT jstring JNICALL Java_com_ibm_geds_GEDSFile_metadataNative__J(JNIEnv *env, jobject,
+                                                                       jlong nativePtr) {
+  if (nativePtr == 0) {
+    throwNullPointerException(env, "The pointer representation is NULL!");
+    return nullptr;
+  }
+  auto *file = reinterpret_cast<GEDSFile *>(nativePtr); // NOLINT
+  auto metadata = file->metadata();
+  if (metadata->empty()) {
+    return nullptr;
+  }
+  auto result = env->NewStringUTF(metadata.value().data());
+  return result;
+}
+
+/*
+ * Class:     com_ibm_geds_GEDSFile
+ * Method:    metadataAsByteArrayNative
+ * Signature: (J)[B
+ */
+JNIEXPORT jbyteArray JNICALL Java_com_ibm_geds_GEDSFile_metadataAsByteArrayNative(JNIEnv *env,
+                                                                                  jobject,
+                                                                                  jlong nativePtr) {
+  if (nativePtr == 0) {
+    throwNullPointerException(env, "The pointer representation is NULL!");
+    return nullptr;
+  }
+  auto *file = reinterpret_cast<GEDSFile *>(nativePtr); // NOLINT
+  auto metadata = file->metadata();
+  if (metadata->empty()) {
+    return nullptr;
+  }
+  auto &resp = metadata.value();
+  auto result = env->NewByteArray(resp.size());
+  auto destbuffer = reinterpret_cast<char *>(env->GetPrimitiveArrayCritical(result, nullptr));
+  if (destbuffer == nullptr) {
+    // Operation failed.
+    throwRuntimeException(env, "Unable to obtain primitive array.");
+    return nullptr;
+  }
+  std::memcpy(destbuffer, resp.data(), resp.size());
+  // 0:  copy back the content and free the elems buffer (ignored if not a copy).
+  env->ReleasePrimitiveArrayCritical(result, destbuffer, 0);
+  return result;
+}
+
+/*
+ * Class:     com_ibm_geds_GEDSFile
+ * Method:    setMetadataNative
+ * Signature: (JLjava/lang/String;Z)V
+ */
+JNIEXPORT void JNICALL Java_com_ibm_geds_GEDSFile_setMetadataNative__JLjava_lang_String_2Z(
+    JNIEnv *env, jobject, jlong nativePtr, jstring jmetadata, jboolean seal) {
+  if (nativePtr == 0) {
+    throwNullPointerException(env, "The pointer representation is NULL!");
+    return;
+  }
+  absl::Status status;
+  auto *file = reinterpret_cast<GEDSFile *>(nativePtr); // NOLINT
+  if (jmetadata == nullptr) {
+    status = file->setMetadata(std::nullopt, seal);
+  } else {
+    auto metadata = env->GetStringUTFChars(jmetadata, nullptr);
+    status = file->setMetadata(metadata, strlen(metadata), seal);
+    env->ReleaseStringUTFChars(jmetadata, metadata);
+  }
+  if (!status.ok()) {
+    throwIOException(env, status.message());
+  }
+  return;
+}
+
+/*
+ * Class:     com_ibm_geds_GEDSFile
+ * Method:    setMetadataNative
+ * Signature: (JLjava/nio/ByteBuffer;IIZ)V
+ */
+JNIEXPORT void JNICALL Java_com_ibm_geds_GEDSFile_setMetadataNative__JLjava_nio_ByteBuffer_2IIZ(
+    JNIEnv *env, jobject, jlong nativePtr, jobject jBuffer, jint offset, jint length,
+    jboolean seal) {
+  if (nativePtr == 0) {
+    throwNullPointerException(env, "The pointer representation is NULL!");
+    return;
+  }
+  absl::Status status;
+  auto *file = reinterpret_cast<GEDSFile *>(nativePtr); // NOLINT
+  if (jBuffer == nullptr) {
+    status = file->setMetadata(std::nullopt, seal);
+  } else {
+    auto buffer = reinterpret_cast<const uint8_t *>(env->GetDirectBufferAddress(jBuffer)); // NOLINT
+#ifndef NDEBUG
+    auto capacity = env->GetDirectBufferCapacity(jBuffer);
+    if ((size_t)offset + (size_t)length > (size_t)capacity) {
+      throwRuntimeException(env, "Offset + length are bigger than buffer capacity.");
+      return;
+    }
+#endif
+    status = file->setMetadata(&buffer[offset], length, seal);
+  }
+  if (!status.ok()) {
+    throwIOException(env, status.message());
+  }
+  return;
+}
+
+/*
+ * Class:     com_ibm_geds_GEDSFile
+ * Method:    setMetadataNative
+ * Signature: (J[BIIZ)V
+ */
+JNIEXPORT void JNICALL Java_com_ibm_geds_GEDSFile_setMetadataNative__J_3BIIZ(
+    JNIEnv *env, jobject, jlong nativePtr, jbyteArray jBuffer, jint offset, jint length,
+    jboolean seal) {
+  if (nativePtr == 0) {
+    throwNullPointerException(env, "The pointer representation is NULL!");
+    return;
+  }
+  absl::Status status;
+  auto *file = reinterpret_cast<GEDSFile *>(nativePtr); // NOLINT
+  if (jBuffer == nullptr) {
+    status = file->setMetadata(std::nullopt, seal);
+  } else {
+    auto buffer =
+        reinterpret_cast<jbyte *>(env->GetPrimitiveArrayCritical(jBuffer, nullptr)); // NOLINT
+    if (buffer == nullptr) {
+      // Operation failed.
+      throwRuntimeException(env, "Unable to obtain primitive array.");
+      return;
+    }
+    status = file->setMetadata(&buffer[offset], length, seal); // NOLINT
+    env->ReleasePrimitiveArrayCritical(jBuffer, buffer, JNI_ABORT);
+  }
+  if (!status.ok()) {
+    throwIOException(env, status.message());
+  }
+  return;
+}
+
 // NOLINTNEXTLINE
 JNIEXPORT jlong JNICALL Java_com_ibm_geds_GEDSFile_sizeNative(JNIEnv *env, jobject,
                                                               jlong nativePtr) {

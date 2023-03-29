@@ -241,7 +241,7 @@ GEDS::createAsFileHandle(const std::string &bucket, const std::string &key, bool
   }
 
   const auto path = getPath(bucket, key);
-  auto handle = GEDSLocalFileHandle::factory(shared_from_this(), bucket, key);
+  auto handle = GEDSLocalFileHandle::factory(shared_from_this(), bucket, key, std::nullopt);
   if (!handle.ok()) {
     return handle.status();
   }
@@ -342,8 +342,8 @@ absl::StatusOr<std::shared_ptr<GEDSFileHandle>> GEDS::openAsFileHandle(const std
   if (!status_file.ok()) {
     // The file is not registered.
     // Try open file on s3:
-    auto s3FileHandle =
-        GEDSCachedFileHandle::factory<GEDSS3FileHandle>(shared_from_this(), bucket, key);
+    auto s3FileHandle = GEDSCachedFileHandle::factory<GEDSS3FileHandle>(shared_from_this(), bucket,
+                                                                        key, std::nullopt);
     if (s3FileHandle.ok()) {
       // Use file handle registered with fileHandles object.
       auto eexists = _fileHandles.insertOrExists(path, *s3FileHandle);
@@ -417,8 +417,9 @@ GEDS::getFileTransferService(const std::string &hostname) {
 absl::Status GEDS::seal(GEDSFileHandle &fileHandle, bool update, size_t size,
                         std::optional<std::string> uri) {
   GEDS_CHECK_SERVICE_RUNNING
-  auto obj = geds::Object{geds::ObjectID{fileHandle.bucket, fileHandle.key},
-                          geds::ObjectInfo{uri.value_or(_hostURI), size, size}};
+  auto obj =
+      geds::Object{geds::ObjectID{fileHandle.bucket, fileHandle.key},
+                   geds::ObjectInfo{uri.value_or(_hostURI), size, size, fileHandle.metadata()}};
   if (update) {
     return _metadataService.updateObject(obj);
   }

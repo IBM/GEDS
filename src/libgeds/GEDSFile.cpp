@@ -20,6 +20,11 @@ GEDSFile::GEDSFile(GEDSFile &&other) {
   other._fileHandle = nullptr;
 }
 
+const std::optional<std::string> &GEDSFile::metadata() const { return _fileHandle->metadata(); }
+absl::Status GEDSFile::setMetadata(std::optional<std::string> metadata, bool seal) {
+  return _fileHandle->setMetadata(metadata, seal);
+}
+
 GEDSFile &GEDSFile::operator=(const GEDSFile &other) {
   if (this != &other) {
     _fileHandle = other._fileHandle;

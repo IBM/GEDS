@@ -41,13 +41,16 @@ protected:
   std::chrono::system_clock::time_point _lastOpened;
   std::chrono::system_clock::time_point _lastReleased;
 
+  std::optional<std::string> _metadata;
+
   std::shared_ptr<GEDS> _gedsService;
 
   std::shared_ptr<GEDSFileHandle> getPtr() { return shared_from_this(); }
 
 protected:
   // Constructors are private to enable `shared_from_this`.
-  GEDSFileHandle(std::shared_ptr<GEDS> gedsService, std::string bucketArg, std::string keyArg);
+  GEDSFileHandle(std::shared_ptr<GEDS> gedsService, std::string bucketArg, std::string keyArg,
+                 std::optional<std::string> metadataArg);
 
 public:
   GEDSFileHandle() = delete;
@@ -67,6 +70,9 @@ public:
   virtual bool isWriteable() const { return false; }
 
   size_t roundToNearestMultiple(size_t number, size_t factor) const;
+
+  const std::optional<std::string> &metadata() const;
+  virtual absl::Status setMetadata(std::optional<std::string> metadata, bool seal = true);
 
   /**
    * @brief Read length bytes from file handle (or until EOF) at position into buffer. The API needs

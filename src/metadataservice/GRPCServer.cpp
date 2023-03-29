@@ -8,6 +8,7 @@
 #include <iostream>
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -43,8 +44,11 @@ public:
   }
 
   geds::Object convert(const ::geds::rpc::Object *r) {
-    return geds::Object{convert(&r->id()), geds::ObjectInfo{r->info().location(), r->info().size(),
-                                                            r->info().sealedoffset()}};
+    return geds::Object{
+        convert(&r->id()),
+        geds::ObjectInfo{
+            r->info().location(), r->info().size(), r->info().sealedoffset(),
+            (r->info().has_metadata() ? std::make_optional(r->info().metadata()) : std::nullopt)}};
   }
 
 protected:
@@ -135,9 +139,13 @@ protected:
 
   grpc::Status Create(::grpc::ServerContext *context, const ::geds::rpc::Object *request,
                       ::geds::rpc::StatusResponse *response) override {
+    auto msg = !request->info().has_metadata()
+                   ? "<none>"
+                   : std::to_string(request->info().metadata().size()) + " bytes";
+
     LOG_ACCESS("create: ", request->id().bucket(), "/", request->id().key(), ": ",
                request->info().location(), " (", request->info().size(), ", ",
-               request->info().sealedoffset(), ")");
+               request->info().sealedoffset(), ", ", msg, ")");
     auto result = _kvs->createObject(convert(request));
     convertStatus(response, result);
     return grpc::Status::OK;
@@ -145,9 +153,13 @@ protected:
 
   grpc::Status Update(::grpc::ServerContext *context, const ::geds::rpc::Object *request,
                       ::geds::rpc::StatusResponse *response) override {
+    auto msg = !request->info().has_metadata()
+                   ? "<none>"
+                   : std::to_string(request->info().metadata().size()) + " bytes";
+
     LOG_ACCESS("update: ", request->id().bucket(), "/", request->id().key(), ": ",
                request->info().location(), " (", request->info().size(), ", ",
-               request->info().sealedoffset(), ")");
+               request->info().sealedoffset(), ", ", msg, ")");
     auto result = _kvs->updateObject(convert(request));
     convertStatus(response, result);
     return grpc::Status::OK;
@@ -186,6 +198,9 @@ protected:
         objectInfo->set_location(result.info.location);
         objectInfo->set_size(result.info.size);
         objectInfo->set_sealedoffset(result.info.sealedOffset);
+        if (result.info.metadata.has_value()) {
+          objectInfo->set_metadata(*result.info.metadata);
+        }
       }
     } else {
       auto error = response->mutable_error();
@@ -197,7 +212,7 @@ protected:
   grpc::Status List(::grpc::ServerContext *context, const ::geds::rpc::ObjectListRequest *request,
                     ::geds::rpc::ObjectListResponse *response) override {
     LOG_ACCESS("list: ", request->prefix().bucket(), "/", request->prefix().key());
-    auto delimiter = (char)request->has_delimiter() ? request->delimiter() : 0;
+    char delimiter = request->has_delimiter() ? (char)request->delimiter() : 0;
     auto listing = _kvs->listObjects(convert(&request->prefix()), delimiter);
     if (listing.ok()) {
       for (const auto &result : listing->first) {

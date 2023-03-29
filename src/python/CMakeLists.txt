@@ -22,6 +22,8 @@ set(PYTHON_SOURCES
     create.py
     read.py
     folder_listing.py
+    metadata.py
+    metadata_read.py
     s3.py
     s3_compare_geds.py
     s3_download.py

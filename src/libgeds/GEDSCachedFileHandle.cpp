@@ -21,8 +21,9 @@ const std::string GEDSCachedFileHandle::CacheBlockMarker = {"_$cachedblock$/"};
 
 GEDSCachedFileHandle::GEDSCachedFileHandle(std::shared_ptr<GEDS> gedsService, std::string bucketArg,
                                            std::string keyArg,
+                                           std::optional<std::string> metadataArg,
                                            std::shared_ptr<GEDSFileHandle> remoteFileHandle)
-    : GEDSFileHandle(gedsService, std::move(bucketArg), std::move(keyArg)),
+    : GEDSFileHandle(gedsService, std::move(bucketArg), std::move(keyArg), std::move(metadataArg)),
       _remoteFileHandle(remoteFileHandle), _blockSize(gedsService->config().cacheBlockSize) {
   static auto counter = geds::Statistics::createCounter("GEDSCachedFileHandle: count");
   *counter += 1;

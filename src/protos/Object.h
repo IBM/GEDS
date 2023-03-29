@@ -3,10 +3,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef GEDS_OBJECT_H
-#define GEDS_OBJECT_H
+#pragma once
 
 #include <cstdint>
+#include <optional>
 #include <string>
 
 namespace geds {
@@ -14,9 +14,10 @@ struct ObjectInfo {
   std::string location;
   uint64_t size;
   uint64_t sealedOffset;
-
+  std::optional<std::string> metadata;
   bool operator==(const ObjectInfo &other) const {
-    return location == other.location && size == other.size && sealedOffset == other.sealedOffset;
+    return location == other.location && size == other.size && sealedOffset == other.sealedOffset &&
+           metadata == other.metadata;
   }
 };
 
@@ -39,4 +40,3 @@ struct Object {
 };
 
 } // namespace geds
-#endif // GEDS_OBJECT_H

@@ -10,15 +10,17 @@
 #include "FileTransferService.h"
 #include "GEDS.h"
 #include "GEDSFile.h"
+#include "Logging.h"
 #include "Object.h"
 
 GEDSRemoteFileHandle::GEDSRemoteFileHandle(
     std::shared_ptr<GEDS> gedsService, const geds::Object &object,
     std::shared_ptr<geds::FileTransferService> fileTransferService)
-    : GEDSFileHandle(gedsService, object.id.bucket, object.id.key),
+    : GEDSFileHandle(gedsService, object.id.bucket, object.id.key, object.info.metadata),
       _fileTransferService(fileTransferService), _info(object.info) {
   static auto counter = geds::Statistics::createCounter("GEDSRemoteFileHandle: count");
   *counter += 1;
+  LOG_DEBUG("Metadata: ", _metadata.value_or("<none>"));
 }
 
 GEDSRemoteFileHandle::~GEDSRemoteFileHandle() {}
