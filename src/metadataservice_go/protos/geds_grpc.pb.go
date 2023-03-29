@@ -250,7 +250,7 @@ func (c *metadataServiceClient) SubscribeStream(ctx context.Context, in *Subscri
 }
 
 type MetadataService_SubscribeStreamClient interface {
-	Recv() (*Object, error)
+	Recv() (*SubscriptionStreamResponse, error)
 	grpc.ClientStream
 }
 
@@ -258,8 +258,8 @@ type metadataServiceSubscribeStreamClient struct {
 	grpc.ClientStream
 }
 
-func (x *metadataServiceSubscribeStreamClient) Recv() (*Object, error) {
-	m := new(Object)
+func (x *metadataServiceSubscribeStreamClient) Recv() (*SubscriptionStreamResponse, error) {
+	m := new(SubscriptionStreamResponse)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -652,7 +652,7 @@ func _MetadataService_SubscribeStream_Handler(srv interface{}, stream grpc.Serve
 }
 
 type MetadataService_SubscribeStreamServer interface {
-	Send(*Object) error
+	Send(*SubscriptionStreamResponse) error
 	grpc.ServerStream
 }
 
@@ -660,7 +660,7 @@ type metadataServiceSubscribeStreamServer struct {
 	grpc.ServerStream
 }
 
-func (x *metadataServiceSubscribeStreamServer) Send(m *Object) error {
+func (x *metadataServiceSubscribeStreamServer) Send(m *SubscriptionStreamResponse) error {
 	return x.ServerStream.SendMsg(m)
 }
 

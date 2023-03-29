@@ -69,7 +69,10 @@ func (s *Service) CreateObject(object *protos.Object) error {
 		return err
 	}
 	if config.Config.PubSubEnabled {
-		s.pubsub.Publication <- object
+		s.pubsub.Publication <- &protos.SubscriptionStreamResponse{
+			Object:          object,
+			PublicationType: protos.PublicationType_CREATE_OBJECT,
+		}
 	}
 	return nil
 }
@@ -80,7 +83,10 @@ func (s *Service) CreateOrUpdateObjectStream(object *protos.Object) {
 		return
 	}
 	if config.Config.PubSubEnabled {
-		s.pubsub.Publication <- object
+		s.pubsub.Publication <- &protos.SubscriptionStreamResponse{
+			Object:          object,
+			PublicationType: protos.PublicationType_CREATE_UPDATE_OBJECT,
+		}
 	}
 }
 
@@ -89,7 +95,10 @@ func (s *Service) UpdateObject(object *protos.Object) error {
 		return err
 	}
 	if config.Config.PubSubEnabled {
-		s.pubsub.Publication <- object
+		s.pubsub.Publication <- &protos.SubscriptionStreamResponse{
+			Object:          object,
+			PublicationType: protos.PublicationType_UPDATE_OBJECT,
+		}
 	}
 	return nil
 }
@@ -99,8 +108,9 @@ func (s *Service) DeleteObject(objectID *protos.ObjectID) error {
 		return err
 	}
 	if config.Config.PubSubEnabled {
-		s.pubsub.Publication <- &protos.Object{
-			Id: objectID,
+		s.pubsub.Publication <- &protos.SubscriptionStreamResponse{
+			Object:          &protos.Object{Id: objectID},
+			PublicationType: protos.PublicationType_DELETE_OBJECT,
 		}
 	}
 	return nil
@@ -113,7 +123,10 @@ func (s *Service) DeletePrefix(objectID *protos.ObjectID) error {
 	}
 	if config.Config.PubSubEnabled {
 		for _, object := range objects {
-			s.pubsub.Publication <- object
+			s.pubsub.Publication <- &protos.SubscriptionStreamResponse{
+				Object:          object,
+				PublicationType: protos.PublicationType_DELETE_OBJECT,
+			}
 		}
 	}
 	return nil

@@ -26,5 +26,5 @@ type Service struct {
 	subscribedPrefixLock *sync.RWMutex
 	subscribedPrefix     map[string]map[string][]string
 
-	Publication chan *protos.Object
+	Publication chan *protos.SubscriptionStreamResponse
 }

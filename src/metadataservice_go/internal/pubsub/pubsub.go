@@ -21,7 +21,7 @@ func InitService(kvStore *keyvaluestore.Service) *Service {
 		subscribedPrefixLock: &sync.RWMutex{},
 		subscribedPrefix:     map[string]map[string][]string{},
 
-		Publication: make(chan *protos.Object, channelBufferSize),
+		Publication: make(chan *protos.SubscriptionStreamResponse, channelBufferSize),
 	}
 	go service.runPubSubEventListeners()
 	return service
@@ -29,7 +29,7 @@ func InitService(kvStore *keyvaluestore.Service) *Service {
 
 func (s *Service) runPubSubEventListeners() {
 	for {
-		go s.matchSubscriptions(<-s.Publication)
+		go s.matchPubSub(<-s.Publication)
 	}
 }
 
@@ -88,9 +88,9 @@ func (s *Service) SubscribeStream(subscription *protos.SubscriptionStreamEvent,
 	}
 }
 
-func (s *Service) matchSubscriptions(subscription *protos.Object) {
+func (s *Service) matchPubSub(publication *protos.SubscriptionStreamResponse) {
 	var subscribers []string
-	bucketID, objectID := s.createSubscriptionKeyForMatching(subscription)
+	bucketID, objectID := s.createSubscriptionKeyForMatching(publication.Object)
 	s.subscribedItemsLock.RLock()
 	if currentSubscribers, ok := s.subscribedItems[bucketID]; ok {
 		subscribers = append(subscribers, currentSubscribers...)
@@ -100,7 +100,7 @@ func (s *Service) matchSubscriptions(subscription *protos.Object) {
 	}
 	s.subscribedItemsLock.RUnlock()
 	s.subscribedPrefixLock.RLock()
-	if subscribersInBucket, ok := s.subscribedPrefix[subscription.Id.Bucket]; ok {
+	if subscribersInBucket, ok := s.subscribedPrefix[publication.Object.Id.Bucket]; ok {
 		for prefix, currentSubscribers := range subscribersInBucket {
 			if strings.HasPrefix(objectID, prefix) {
 				subscribers = append(subscribers, currentSubscribers...)
@@ -112,13 +112,13 @@ func (s *Service) matchSubscriptions(subscription *protos.Object) {
 	sentSubscriptions := map[string]bool{}
 	for _, subscriberID := range subscribers {
 		if _, ok := sentSubscriptions[subscriberID]; !ok {
-			s.sendSubscriptions(subscription, subscriberID)
+			s.sendPublication(publication, subscriberID)
 			sentSubscriptions[subscriberID] = true
 		}
 	}
 }
 
-func (s *Service) sendSubscriptions(subscription *protos.Object, subscriberID string) {
+func (s *Service) sendPublication(publication *protos.SubscriptionStreamResponse, subscriberID string) {
 	s.subscribersStreamLock.RLock()
 	streamer, ok := s.subscriberStreams[subscriberID]
 	s.subscribersStreamLock.RUnlock()
@@ -127,8 +127,8 @@ func (s *Service) sendSubscriptions(subscription *protos.Object, subscriberID st
 		logger.ErrorLogger.Println("subscriber stream not found: " + subscriberID)
 		return
 	}
-	if err := streamer.stream.Send(subscription); err != nil {
-		logger.ErrorLogger.Println("could not send the proposal response to subscriber " + subscriberID)
+	if err := streamer.stream.Send(publication); err != nil {
+		logger.ErrorLogger.Println("could not send the publication to subscriber " + subscriberID)
 		s.removeSubscriberStreamWithLock(streamer)
 	}
 }

@@ -68,10 +68,18 @@ message ObjectResponse {
 }
 
 enum SubscriptionType {
-  NOTYPE = 0;
+  NO_SUBSCRIPTION = 0;
   BUCKET = 1;
   OBJECT = 2;
   PREFIX = 3;
+}
+
+enum PublicationType {
+  NO_PUBLICATION = 0;
+  CREATE_OBJECT = 1;
+  UPDATE_OBJECT = 2;
+  DELETE_OBJECT = 3;
+  CREATE_UPDATE_OBJECT = 4;
 }
 
 message SubscriptionEvent {
@@ -83,6 +91,11 @@ message SubscriptionEvent {
 
 message SubscriptionStreamEvent {
   string subscriberID = 1;
+}
+
+message SubscriptionStreamResponse {
+  PublicationType publicationType = 1;
+  Object object = 2;
 }
 
 service MetadataService {
@@ -102,7 +115,7 @@ service MetadataService {
 
   rpc CreateOrUpdateObjectStream(stream Object) returns (StatusResponse);
   rpc Subscribe(SubscriptionEvent) returns (StatusResponse);
-  rpc SubscribeStream(SubscriptionStreamEvent) returns (stream Object);
+  rpc SubscribeStream(SubscriptionStreamEvent) returns (stream SubscriptionStreamResponse);
   rpc Unsubscribe(SubscriptionEvent) returns (StatusResponse);
 }
 
