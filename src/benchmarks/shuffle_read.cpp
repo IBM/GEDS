@@ -94,8 +94,10 @@ void runExecutorThread(std::shared_ptr<GEDS> geds, const std::string &bucket, si
 
 int main(int argc, char **argv) {
   absl::ParseCommandLine(argc, argv);
-  auto geds = GEDS::factory(FLAGS_address.CurrentValue(), FLAGS_gedsRoot.CurrentValue(),
-                            std::nullopt, absl::GetFlag(FLAGS_localPort));
+  auto config = GEDSConfig(FLAGS_address.CurrentValue());
+  config.port = absl::GetFlag(FLAGS_localPort);
+  config.localStoragePath = FLAGS_gedsRoot.CurrentValue();
+  auto geds = GEDS::factory(config);
   absl::Status status;
   status = geds->start();
   if (!status.ok()) {
