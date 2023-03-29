@@ -12,6 +12,7 @@
 
 #include "GEDS.h"
 #include "GEDSConfig.h"
+#include "GEDSConfigContainer.h"
 #include "JavaError.h"
 #include "Logging.h"
 #include "Ports.h"
@@ -22,32 +23,21 @@ struct GEDSContainer {
   std::shared_ptr<GEDS> element;
 };
 
-// NOLINTNEXTLINE(modernize-use-trailing-return-type)
+/*
+ * Class:     com_ibm_geds_GEDS
+ * Method:    initGEDS
+ * Signature: (J)J
+ */
 JNIEXPORT jlong JNICALL Java_com_ibm_geds_GEDS_initGEDS(JNIEnv *env, jclass,
-                                                        jstring metadataServiceAddressJava,
-                                                        jstring pathPrefixJava,
-                                                        jstring hostnameJava, jint port,
-                                                        jlong blockSize) {
-  auto hostname = env->GetStringUTFChars(hostnameJava, nullptr);
-  auto hostnameStr = std::string{hostname};
-  auto pathPrefix = env->GetStringUTFChars(pathPrefixJava, nullptr);
-  auto pathPrefixStr = std::string{pathPrefix};
-  auto metadataServiceAddress = env->GetStringUTFChars(metadataServiceAddressJava, nullptr);
-  auto config = GEDSConfig(metadataServiceAddress);
-  config.hostname = hostnameStr != "" ? std::make_optional(hostnameStr) : std::nullopt;
-  if (port != 0) {
-    config.port = port;
+                                                        jlong nativePtrConfig) {
+  if (nativePtrConfig == 0) {
+    throwNullPointerException(env, "Invalid nativePtr.");
+    return 0;
   }
-  if (blockSize != 0) {
-    config.cacheBlockSize = blockSize;
-  }
-  if (pathPrefixStr != "") {
-    config.localStoragePath = pathPrefixStr;
-  }
-  auto geds = GEDS::factory(std::move(config));
-  env->ReleaseStringUTFChars(pathPrefixJava, pathPrefix);
-  env->ReleaseStringUTFChars(metadataServiceAddressJava, metadataServiceAddress);
-  env->ReleaseStringUTFChars(hostnameJava, hostname);
+  auto container = reinterpret_cast<GEDSConfigContainer *>(nativePtrConfig); // NOLINT
+
+  auto geds = GEDS::factory(*(container->element));
+
   auto status = geds->start();
   if (!status.ok()) {
     return throwRuntimeException(env, std::string{status.message()});
