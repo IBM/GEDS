@@ -83,7 +83,7 @@ absl::Status GEDSFileHandle::download(std::shared_ptr<GEDSFileHandle> destinatio
     return totalSize.status();
   }
   do {
-    auto length = std::min(_gedsService->blockSize, *totalSize - pos);
+    auto length = std::min(_gedsService->config().cacheBlockSize, *totalSize - pos);
     auto count = downloadRange(destination, pos, length, pos);
     if (!count.ok()) {
       return count.status();
@@ -101,7 +101,7 @@ absl::StatusOr<size_t> GEDSFileHandle::downloadRange(std::shared_ptr<GEDSFileHan
   }
   size_t count = 0;
   try {
-    std::vector<uint8_t> buffer(_gedsService->blockSize, 0);
+    std::vector<uint8_t> buffer(_gedsService->config().cacheBlockSize, 0);
     do {
       auto rcount =
           readBytes(&buffer[0], srcPosition + count, std::min(length - count, buffer.size()));
