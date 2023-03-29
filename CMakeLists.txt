@@ -289,7 +289,7 @@ add_subdirectory(src)
 
 add_custom_target(build-all
     DEPENDS
-    benchmark
+#    benchmark
     geds
     geds_cmd
     metadataserver

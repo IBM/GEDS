@@ -74,14 +74,6 @@ enum SubscriptionType {
   PREFIX = 3;
 }
 
-enum PublicationType {
-  NO_PUBLICATION = 0;
-  CREATE_OBJECT = 1;
-  UPDATE_OBJECT = 2;
-  DELETE_OBJECT = 3;
-  CREATE_UPDATE_OBJECT = 4;
-}
-
 message SubscriptionEvent {
   SubscriptionType subscriptionType = 1;
   string subscriberID = 2;
@@ -91,6 +83,14 @@ message SubscriptionEvent {
 
 message SubscriptionStreamEvent {
   string subscriberID = 1;
+}
+
+enum PublicationType {
+  NO_PUBLICATION = 0;
+  CREATE_OBJECT = 1;
+  UPDATE_OBJECT = 2;
+  DELETE_OBJECT = 3;
+  CREATE_UPDATE_OBJECT = 4;
 }
 
 message SubscriptionStreamResponse {

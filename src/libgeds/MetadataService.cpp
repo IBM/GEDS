@@ -17,11 +17,11 @@
 #include "GEDS.h"
 #include "Logging.h"
 #include "ObjectStoreConfig.h"
+#include "PubSub.h"
 #include "Status.h"
 #include "geds.grpc.pb.h"
 #include "geds.pb.h"
 #include "status.pb.h"
-#include "PubSub.h"
 
 namespace geds {
 
@@ -89,7 +89,7 @@ absl::Status MetadataService::disconnect() {
 }
 
 absl::Status MetadataService::registerObjectStoreConfig(const ObjectStoreConfig &mapping) {
-  METADATASERVICE_CHECK_CONNECTED
+  METADATASERVICE_CHECK_CONNECTED;
   geds::rpc::ObjectStoreConfig request;
   geds::rpc::StatusResponse response;
   grpc::ClientContext context;
@@ -109,7 +109,7 @@ absl::Status MetadataService::registerObjectStoreConfig(const ObjectStoreConfig 
 
 absl::StatusOr<std::vector<std::shared_ptr<ObjectStoreConfig>>>
 MetadataService::listObjectStoreConfigs() {
-  METADATASERVICE_CHECK_CONNECTED
+  METADATASERVICE_CHECK_CONNECTED;
   geds::rpc::EmptyParams request;
   geds::rpc::AvailableObjectStoreConfigs response;
   grpc::ClientContext context;
@@ -464,19 +464,40 @@ absl::Status MetadataService::subscribe(const geds::SubscriptionEvent &event) {
 }
 
 absl::Status MetadataService::subscribeStream() {
-  METADATASERVICE_CHECK_CONNECTED
+  METADATASERVICE_CHECK_CONNECTED;
+
   geds::rpc::SubscriptionStreamEvent subscription_stream_event;
-  geds::rpc::Object subscription_response;
+  geds::rpc::SubscriptionStreamResponse subscription_response;
   grpc::ClientContext context;
 
   subscription_stream_event.set_subscriberid(uuid);
 
-  std::unique_ptr<grpc::ClientReader<geds::rpc::Object>> reader(
+  std::unique_ptr<grpc::ClientReader<geds::rpc::SubscriptionStreamResponse>> reader(
       _stub->SubscribeStream(&context, subscription_stream_event));
 
   while (reader->Read(&subscription_response)) {
-    LOG_DEBUG("Got subscription: ", subscription_response.id().key());
+
+    const auto &objectPublication = subscription_response.object();
+    auto obj_id = geds::ObjectID{objectPublication.id().bucket(), objectPublication.id().key()};
+    auto obj_info =
+        geds::ObjectInfo{objectPublication.info().location(), objectPublication.info().size(),
+                         objectPublication.info().sealedoffset()};
+    auto obj = geds::Object{obj_id, obj_info};
+
+    if (subscription_response.publicationtype() == geds::rpc::CREATE_OBJECT) {
+      (void)_mdsCache.createObject(obj, true);
+    } else if (subscription_response.publicationtype() == geds::rpc::UPDATE_OBJECT) {
+      (void)_mdsCache.updateObject(obj);
+    } else if (subscription_response.publicationtype() == geds::rpc::CREATE_UPDATE_OBJECT) {
+      // might be inefficient as we we may be updating the object instead of creating
+      (void)_mdsCache.createObject(obj, true);
+    } else if (subscription_response.publicationtype() == geds::rpc::DELETE_OBJECT) {
+      (void)_mdsCache.deleteObject(obj.id.bucket, obj.id.key);
+    }
+
+    LOG_DEBUG("Received subscription and added to cache: ", obj.id.bucket);
   }
+
   auto status = reader->Finish();
   if (!status.ok()) {
     return absl::InternalError(status.error_message());
@@ -485,7 +506,8 @@ absl::Status MetadataService::subscribeStream() {
 }
 
 absl::Status MetadataService::unsubscribe(const geds::SubscriptionEvent &event) {
-  METADATASERVICE_CHECK_CONNECTED
+  METADATASERVICE_CHECK_CONNECTED;
+
   geds::rpc::SubscriptionEvent subscription_event;
   geds::rpc::StatusResponse response;
   grpc::ClientContext context;
@@ -497,8 +519,7 @@ absl::Status MetadataService::unsubscribe(const geds::SubscriptionEvent &event) 
 
   auto status = _stub->Unsubscribe(&context, subscription_event, &response);
   if (!status.ok()) {
-    return absl::UnavailableError("Unable to execute CreateBucket command: " +
-                                  status.error_message());
+    return absl::UnavailableError("Unable to unsubscribe: " + status.error_message());
   }
   return convertStatus(response);
 }
