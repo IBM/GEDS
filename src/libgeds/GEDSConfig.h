@@ -5,9 +5,13 @@
 
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <string>
+
+#include <absl/status/status.h>
+#include <absl/status/statusor.h>
 
 #include "Ports.h"
 
@@ -59,4 +63,12 @@ struct GEDSConfig {
 
   GEDSConfig(std::string metadataServiceAddressArg)
       : metadataServiceAddress(metadataServiceAddressArg) {}
+
+  absl::Status set(const std::string &key, const std::string &value);
+  absl::Status set(const std::string &key, size_t value);
+  absl::Status set(const std::string &key, int64_t value);
+
+  absl::StatusOr<std::string> getString(const std::string &key) const;
+  absl::StatusOr<size_t> getUnsignedInt(const std::string &key) const;
+  absl::StatusOr<int64_t> getSignedInt(const std::string &key) const;
 };

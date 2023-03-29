@@ -14,8 +14,12 @@ public class GEDS {
     }
 
     private long nativePtr = 0;
-    public final String pathPrefix;
-    public final String metadataServiceAddress;
+    private final GEDSConfig config;
+
+    public GEDS(GEDSConfig config) {
+        this.config = config;
+        this.nativePtr = initGEDS(this.config.getNativePtr());
+    }
 
     /**
      * Constructor for GEDS.
@@ -30,6 +34,7 @@ public class GEDS {
      * @param blockSize              Block Size used for prefetching data
      *                               (Optional). `0` indicates default block size.
      */
+    @Deprecated
     public GEDS(String metadataServiceAddress, String pathPrefix, String hostname, int port, long blockSize) {
         if (port < 0 || port > 65535) {
             throw new IllegalArgumentException("Invalid port.");
@@ -37,34 +42,49 @@ public class GEDS {
         if (blockSize < 0) {
             throw new IllegalArgumentException("Invalid block size");
         }
-        this.metadataServiceAddress = metadataServiceAddress;
-        this.pathPrefix = pathPrefix;
-        this.nativePtr = initGEDS(metadataServiceAddress, pathPrefix, hostname, port, blockSize);
+        config = new GEDSConfig(metadataServiceAddress);
+        if (port != 0) {
+            config.set("port", port);
+        }
+        if (hostname != "") {
+            config.set("hostname", hostname);
+        }
+        if (pathPrefix != "") {
+            config.set("local_storage_path", pathPrefix);
+        }
+        if (blockSize != 0) {
+            config.set("cache_block_size", blockSize);
+        }
+        this.nativePtr = initGEDS(config.getNativePtr());
     }
 
+    @Deprecated
     public GEDS(String metadataServiceAddress, String pathPrefix, int port, long blockSize) {
         this(metadataServiceAddress, pathPrefix, "", port, blockSize);
     }
 
+    @Deprecated
     public GEDS(String metadataServiceAddress, String pathPrefix, long blockSize) {
         this(metadataServiceAddress, pathPrefix, "", 0, blockSize);
     }
 
+    @Deprecated
     public GEDS(String metadataServiceAddress, String pathPrefix) {
         this(metadataServiceAddress, pathPrefix, "", 0, 0);
     }
 
+    @Deprecated
     public GEDS(String metadataServiceAddress) {
         this(metadataServiceAddress, "", "", 0, 0);
     }
 
-    private static native long initGEDS(String metadataServiceAddress, String pathPrefix, String hostname, int port,
-            long blockSize);
+    private static native long initGEDS(long nativePtrConfig);
 
     public void stopGEDS() {
         checkGEDS();
         nativeStopGEDS(nativePtr);
     }
+
     private static native void nativeStopGEDS(long ptr);
 
     public static native void printStatistics();
