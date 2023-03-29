@@ -27,10 +27,11 @@ func main() {
 	if err != nil {
 		logger.FatalLogger.Fatalln(err)
 	}
+	maxMessageSize := 64 * 1024 * 1024
 	opts := []grpc.ServerOption{grpc.KeepaliveEnforcementPolicy(serverconfig.KAEP),
 		grpc.KeepaliveParams(serverconfig.KASP),
-		// this overwrites the 4 MB limits on the messages to be received. New value is 10 MB.
-		grpc.MaxRecvMsgSize(10 * 1024 * 1024)}
+		// this overwrites the 4 MB limits on the messages to be received. New value is 64 MB.
+		grpc.MaxRecvMsgSize(maxMessageSize), grpc.MaxSendMsgSize(maxMessageSize)}
 	grpcServer := grpc.NewServer(opts...)
 	serviceInstance := mdsservice.NewService(metrics)
 	protos.RegisterMetadataServiceServer(grpcServer, serviceInstance)
