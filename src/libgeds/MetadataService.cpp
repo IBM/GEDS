@@ -5,6 +5,10 @@
 
 #include "MetadataService.h"
 
+#include <boost/lexical_cast.hpp>
+#include <boost/uuid/uuid.hpp>
+#include <boost/uuid/uuid_generators.hpp>
+#include <boost/uuid/uuid_io.hpp>
 #include <grpcpp/client_context.h>
 #include <grpcpp/support/status.h>
 #include <grpcpp/support/status_code_enum.h>
@@ -17,6 +21,7 @@
 #include "geds.grpc.pb.h"
 #include "geds.pb.h"
 #include "status.pb.h"
+#include "PubSub.h"
 
 namespace geds {
 
@@ -34,7 +39,10 @@ static std::string printGRPCError(const grpc::Status &status) {
 
 MetadataService::MetadataService(std::string serverAddress)
     : _connectionState(ConnectionState::Disconnected), _channel(nullptr),
-      serverAddress(std::move(serverAddress)) {}
+      serverAddress(std::move(serverAddress)) {
+  boost::uuids::uuid uuid_generated = boost::uuids::random_generator()();
+  uuid = boost::lexical_cast<std::string>(uuid_generated);
+}
 
 MetadataService::~MetadataService() {
   if (_connectionState == ConnectionState::Connected) {
@@ -48,7 +56,12 @@ absl::Status MetadataService::connect() {
   }
   try {
     assert(_channel.get() == nullptr);
-    _channel = grpc::CreateChannel(serverAddress, grpc::InsecureChannelCredentials());
+
+    auto arguments = grpc::ChannelArguments();
+    arguments.SetMaxReceiveMessageSize(64 * 1024 * 1024);
+
+    _channel =
+        grpc::CreateCustomChannel(serverAddress, grpc::InsecureChannelCredentials(), arguments);
     auto success = _channel->WaitForConnected(grpcDefaultDeadline());
     if (!success) {
       LOG_ERROR("Unable to connect to ", serverAddress);
@@ -114,7 +127,7 @@ MetadataService::listObjectStoreConfigs() {
 }
 
 absl::StatusOr<std::string> MetadataService::getConnectionInformation() {
-  METADATASERVICE_CHECK_CONNECTED
+  METADATASERVICE_CHECK_CONNECTED;
   geds::rpc::EmptyParams request;
   geds::rpc::ConnectionInformation response;
   grpc::ClientContext context;
@@ -130,7 +143,7 @@ absl::StatusOr<std::string> MetadataService::getConnectionInformation() {
 }
 
 absl::Status MetadataService::createBucket(const std::string_view &bucket) {
-  METADATASERVICE_CHECK_CONNECTED
+  METADATASERVICE_CHECK_CONNECTED;
   geds::rpc::Bucket request;
   request.set_bucket(std::string{bucket});
 
@@ -146,7 +159,7 @@ absl::Status MetadataService::createBucket(const std::string_view &bucket) {
 }
 
 absl::Status MetadataService::deleteBucket(const std::string_view &bucket) {
-  METADATASERVICE_CHECK_CONNECTED
+  METADATASERVICE_CHECK_CONNECTED;
   geds::rpc::Bucket request;
   request.set_bucket(std::string{bucket});
 
@@ -162,7 +175,7 @@ absl::Status MetadataService::deleteBucket(const std::string_view &bucket) {
 }
 
 absl::StatusOr<std::vector<std::string>> MetadataService::listBuckets() {
-  METADATASERVICE_CHECK_CONNECTED
+  METADATASERVICE_CHECK_CONNECTED;
   geds::rpc::EmptyParams request;
 
   geds::rpc::BucketListResponse response;
@@ -187,7 +200,8 @@ absl::StatusOr<std::vector<std::string>> MetadataService::listBuckets() {
 }
 
 absl::Status MetadataService::lookupBucket(const std::string_view &bucket) {
-  METADATASERVICE_CHECK_CONNECTED
+  METADATASERVICE_CHECK_CONNECTED;
+
   geds::rpc::Bucket request;
   request.set_bucket(std::string{bucket});
 
@@ -199,11 +213,15 @@ absl::Status MetadataService::lookupBucket(const std::string_view &bucket) {
     return absl::UnavailableError("Unable to execute LookupBucket command: " +
                                   status.error_message());
   }
-  return convertStatus(response);
+  auto s = convertStatus(response);
+  if (!s.ok()) {
+    (void)_mdsCache.deleteBucket(std::string{bucket});
+  }
+  return s;
 }
 
 absl::Status MetadataService::createObject(const geds::Object &obj) {
-  METADATASERVICE_CHECK_CONNECTED
+  METADATASERVICE_CHECK_CONNECTED;
 
   geds::rpc::Object request;
   auto id = request.mutable_id();
@@ -225,7 +243,7 @@ absl::Status MetadataService::createObject(const geds::Object &obj) {
 }
 
 absl::Status MetadataService::updateObject(const geds::Object &obj) {
-  METADATASERVICE_CHECK_CONNECTED
+  METADATASERVICE_CHECK_CONNECTED;
 
   geds::rpc::Object request;
   auto id = request.mutable_id();
@@ -246,11 +264,14 @@ absl::Status MetadataService::updateObject(const geds::Object &obj) {
 }
 
 absl::Status MetadataService::deleteObject(const geds::ObjectID &id) {
+  METADATASERVICE_CHECK_CONNECTED;
   return deleteObject(id.bucket, id.key);
 }
 
 absl::Status MetadataService::deleteObject(const std::string &bucket, const std::string &key) {
-  METADATASERVICE_CHECK_CONNECTED
+  METADATASERVICE_CHECK_CONNECTED;
+
+  (void)_mdsCache.deleteObject(bucket, key);
 
   geds::rpc::ObjectID request;
   request.set_bucket(bucket);
@@ -271,7 +292,9 @@ absl::Status MetadataService::deleteObjectPrefix(const geds::ObjectID &id) {
 }
 absl::Status MetadataService::deleteObjectPrefix(const std::string &bucket,
                                                  const std::string &key) {
-  METADATASERVICE_CHECK_CONNECTED
+  METADATASERVICE_CHECK_CONNECTED;
+
+  (void)_mdsCache.deleteObjectPrefix(bucket, key);
 
   geds::rpc::ObjectID request;
   request.set_bucket(bucket);
@@ -287,12 +310,19 @@ absl::Status MetadataService::deleteObjectPrefix(const std::string &bucket,
   return convertStatus(response);
 }
 
-absl::StatusOr<geds::Object> MetadataService::lookup(const geds::ObjectID &id) {
-  return lookup(id.bucket, id.key);
+absl::StatusOr<geds::Object> MetadataService::lookup(const geds::ObjectID &id, bool force) {
+  return lookup(id.bucket, id.key, force);
 }
 absl::StatusOr<geds::Object> MetadataService::lookup(const std::string &bucket,
-                                                     const std::string &key) {
-  METADATASERVICE_CHECK_CONNECTED
+                                                     const std::string &key, bool invalidate) {
+  METADATASERVICE_CHECK_CONNECTED;
+
+  if (!invalidate) {
+    auto c = _mdsCache.lookup(bucket, key);
+    if (c.ok()) {
+      return c;
+    }
+  }
 
   geds::rpc::ObjectID request;
   request.set_bucket(bucket);
@@ -312,6 +342,10 @@ absl::StatusOr<geds::Object> MetadataService::lookup(const std::string &bucket,
   auto obj_id = geds::ObjectID{r.id().bucket(), r.id().key()};
   auto obj_info = geds::ObjectInfo{r.info().location(), r.info().size(), r.info().sealedoffset()};
   return geds::Object{obj_id, obj_info};
+
+  auto result = geds::Object{obj_id, obj_info};
+  (void)_mdsCache.createObject(result, true);
+  return result;
 }
 
 absl::StatusOr<std::vector<geds::Object>> MetadataService::listPrefix(const geds::ObjectID &id) {
@@ -330,7 +364,7 @@ MetadataService::listPrefix(const std::string &bucket, const std::string &keyPre
 absl::StatusOr<std::pair<std::vector<geds::Object>, std::vector<std::string>>>
 MetadataService::listPrefix(const std::string &bucket, const std::string &keyPrefix,
                             char delimiter) {
-  METADATASERVICE_CHECK_CONNECTED
+  METADATASERVICE_CHECK_CONNECTED;
 
   geds::rpc::ObjectListRequest request;
   auto prefix = request.mutable_prefix();
@@ -357,7 +391,9 @@ MetadataService::listPrefix(const std::string &bucket, const std::string &keyPre
   for (auto i : rpc_results) {
     auto obj_id = geds::ObjectID{i.id().bucket(), i.id().key()};
     auto obj_info = geds::ObjectInfo{i.info().location(), i.info().size(), i.info().sealedoffset()};
-    objects.emplace_back(geds::Object{obj_id, obj_info});
+    auto obj = geds::Object{obj_id, obj_info};
+    (void)_mdsCache.createObject(obj, true);
+    objects.emplace_back(std::move(obj));
   }
   return std::make_pair(objects, std::vector<std::string>{response.commonprefixes().begin(),
                                                           response.commonprefixes().end()});
@@ -366,6 +402,105 @@ MetadataService::listPrefix(const std::string &bucket, const std::string &keyPre
 absl::StatusOr<std::pair<std::vector<geds::Object>, std::vector<std::string>>>
 MetadataService::listFolder(const std::string &bucket, const std::string &keyPrefix) {
   return listPrefix(bucket, keyPrefix, Default_GEDSFolderDelimiter);
+}
+
+absl::Status MetadataService::createOrUpdateObjectStream() {
+  METADATASERVICE_CHECK_CONNECTED
+  geds::rpc::StatusResponse response;
+  grpc::ClientContext context;
+  const int objects = 10;
+
+  const std::string bucket = "geds";
+  const std::string key = "part-";
+  const std::string location = "somewhere/in/the/clouds";
+  const uint64_t size = 1000;
+  const uint64_t sealed_offset = 1000;
+
+  std::unique_ptr<grpc::ClientWriter<geds::rpc::Object>> writer(
+      _stub->CreateOrUpdateObjectStream(&context, &response));
+  for (int i = 0; i < objects; i++) {
+
+    geds::rpc::Object request;
+    auto id = request.mutable_id();
+    id->set_bucket(bucket);
+    auto newKey = key + std::to_string(i);
+    id->set_key(newKey);
+    auto info = request.mutable_info();
+    info->set_location(location);
+    info->set_size(size);
+    info->set_sealedoffset(sealed_offset);
+
+    if (!writer->Write(request)) {
+      // Broken stream.
+      break;
+    }
+  }
+  writer->WritesDone();
+  auto status = writer->Finish();
+  if (!status.ok()) {
+    return absl::InternalError(status.error_message());
+  }
+  return absl::OkStatus();
+}
+
+absl::Status MetadataService::subscribe(const geds::SubscriptionEvent &event) {
+  METADATASERVICE_CHECK_CONNECTED
+
+  geds::rpc::SubscriptionEvent subscription_event;
+  geds::rpc::StatusResponse response;
+  grpc::ClientContext context;
+
+  subscription_event.set_subscriberid(uuid);
+  subscription_event.set_bucketid(std::string{event.bucket});
+  subscription_event.set_key(std::string{event.key});
+  subscription_event.set_subscriptiontype(event.subscriptionType);
+
+  auto status = _stub->Subscribe(&context, subscription_event, &response);
+  if (!status.ok()) {
+    return absl::UnavailableError("Unable to execute CreateBucket command: " +
+                                  status.error_message());
+  }
+  return convertStatus(response);
+}
+
+absl::Status MetadataService::subscribeStream() {
+  METADATASERVICE_CHECK_CONNECTED
+  geds::rpc::SubscriptionStreamEvent subscription_stream_event;
+  geds::rpc::Object subscription_response;
+  grpc::ClientContext context;
+
+  subscription_stream_event.set_subscriberid(uuid);
+
+  std::unique_ptr<grpc::ClientReader<geds::rpc::Object>> reader(
+      _stub->SubscribeStream(&context, subscription_stream_event));
+
+  while (reader->Read(&subscription_response)) {
+    LOG_DEBUG("Got subscription: ", subscription_response.id().key());
+  }
+  auto status = reader->Finish();
+  if (!status.ok()) {
+    return absl::InternalError(status.error_message());
+  }
+  return absl::OkStatus();
+}
+
+absl::Status MetadataService::unsubscribe(const geds::SubscriptionEvent &event) {
+  METADATASERVICE_CHECK_CONNECTED
+  geds::rpc::SubscriptionEvent subscription_event;
+  geds::rpc::StatusResponse response;
+  grpc::ClientContext context;
+
+  subscription_event.set_subscriberid(uuid);
+  subscription_event.set_bucketid(std::string{event.bucket});
+  subscription_event.set_key(std::string{event.key});
+  subscription_event.set_subscriptiontype(event.subscriptionType);
+
+  auto status = _stub->Unsubscribe(&context, subscription_event, &response);
+  if (!status.ok()) {
+    return absl::UnavailableError("Unable to execute CreateBucket command: " +
+                                  status.error_message());
+  }
+  return convertStatus(response);
 }
 
 } // namespace geds

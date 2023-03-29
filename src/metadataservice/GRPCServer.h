@@ -12,11 +12,11 @@
 #include <absl/status/status.h>
 #include <grpcpp/grpcpp.h>
 
-#include "KVS.h"
+#include "MDSKVS.h"
 #include "Ports.h"
 
 class GRPCServer {
-  std::shared_ptr<KVS> _kvs;
+  std::shared_ptr<MDSKVS> _kvs;
   std::unique_ptr<grpc::Service> _grpcService;
   std::string _serverAddress;
 

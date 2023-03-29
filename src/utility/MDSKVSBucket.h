@@ -3,8 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef GEDS_KVSBUCKET_H
-#define GEDS_KVSBUCKET_H
+#pragma once
 
 #include <functional>
 #include <map>
@@ -16,31 +15,21 @@
 #include <utility>
 #include <vector>
 
+#include <absl/status/status.h>
 #include <absl/status/statusor.h>
 
-#include "Common.h"
 #include "Object.h"
 #include "Path.h"
+#include "RWConcurrentObjectAdaptor.h"
 
-class KVSBucket {
-  std::shared_mutex _mutex;
-
-  auto getReadLock() { return std::shared_lock<std::shared_mutex>(_mutex); }
-
-  auto getWriteLock() { return std::unique_lock<std::shared_mutex>(_mutex); }
-
-  class Container {
-    std::shared_mutex _m;
-
+class MDSKVSBucket : public utility::RWConcurrentObjectAdaptor {
+  class Container : public utility::RWConcurrentObjectAdaptor {
   public:
-    auto getReadLock() { return std::shared_lock<std::shared_mutex>(_m); }
-
-    auto getWriteLock() { return std::unique_lock<std::shared_mutex>(_m); }
     geds::ObjectInfo obj;
     Container(geds::ObjectInfo &&objArg) : obj(std::move(objArg)) {}
     Container(const geds::ObjectInfo objArg) : obj(std::move(objArg)) {}
 
-    Container(const KVSBucket &) = delete;
+    Container(const MDSKVSBucket &) = delete;
   };
 
   std::map<utility::Path, std::shared_ptr<Container>, std::less<>> _map;
@@ -49,9 +38,9 @@ class KVSBucket {
   std::string _name;
 
 public:
-  KVSBucket(const std::string &name);
+  MDSKVSBucket(const std::string &name);
 
-  ~KVSBucket();
+  ~MDSKVSBucket() = default;
 
   absl::Status createObject(const geds::Object &obj);
 
@@ -64,5 +53,3 @@ public:
   absl::StatusOr<std::pair<std::vector<geds::Object>, std::vector<std::string>>>
   listObjects(const std::string &keyPrefix, char delimiter = 0);
 };
-
-#endif // GEDS_KVSBUCKET_H

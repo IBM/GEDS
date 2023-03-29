@@ -27,7 +27,7 @@ add_library(geds_proto STATIC
         "${_gRPC_PROTO_GENS_DIR}/status.pb.cc"
         "${_gRPC_PROTO_GENS_DIR}/status.pb.h"
         "${_gRPC_PROTO_GENS_DIR}/status_mock.grpc.pb.h"
-)
+        PubSub.h)
 target_link_libraries(geds_proto
         PUBLIC
         ${Protobuf_LIBRARIES}

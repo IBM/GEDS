@@ -17,8 +17,10 @@
 #include <grpcpp/grpcpp.h>
 
 #include "GEDSInternal.h"
+#include "MDSKVS.h"
 #include "Object.h"
 #include "ObjectStoreConfig.h"
+#include "PubSub.h"
 
 #include "geds.grpc.pb.h"
 
@@ -26,8 +28,10 @@ namespace geds {
 
 class MetadataService {
   ConnectionState _connectionState;
+  MDSKVS _mdsCache;
   std::shared_ptr<grpc::Channel> _channel;
   std::unique_ptr<geds::rpc::MetadataService::Stub> _stub;
+  std::string uuid;
 
 public:
   const std::string serverAddress;
@@ -65,8 +69,9 @@ public:
   absl::Status deleteObjectPrefix(const geds::ObjectID &id);
   absl::Status deleteObjectPrefix(const std::string &bucket, const std::string &key);
 
-  absl::StatusOr<geds::Object> lookup(const geds::ObjectID &id);
-  absl::StatusOr<geds::Object> lookup(const std::string &bucket, const std::string &key);
+  absl::StatusOr<geds::Object> lookup(const geds::ObjectID &id, bool invalidate = false);
+  absl::StatusOr<geds::Object> lookup(const std::string &bucket, const std::string &key,
+                                      bool invalidate = false);
 
   /**
    * @brief List objects in `bucket` starting with `key` as prefix.
@@ -87,6 +92,11 @@ public:
    */
   absl::StatusOr<std::pair<std::vector<geds::Object>, std::vector<std::string>>>
   listFolder(const std::string &bucket, const std::string &keyPrefix);
+
+  absl::Status createOrUpdateObjectStream();
+  absl::Status subscribe(const geds::SubscriptionEvent &event);
+  absl::Status subscribeStream();
+  absl::Status unsubscribe(const geds::SubscriptionEvent &event);
 };
 
 } // namespace geds
