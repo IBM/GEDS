@@ -24,6 +24,7 @@ cd "${BUILD_FOLDER}"
 
 cmake -S "${SOURCE_FOLDER}" -B "${BUILD_FOLDER}" -G Ninja \
          -DUSE_EXTERNAL_GRPC=ON \
+         -DHAVE_PROMETHEUS_HISTOGRAM_BUCKETS=1 \
          -DCMAKE_CXX_COMPILER=/usr/bin/clang++ \
          -DCMAKE_C_COMPILER=/usr/bin/clang  \
          -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} \
