@@ -15,6 +15,7 @@ absl::Status GEDSConfig::set(const std::string &key, const std::string &value) {
   } else if (key == "local_storage_path") {
     localStoragePath = value;
   } else {
+    LOG_ERROR("Configuration " + key + " not supported (type: string).");
     return absl::NotFoundError("Key " + key + " not found.");
   }
   LOG_INFO("Set '", key, "' to '", value, "'");
@@ -42,6 +43,7 @@ absl::Status GEDSConfig::set(const std::string &key, size_t value) {
   } else if (key == "cache_block_size") {
     cacheBlockSize = value;
   } else {
+    LOG_ERROR("Configuration " + key + " not supported (type: signed/unsigned integer).");
     return absl::NotFoundError("Key " + key + " not found.");
   }
   LOG_INFO("Set '", key, "' to '", value, "'");
@@ -67,6 +69,7 @@ absl::StatusOr<std::string> GEDSConfig::getString(const std::string &key) const 
   if (key == "local_storage_path") {
     return localStoragePath;
   }
+  LOG_ERROR("Configuration " + key + " not supported (type: string).");
   return absl::NotFoundError("Key " + key + " not found.");
 }
 
@@ -81,6 +84,7 @@ absl::StatusOr<size_t> GEDSConfig::getUnsignedInt(const std::string &key) const 
   if (key == "cache_block_size") {
     return cacheBlockSize;
   }
+  LOG_ERROR("Configuration " + key + " not supported (type: signed/unsigned integer).");
   return absl::NotFoundError("Key " + key + " not found.");
 }
 
