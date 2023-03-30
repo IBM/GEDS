@@ -45,19 +45,25 @@ docker build -t geds-build_${DOCKER_BUILD_TARGET}:${GIT_REVISION} \
     --build-arg DOCKER_BUILD_TARGET=${DOCKER_BUILD_TARGET} \
     -f docker/Dockerfile-build .
 
+REGISTRY="${REGISTRY:-zac32.zurich.ibm.com}"
+PREFIX="${PREFIX:-${USER}}"
 
 IMAGE_BUILD="geds-build_${DOCKER_BUILD_TARGET}:${GIT_REVISION}"
 
-docker tag $IMAGE_BUILD geds-build_${DOCKER_BUILD_TARGET}:latest
+docker tag $IMAGE_BUILD ${REGISTRY}/${PREFIX}/geds-build_${DOCKER_BUILD_TARGET}:latest
 
 #docker build -t ${IMAGE_NAME}:${GIT_REVISION} \
 #    --build-arg GIT_REVISION=${GIT_REVISION} \
 #    -f docker/Dockerfile_${DOCKER_BUILD_TARGET} .
-#
-#docker tag ${IMAGE_NAME}:${GIT_REVISION} $IMAGE:latest
-#docker tag ${IMAGE_NAME}:${GIT_REVISION} $IMAGE:${GEDS_VERSION}
+
+#docker tag ${IMAGE_NAME}:${GIT_REVISION} $IMAGE_NAME:latest
+#docker tag ${IMAGE_NAME}:${GIT_REVISION} $IMAGE_NAME:${GEDS_VERSION}
 #docker push ${IMAGE_NAME}:latest
 #docker push ${IMAGE_NAME}:${GEDS_VERSION}
+
+
+
+docker push ${REGISTRY}/${PREFIX}/geds-build_${DOCKER_BUILD_TARGET}:latest
 
 
 

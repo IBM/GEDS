@@ -293,7 +293,9 @@ add_subdirectory(src)
 
 add_custom_target(build-all
     DEPENDS
-#    benchmark
+    benchmark_io
+    shuffle_read
+    shuffle_serve
     geds
     geds_cmd
     metadataserver
