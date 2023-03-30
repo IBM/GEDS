@@ -688,6 +688,12 @@ bool TcpTransport::activateEndpoint(std::shared_ptr<TcpEndpoint> tep,
   ep_id.id.sock = tep->sock;
   ep_id.id.peer_id = peer->getId();
 
+  int no = 1;
+  if (setsockopt(sock, SOL_TCP, TCP_NODELAY, &no, sizeof(no))) {
+    perror("setsockopt nodelay");
+    return false;
+  }
+
   ev.events = EPOLLIN | EPOLLHUP | EPOLLRDHUP | EPOLLERR;
   ev.data.u64 = ep_id.data;
   if (epoll_ctl(epoll_rfd[thread_id], EPOLL_CTL_ADD, sock, &ev) != 0) {

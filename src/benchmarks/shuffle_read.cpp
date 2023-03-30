@@ -3,9 +3,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include <absl/flags/flag.h>
-#include <absl/flags/parse.h>
-#include <absl/status/status.h>
 #include <algorithm>
 #include <chrono>
 #include <cstdint>
@@ -17,6 +14,10 @@
 #include <string>
 #include <unistd.h>
 #include <vector>
+
+#include <absl/flags/flag.h>
+#include <absl/flags/parse.h>
+#include <absl/status/status.h>
 
 #include "GEDS.h"
 #include "GEDSFile.h"
@@ -93,8 +94,10 @@ void runExecutorThread(std::shared_ptr<GEDS> geds, const std::string &bucket, si
 
 int main(int argc, char **argv) {
   absl::ParseCommandLine(argc, argv);
-  auto geds = GEDS::factory(FLAGS_address.CurrentValue(), FLAGS_gedsRoot.CurrentValue(),
-                            std::nullopt, absl::GetFlag(FLAGS_localPort));
+  auto config = GEDSConfig(FLAGS_address.CurrentValue());
+  config.port = absl::GetFlag(FLAGS_localPort);
+  config.localStoragePath = FLAGS_gedsRoot.CurrentValue();
+  auto geds = GEDS::factory(config);
   absl::Status status;
   status = geds->start();
   if (!status.ok()) {

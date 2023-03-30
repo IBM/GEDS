@@ -28,6 +28,7 @@
 #include "FileTransferService.h"
 #include "Filesystem.h"
 #include "GEDSCachedFileHandle.h"
+#include "GEDSConfig.h"
 #include "GEDSFile.h"
 #include "GEDSFileHandle.h"
 #include "GEDSFileStatus.h"
@@ -51,21 +52,11 @@ static std::string computeHostUri(const std::string &hostname, uint16_t port) {
   return "geds://" + hostname + ":" + std::to_string(port);
 }
 
-static std::string handlePathPrefix(std::optional<std::string> &path) {
-  auto computedPath = path.value_or("/tmp/GEDS_XXXXXX");
-  if (computedPath.ends_with("XXXXXX")) {
-    return geds::filesystem::mktempdir(computedPath);
-  }
-  return computedPath;
-}
-
-GEDS::GEDS(std::string metadataServiceAddress, std::optional<std::string> pathPrefix,
-           std::optional<std::string> hostname, std::optional<uint16_t> portArg,
-           std::optional<size_t> blockSizeArg)
-    : std::enable_shared_from_this<GEDS>(), _server(hostname.value_or("0.0.0.0"), portArg),
-      _metadataService(std::move(metadataServiceAddress)),
-      _pathPrefix(handlePathPrefix(pathPrefix)), _hostname(hostname.value_or("")),
-      _httpServer(defaultPrometheusPort), blockSize(blockSizeArg.value_or(Default_BlockSize)) {
+GEDS::GEDS(GEDSConfig &&argConfig)
+    : std::enable_shared_from_this<GEDS>(), _config(argConfig),
+      _server(_config.listenAddress, _config.port),
+      _metadataService(_config.metadataServiceAddress), _pathPrefix(_config.localStoragePath),
+      _hostname(_config.hostname.value_or("")), _httpServer(_config.portHttpServer) {
   std::error_code ec;
   auto success = std::filesystem::create_directories(_pathPrefix, ec);
   if (!success && ec.value() != 0) {
@@ -75,13 +66,17 @@ GEDS::GEDS(std::string metadataServiceAddress, std::optional<std::string> pathPr
   }
 }
 
-std::shared_ptr<GEDS> GEDS::factory(std::string metadataServiceAddress,
-                                    std::optional<std::string> pathPrefix,
-                                    std::optional<std::string> hostname,
-                                    std::optional<uint16_t> port, std::optional<size_t> blockSize) {
+static std::string computeLocalStoragePath(std::string path) {
+  if (path.ends_with("XXXXXX")) {
+    return geds::filesystem::mktempdir(path);
+  }
+  return path;
+}
+
+std::shared_ptr<GEDS> GEDS::factory(GEDSConfig config) {
+  config.localStoragePath = computeLocalStoragePath(config.localStoragePath);
   // Call private CTOR.
-  return std::make_shared<GEDS>(std::move(metadataServiceAddress), std::move(pathPrefix),
-                                std::move(hostname), port, blockSize);
+  return std::make_shared<GEDS>(std::move(config));
 }
 
 GEDS::~GEDS() {

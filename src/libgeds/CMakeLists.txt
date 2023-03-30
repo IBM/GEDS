@@ -20,6 +20,8 @@ SET(SOURCES
         GEDSAbstractFileHandle.h
         GEDSCachedFileHandle.cpp
         GEDSCachedFileHandle.h
+        GEDSConfig.h
+        GEDSConfig.cpp
         GEDSFile.h
         GEDSFile.cpp
         GEDSFileHandle.h

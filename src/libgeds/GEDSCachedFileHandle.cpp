@@ -23,7 +23,7 @@ GEDSCachedFileHandle::GEDSCachedFileHandle(std::shared_ptr<GEDS> gedsService, st
                                            std::string keyArg,
                                            std::shared_ptr<GEDSFileHandle> remoteFileHandle)
     : GEDSFileHandle(gedsService, std::move(bucketArg), std::move(keyArg)),
-      _remoteFileHandle(remoteFileHandle), _blockSize(gedsService->blockSize) {
+      _remoteFileHandle(remoteFileHandle), _blockSize(gedsService->config().cacheBlockSize) {
   static auto counter = geds::Statistics::createCounter("GEDSCachedFileHandle: count");
   *counter += 1;
 

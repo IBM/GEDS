@@ -47,9 +47,13 @@ public:
 
   [[nodiscard]] const std::string &path() const { return _path; }
 
+  void notifyUnused();
+
   [[nodiscard]] size_t size() const { return _size; }
 
   absl::StatusOr<int> rawFd() const;
+
+  absl::StatusOr<uint8_t *> rawPtr();
 
   absl::StatusOr<size_t> readBytes(uint8_t *bytes, size_t position, size_t length);
 
