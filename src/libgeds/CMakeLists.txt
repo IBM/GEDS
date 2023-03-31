@@ -73,6 +73,7 @@ target_compile_definitions(geds_objlib
 target_include_directories(geds_objlib
         PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}
+        ${Boost_INCLUDE_DIRS}
 )
 target_link_libraries(geds_objlib
         PUBLIC

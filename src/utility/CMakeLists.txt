@@ -24,7 +24,7 @@ add_library(geds_utility STATIC ${SOURCES})
 target_include_directories(geds_utility
         PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}
-        ${BOOST_INCLUDE_DIRS}
+        ${Boost_INCLUDE_DIRS}
 )
 target_compile_options(geds_utility PUBLIC ${GEDS_EXTRA_COMPILER_FLAGS})
 set_target_properties(geds_utility

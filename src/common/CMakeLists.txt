@@ -21,6 +21,7 @@ target_compile_definitions(geds_common
 target_include_directories(geds_common
         PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}
+        ${Boost_INCLUDE_DIRS}
 )
 set_target_properties(geds_common
         PROPERTIES
