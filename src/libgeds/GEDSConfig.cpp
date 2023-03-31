@@ -34,7 +34,7 @@ absl::Status GEDSConfig::set(const std::string &key, size_t value) {
                                         key);
     }
     port = value;
-  } else if ("http_server_port") {
+  } else if (key == "http_server_port") {
     if (value > INT16_MAX) {
       return absl::InvalidArgumentError("Value " + std::to_string(value) + " is out of range for " +
                                         key);
