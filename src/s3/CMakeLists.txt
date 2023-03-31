@@ -28,6 +28,7 @@ target_include_directories(geds_s3
     PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${AWSSDK_INCLUDE_DIRS}
+    ${Boost_INCLUDE_DIRS}
 )
 set_target_properties(geds_s3
     PROPERTIES
