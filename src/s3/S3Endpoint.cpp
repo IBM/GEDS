@@ -263,11 +263,15 @@ absl::Status Endpoint::putObject(const std::string &bucket, const std::string &k
 }
 
 absl::Status Endpoint::putObject(const std::string &bucket, const std::string &key,
-                                 std::shared_ptr<std::iostream> stream) {
+                                 std::shared_ptr<std::iostream> stream,
+                                 std::optional<size_t> length) {
   Aws::S3::Model::PutObjectRequest request;
   request.SetBucket(bucket);
   request.SetKey(key);
   request.SetBody(stream);
+  if (length.has_value()) {
+    request.SetContentLength(*length);
+  }
   request.SetContentType("application/octet-stream");
 
   *totalRequestsSent += 1;
