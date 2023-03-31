@@ -697,7 +697,7 @@ absl::Status GEDS::registerObjectStoreConfig(const std::string &bucket,
                                              const std::string &secretKey) {
   auto status = _metadataService.registerObjectStoreConfig(
       ObjectStoreConfig(bucket, endpointUrl, accessKey, secretKey));
-  if (!status.ok()) {
+  if (!status.ok() && status.code() != absl::StatusCode::kAlreadyExists) {
     return status;
   }
   status = createBucket(bucket);
@@ -711,13 +711,14 @@ absl::Status GEDS::registerObjectStoreConfig(const std::string &bucket,
 absl::Status GEDS::syncObjectStoreConfigs() {
   auto configs = _metadataService.listObjectStoreConfigs();
   if (!configs.ok()) {
+    LOG_ERROR("Unable to list object store: ", configs.status().message());
     return configs.status();
   }
   for (const auto &c : configs.value()) {
     auto status =
         _objectStores.registerStore(c->bucket, c->endpointURL, c->accessKey, c->secretKey);
     if (!status.ok()) {
-      return status;
+      LOG_ERROR("Unable to setup object store for ", c->bucket, ": ", status.message());
     }
   }
   return absl::OkStatus();
