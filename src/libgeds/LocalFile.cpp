@@ -17,6 +17,7 @@
 #include <unistd.h>
 #include <vector>
 
+#include "Filesystem.h"
 #include "Logging.h"
 
 #define CHECK_FILE_OPEN                                                                            \
@@ -52,14 +53,14 @@ LocalFile::LocalFile(std::string pathArg, bool overwrite) : _path(std::move(path
 
 LocalFile::~LocalFile() {
   if (_fd >= 0) {
-    if (fsync(_fd) != 0) {
-      int error = errno;
-      auto message = "Fsync on " + _path + " reported: " + strerror(error);
-      LOG_ERROR(message);
-    }
     (void)::close(_fd);
+    _fd = -1;
+
+    auto removeStatus = removeFile(_path);
+    if (!removeStatus.ok()) {
+      LOG_ERROR("Unable to delete ", _path, " reason: ", removeStatus.message());
+    }
   }
-  _fd = -1;
 }
 
 void LocalFile::notifyUnused() {
