@@ -5,8 +5,8 @@
 
 #pragma once
 
-#include "KVS.h"
+#include "MDSKVS.h"
 #include "ObjectStoreConfig.h"
 #include "ObjectStoreHandler.h"
 
-absl::Status PopulateKVS(std::shared_ptr<geds::ObjectStoreConfig> config, std::shared_ptr<KVS> kvs);
+absl::Status PopulateKVS(std::shared_ptr<geds::ObjectStoreConfig> config, std::shared_ptr<MDSKVS> kvs);

@@ -22,13 +22,6 @@ class MDSKVS : public utility::RWConcurrentObjectAdaptor {
 private:
   std::map<std::string, std::shared_ptr<MDSKVSBucket>> _map;
 
-  std::shared_lock<std::shared_mutex> getReadLock() {
-    return std::shared_lock<std::shared_mutex>(_mutex);
-  }
-
-  std::unique_lock<std::shared_mutex> getWriteLock() {
-    return std::unique_lock<std::shared_mutex>(_mutex);
-  }
 public:
   MDSKVS();
 
@@ -92,11 +85,9 @@ public:
    */
   absl::StatusOr<std::pair<std::vector<geds::Object>, std::vector<std::string>>>
   listObjects(const geds::ObjectID &id, char delimiter = 0);
+  absl::StatusOr<std::pair<std::vector<geds::Object>, std::vector<std::string>>>
+  listObjects(const std::string &bucket, const std::string &prefix, char delimiter = 0);
 
   absl::StatusOr<std::shared_ptr<MDSKVSBucket>> getBucket(const std::string &bucket);
   absl::StatusOr<std::shared_ptr<MDSKVSBucket>> getBucket(const geds::ObjectID &id);
-};
-
-  absl::StatusOr<std::pair<std::vector<geds::Object>, std::vector<std::string>>>
-  listObjects(const std::string &bucket, const std::string &prefix, char delimiter = 0);
 };

@@ -6,13 +6,14 @@
 #include "S3Helper.h"
 
 #include <map>
+#include <optional>
 
 #include "Logging.h"
 #include "Object.h"
 #include "S3Endpoint.h"
 
 absl::Status PopulateKVS(std::shared_ptr<geds::ObjectStoreConfig> config,
-                         std::shared_ptr<KVS> kvs) {
+                         std::shared_ptr<MDSKVS> kvs) {
   // Ensure the bucket already exists
   {
     auto status = kvs->createBucket(config->bucket);
@@ -25,7 +26,7 @@ absl::Status PopulateKVS(std::shared_ptr<geds::ObjectStoreConfig> config,
     return bucket.status();
   }
   auto s3Endpoint = geds::s3::Endpoint(config->endpointURL, config->accessKey, config->secretKey);
-  auto files = s3Endpoint.list(config->bucket, "");
+  auto files = s3Endpoint.list(config->bucket, "/");
   if (!files.ok()) {
     LOG_ERROR("Unable to list s3 endpoint for ", config->bucket, ": ", files.status().message());
     return files.status();
@@ -39,6 +40,7 @@ absl::Status PopulateKVS(std::shared_ptr<geds::ObjectStoreConfig> config,
         .location = "s3://" + config->bucket + "/" + f.key,
         .size = f.size,
         .sealedOffset = f.size,
+        .metadata = std::nullopt
     };
     auto status = (*bucket)->createObject(
         geds::Object{.id = geds::ObjectID{config->bucket, f.key}, .info = objInfo});

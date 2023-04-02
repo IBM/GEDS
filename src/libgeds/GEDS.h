@@ -87,7 +87,7 @@ protected:
    */
   utility::ConcurrentMap<utility::Path, std::shared_ptr<GEDSFileHandle>, std::less<>> _fileHandles;
   inline utility::Path getPath(const std::string &bucket, const std::string &key) {
-    return {bucket + "/" + key};
+    return {bucket + key};
   }
   utility::ConcurrentMap<std::string, std::shared_ptr<geds::FileTransferService>> _fileTransfers;
 
@@ -152,10 +152,10 @@ public:
    * @brief Create object located at bucket/key.
    * The object is registered with the metadata service once the file is sealed.
    */
-  absl::StatusOr<GEDSFile> create(const std::string &bucket, const std::string &key,
+  absl::StatusOr<GEDSFile> create(const std::string &bucket, std::string key,
                                   bool overwrite = false);
   absl::StatusOr<std::shared_ptr<GEDSFileHandle>>
-  createAsFileHandle(const std::string &bucket, const std::string &key, bool overwrite = false);
+  createAsFileHandle(const std::string &bucket, std::string key, bool overwrite = false);
 
   /**
    * @brief Recursively create directory using directory markers.
@@ -173,9 +173,9 @@ public:
   /**
    * @brief Open object located at bucket/key.
    */
-  absl::StatusOr<GEDSFile> open(const std::string &bucket, const std::string &key);
+  absl::StatusOr<GEDSFile> open(const std::string &bucket, std::string key);
   absl::StatusOr<std::shared_ptr<GEDSFileHandle>>
-  openAsFileHandle(const std::string &bucket, const std::string &key, bool invalidate = false);
+  openAsFileHandle(const std::string &bucket, std::string key, bool invalidate = false);
 
   /**
    * @brief Mark the file associated with fileHandle as sealed.
@@ -197,8 +197,8 @@ public:
    * separator. Keys ending with "/_$folder$" will be used as directory markers (where '/' is used
    * as a delimiter).
    */
-  absl::StatusOr<std::vector<GEDSFileStatus>> list(const std::string &bucket,
-                                                   const std::string &prefix, char delimiter);
+  absl::StatusOr<std::vector<GEDSFileStatus>> list(const std::string &bucket, std::string prefix,
+                                                   char delimiter);
 
   /**
    * @brief List objects in `bucket` with `/` acting as delimiter.
@@ -210,32 +210,31 @@ public:
    * @brief Get status of `key` in `bucket`.
    */
   absl::StatusOr<GEDSFileStatus> status(const std::string &bucket, const std::string &key);
-  absl::StatusOr<GEDSFileStatus> status(const std::string &bucket, const std::string &key,
-                                        char delimiter);
+  absl::StatusOr<GEDSFileStatus> status(const std::string &bucket, std::string key, char delimiter);
 
   /**
    * @brief Rename a prefix recursively.
    */
   absl::Status renamePrefix(const std::string &bucket, const std::string &srcPrefix,
                             const std::string &destPrefix);
-  absl::Status renamePrefix(const std::string &srcBucket, const std::string &srcPrefix,
-                            const std::string &destPrefix, const std::string &destKey);
+  absl::Status renamePrefix(const std::string &srcBucket, std::string srcPrefix,
+                            const std::string &destPrefix, std::string destKey);
 
   /**
    * @brief Rename an object.
    */
   absl::Status rename(const std::string &bucket, const std::string &srcKey,
                       const std::string &destKey);
-  absl::Status rename(const std::string &srcBucket, const std::string &srcKey,
-                      const std::string &destBucket, const std::string &destKey);
+  absl::Status rename(const std::string &srcBucket, std::string srcKey,
+                      const std::string &destBucket, std::string destKey);
 
   /**
    * @brief Copy a file or a folder structure.
    */
   absl::Status copyPrefix(const std::string &bucket, const std::string &srcPrefix,
                           const std::string &destPrefix);
-  absl::Status copyPrefix(const std::string &srcBucket, const std::string &srcPrefix,
-                          const std::string &destPrefix, const std::string &destKey);
+  absl::Status copyPrefix(const std::string &srcBucket, std::string srcPrefix,
+                          const std::string &destPrefix, std::string destKey);
 
   /**
    * @brief Copy an object.
@@ -249,13 +248,13 @@ public:
    * @brief Delete object in `bucket` with `key`.
    * @returns absl::OkStatus if the operation has been successful or not objects have been deleted.
    */
-  absl::Status deleteObject(const std::string &bucket, const std::string &key);
+  absl::Status deleteObject(const std::string &bucket, std::string key);
 
   /**
    * @brief Delete objects in `bucket` with keys starting with `prefix`.
    * @returns absl::OkStatus if the operation has been successful or not objects have been deleted.
    */
-  absl::Status deleteObjectPrefix(const std::string &bucket, const std::string &prefix);
+  absl::Status deleteObjectPrefix(const std::string &bucket, std::string prefix);
 
   /**
    * @brief Compute the path to the files stored in `_pathPrefix` folder.

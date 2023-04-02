@@ -52,6 +52,13 @@ static std::string computeHostUri(const std::string &hostname, uint16_t port) {
   return "geds://" + hostname + ":" + std::to_string(port);
 }
 
+static inline std::string stripDelimiter(const std::string &key) {
+  if (key.size() > 0 && key[0] == Default_GEDSFolderDelimiter) {
+    return key.substr(1);
+  }
+  return key;
+}
+
 GEDS::GEDS(GEDSConfig &&argConfig)
     : std::enable_shared_from_this<GEDS>(), _config(argConfig),
       _server(_config.listenAddress, _config.port),
@@ -216,8 +223,9 @@ absl::Status GEDS::isValid(const std::string &bucket, const std::string &key) {
   return absl::OkStatus();
 }
 
-absl::StatusOr<GEDSFile> GEDS::create(const std::string &bucket, const std::string &key,
-                                      bool overwrite) {
+absl::StatusOr<GEDSFile> GEDS::create(const std::string &bucket, std::string key, bool overwrite) {
+  key = stripDelimiter(key);
+
   LOG_DEBUG("create ", bucket, "/", key);
   auto result = createAsFileHandle(bucket, key, overwrite);
   if (result.ok()) {
@@ -228,8 +236,10 @@ absl::StatusOr<GEDSFile> GEDS::create(const std::string &bucket, const std::stri
 }
 
 absl::StatusOr<std::shared_ptr<GEDSFileHandle>>
-GEDS::createAsFileHandle(const std::string &bucket, const std::string &key, bool overwrite) {
+GEDS::createAsFileHandle(const std::string &bucket, std::string key, bool overwrite) {
   GEDS_CHECK_SERVICE_RUNNING
+
+  key = stripDelimiter(key);
 
   const auto check = GEDS::isValid(bucket, key);
   if (!check.ok()) {
@@ -264,7 +274,8 @@ absl::Status GEDS::mkdirs(const std::string &bucket, const std::string &path, ch
   if (path.back() != delimiter) {
     return mkdirs(bucket, path + delimiter);
   }
-  auto folderPath = path + Default_DirectoryMarker;
+  std::string folderPath = stripDelimiter(path) + Default_DirectoryMarker;
+
   LOG_DEBUG("Creating ", bucket, "/", folderPath);
   auto mkdir = create(bucket, folderPath);
   if (!mkdir.ok() && mkdir.status().code() != absl::StatusCode::kAlreadyExists) {
@@ -314,7 +325,9 @@ absl::Status GEDS::lookupBucket(const std::string &bucket) {
   return absl::OkStatus();
 }
 
-absl::StatusOr<GEDSFile> GEDS::open(const std::string &bucket, const std::string &key) {
+absl::StatusOr<GEDSFile> GEDS::open(const std::string &bucket, std::string key) {
+  key = stripDelimiter(key);
+
   LOG_DEBUG("open ", bucket, "/", key);
   auto fh = openAsFileHandle(bucket, key);
   if (fh.ok()) {
@@ -324,8 +337,10 @@ absl::StatusOr<GEDSFile> GEDS::open(const std::string &bucket, const std::string
   return fh.status();
 }
 
-absl::StatusOr<std::shared_ptr<GEDSFileHandle>>
-GEDS::openAsFileHandle(const std::string &bucket, const std::string &key, bool invalidate) {
+absl::StatusOr<std::shared_ptr<GEDSFileHandle>> GEDS::openAsFileHandle(const std::string &bucket,
+                                                                       std::string key, bool invalidate) {
+  key = stripDelimiter(key);
+
   const auto path = getPath(bucket, key);
 
   GEDS_CHECK_SERVICE_RUNNING
@@ -417,7 +432,7 @@ absl::Status GEDS::seal(GEDSFileHandle &fileHandle, bool update, size_t size,
 }
 
 std::string GEDS::getLocalPath(const std::string &bucket, const std::string &key) const {
-  auto postfix = bucket + "/" + key;
+  auto postfix = bucket + key;
   auto exists = _fileNames.get(postfix);
   if (exists.has_value()) {
     return _pathPrefix + "/" + bucket + "/" + std::to_string(*exists);
@@ -437,7 +452,9 @@ absl::StatusOr<std::vector<GEDSFileStatus>> GEDS::list(const std::string &bucket
 }
 
 absl::StatusOr<std::vector<GEDSFileStatus>> GEDS::list(const std::string &bucket,
-                                                       const std::string &prefix, char delimiter) {
+                                                       std::string prefix, char delimiter) {
+  prefix = stripDelimiter(prefix);
+
   bool prefixExists = false;
   auto list = _metadataService.listPrefix(bucket, prefix, delimiter);
   if (!list.ok()) {
@@ -474,8 +491,10 @@ absl::StatusOr<GEDSFileStatus> GEDS::status(const std::string &bucket, const std
   return status(bucket, key, Default_GEDSFolderDelimiter);
 }
 
-absl::StatusOr<GEDSFileStatus> GEDS::status(const std::string &bucket, const std::string &key,
+absl::StatusOr<GEDSFileStatus> GEDS::status(const std::string &bucket, std::string key,
                                             char delimiter) {
+  key = stripDelimiter(key);
+
   // Base case: Empty key, or key matching `/`.
   if (key.size() == 0 || (key.size() == 1 && key[0] == delimiter)) {
     auto isRegistered = lookupBucket(bucket);
@@ -533,9 +552,12 @@ absl::Status GEDS::renamePrefix(const std::string &bucket, const std::string &sr
   return renamePrefix(bucket, srcKey, bucket, destKey);
 }
 
-absl::Status GEDS::renamePrefix(const std::string &srcBucket, const std::string &srcKey,
-                                const std::string &destBucket, const std::string &destKey) {
-  LOG_DEBUG("rename", srcBucket, "/", srcKey, " to ", destBucket, "/", destKey);
+absl::Status GEDS::renamePrefix(const std::string &srcBucket, std::string srcKey,
+                                const std::string &destBucket, std::string destKey) {
+  srcKey = stripDelimiter(srcKey);
+  destKey = stripDelimiter(destKey);
+
+  LOG_DEBUG("rename", srcBucket, srcKey, " to ", destBucket, destKey);
   auto prefixList = list(srcBucket, srcKey);
   if (!prefixList.ok()) {
     return prefixList.status();
@@ -558,8 +580,11 @@ absl::Status GEDS::rename(const std::string &bucket, const std::string &srcKey,
                           const std::string &destKey) {
   return rename(bucket, srcKey, bucket, destKey);
 }
-absl::Status GEDS::rename(const std::string &srcBucket, const std::string &srcKey,
-                          const std::string &destBucket, const std::string &destKey) {
+absl::Status GEDS::rename(const std::string &srcBucket, std::string srcKey,
+                          const std::string &destBucket, std::string destKey) {
+  srcKey = stripDelimiter(srcKey);
+  destKey = stripDelimiter(destKey);
+
   // ToDo: Actually move the files.
   auto status = copy(srcBucket, srcKey, destBucket, destKey);
   if (!status.ok()) {
@@ -573,8 +598,11 @@ absl::Status GEDS::copyPrefix(const std::string &bucket, const std::string &srcK
   return copyPrefix(bucket, srcKey, bucket, destKey);
 }
 
-absl::Status GEDS::copyPrefix(const std::string &srcBucket, const std::string &srcKey,
-                              const std::string &destBucket, const std::string &destKey) {
+absl::Status GEDS::copyPrefix(const std::string &srcBucket, std::string srcKey,
+                              const std::string &destBucket, std::string destKey) {
+  srcKey = stripDelimiter(srcKey);
+  destKey = stripDelimiter(destKey);
+
   auto prefixList = list(srcBucket, srcKey);
   if (!prefixList.ok()) {
     return prefixList.status();
@@ -615,7 +643,9 @@ absl::Status GEDS::copy(const std::string &srcBucket, const std::string &srcKey,
   return status;
 }
 
-absl::Status GEDS::deleteObject(const std::string &bucket, const std::string &key) {
+absl::Status GEDS::deleteObject(const std::string &bucket, std::string key) {
+  key = stripDelimiter(key);
+
   LOG_DEBUG("DeleteObject ", bucket, "/", key);
   // Delete on metadata service.
   {
@@ -645,7 +675,9 @@ absl::Status GEDS::deleteObject(const std::string &bucket, const std::string &ke
   return absl::OkStatus();
 }
 
-absl::Status GEDS::deleteObjectPrefix(const std::string &bucket, const std::string &prefix) {
+absl::Status GEDS::deleteObjectPrefix(const std::string &bucket, std::string prefix) {
+  prefix = stripDelimiter(prefix);
+
   LOG_DEBUG("deleteObjectPrefix ", bucket, "/", prefix);
 
   // Delete on GEDS.
@@ -662,8 +694,7 @@ absl::Status GEDS::deleteObjectPrefix(const std::string &bucket, const std::stri
     if (storeStatus.ok()) {
       auto deleteStatus = storeStatus.value()->deletePrefix(bucket, prefix);
       if (!deleteStatus.ok()) {
-        LOG_ERROR("Unable to delete prefix ", bucket, "/", prefix,
-                  " on S3: ", deleteStatus.message());
+        LOG_ERROR("Unable to delete prefix ", bucket, prefix, " on S3: ", deleteStatus.message());
       }
     }
   }
