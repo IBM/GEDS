@@ -271,6 +271,11 @@ absl::Status GEDS::mkdirs(const std::string &bucket, const std::string &path, ch
     LOG_ERROR("Unable to create folder ", folderPath);
     return mkdir.status();
   }
+  auto status = mkdir->seal();
+  if (!status.ok() && status.code() != absl::StatusCode::kAlreadyExists) {
+    LOG_ERROR("Unable to seal directory marker: ", path, " reason: ", status.message());
+    return status;
+  }
   if (path.size() >= 2) {
     auto stripPos = path.substr(0, path.size() - 1).rfind(delimiter);
     if (stripPos == std::string::npos) {
@@ -369,24 +374,6 @@ GEDS::openAsFileHandle(const std::string &bucket, const std::string &key, bool i
   // File is not available locally. Lookup in metadata service instead.
   auto status_file = _metadataService.lookup(bucket, key, invalidate);
   if (!status_file.ok()) {
-    // The file is not registered.
-    // Try open file on s3:
-    auto s3FileHandle = GEDSCachedFileHandle::factory<GEDSS3FileHandle>(shared_from_this(), bucket,
-                                                                        key, std::nullopt);
-    if (s3FileHandle.ok()) {
-      // Use file handle registered with fileHandles object.
-      auto eexists = _fileHandles.insertOrExists(path, *s3FileHandle);
-      if (s3FileHandle->get() == eexists.get()) {
-        // Seal filehandle to avoid extranous lookups.
-        (void)eexists->seal();
-      }
-      return eexists;
-    }
-    // The file does not exist.
-    // Otherwise return not found from metadata service.
-    if (s3FileHandle.status().code() != absl::StatusCode::kNotFound) {
-      return s3FileHandle.status();
-    }
     return status_file.status();
   }
 
@@ -500,16 +487,6 @@ absl::StatusOr<std::vector<GEDSFileStatus>> GEDS::list(const std::string &bucket
   }
   for (const auto &prefix : list->second) {
     result.emplace(GEDSFileStatus{.key = prefix, .size = 0, .isDirectory = true});
-  }
-  auto extStatus = _objectStores.get(bucket);
-  if (extStatus.ok()) {
-    auto ext = extStatus.value();
-    auto s3status = ext->list(bucket, prefix, delimiter, result);
-    if (s3status.ok()) {
-      prefixExists = true;
-    } else {
-      return s3status;
-    }
   }
   if (result.empty() && delimiter && !prefixExists) {
     return absl::NotFoundError("Prefix not found: " + prefix);

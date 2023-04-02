@@ -23,6 +23,7 @@
 #include "ObjectStoreConfig.h"
 #include "ObjectStoreHandler.h"
 #include "ParseGRPC.h"
+#include "S3Helper.h"
 #include "Status.h"
 #include "Version.h"
 
@@ -74,8 +75,12 @@ protected:
     LOG_ACCESS("register object store ", request->endpointurl(), " for bucket ", request->bucket(),
                "'.");
 
-    auto status = _objectStoreHandler.insertConfig(std::make_shared<geds::ObjectStoreConfig>(
-        request->bucket(), request->endpointurl(), request->accesskey(), request->secretkey()));
+    auto config = std::make_shared<geds::ObjectStoreConfig>(
+        request->bucket(), request->endpointurl(), request->accesskey(), request->secretkey());
+    auto status = _objectStoreHandler.insertConfig(config);
+    if (status.ok()) {
+      status = PopulateKVS(config, _kvs);
+    }
     convertStatus(response, status);
 
     return grpc::Status::OK;
