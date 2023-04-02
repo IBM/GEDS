@@ -8,6 +8,8 @@ set(SOURCES
         GRPCServer.h
         ObjectStoreHandler.cpp
         ObjectStoreHandler.h
+        S3Helper.cpp
+        S3Helper.h
 )
 
 add_library(libmetadataservice STATIC ${SOURCES})
@@ -16,6 +18,7 @@ target_link_libraries(libmetadataservice
         ${GRPC_LIBRARIES}
         geds_utility
         geds_proto
+        geds_s3
 )
 target_compile_options(libmetadataservice PUBLIC ${GEDS_EXTRA_COMPILER_FLAGS})
 target_compile_definitions(libmetadataservice
