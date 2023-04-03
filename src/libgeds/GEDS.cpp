@@ -319,6 +319,18 @@ absl::StatusOr<GEDSFile> GEDS::open(const std::string &bucket, const std::string
   return fh.status();
 }
 
+absl::StatusOr<GEDSFile> GEDS::reOpen(const std::string &bucket, const std::string &key) {
+  GEDS_CHECK_SERVICE_RUNNING
+
+  const auto path = getPath(bucket, key);
+
+  auto fileHandle = _fileHandles.get(path);
+  if (fileHandle.has_value()) {
+    return (*fileHandle)->open();
+  }
+  return absl::NotFoundError(path.name + " is not available on this machine");
+}
+
 absl::StatusOr<std::shared_ptr<GEDSFileHandle>>
 GEDS::openAsFileHandle(const std::string &bucket, const std::string &key, bool invalidate) {
   const auto path = getPath(bucket, key);
