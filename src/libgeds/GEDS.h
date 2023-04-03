@@ -178,6 +178,11 @@ public:
   openAsFileHandle(const std::string &bucket, const std::string &key, bool invalidate = false);
 
   /**
+   * @brief Only open local files.
+   */
+  absl::StatusOr<GEDSFile> reOpen(const std::string &bucket, const std::string &key);
+
+  /**
    * @brief Mark the file associated with fileHandle as sealed.
    */
   absl::Status seal(GEDSFileHandle &fileHandle, bool update, size_t size,
