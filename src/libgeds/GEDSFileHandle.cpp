@@ -43,7 +43,9 @@ void GEDSFileHandle::decreaseOpenCount() {
   }
 }
 
-void GEDSFileHandle::notifyUnused() { LOG_DEBUG("The file ", identifier, " is unused."); }
+void GEDSFileHandle::notifyUnused() {
+//  LOG_DEBUG("The file ", identifier, " is unused.");
+}
 
 std::chrono::system_clock::time_point GEDSFileHandle::lastOpened() const { return _lastOpened; }
 std::chrono::system_clock::time_point GEDSFileHandle::lastReleased() const { return _lastReleased; }

@@ -285,10 +285,14 @@ public:
   absl::StatusOr<std::shared_ptr<geds::FileTransferService>>
   getFileTransferService(const std::string &hostname);
 
-  void testSubscribe();
-  void testSubscribeStream();
-  void testUnsubscribe();
-  void publishSubscriptions();
+  absl::Status subscribeStream(const std::string &uuid);
+  absl::Status subscribe(const geds::SubscriptionEvent &event, const std::string &subscriber_id);
+  absl::Status unsubscribe(const geds::SubscriptionEvent &event, const std::string &subscriber_id);
+
+//  void testSubscribe();
+//  void testSubscribeStream();
+//  void testUnsubscribe();
+//  void publishSubscriptions();
 };
 
 #endif // GEDS_GEDS_H

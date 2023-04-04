@@ -296,6 +296,9 @@ add_custom_target(build-all
     benchmark_io
     shuffle_read
     shuffle_serve
+    serve_pubsub
+    read_wo_pubsub
+    read_with_pubsub
     geds
     geds_cmd
     metadataserver

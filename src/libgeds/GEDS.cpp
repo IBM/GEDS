@@ -124,15 +124,14 @@ absl::Status GEDS::start() {
     LOG_INFO("Using ", _hostURI, " to announce myself.");
   }
 
-  std::thread t1(&GEDS::testSubscribeStream, this);
-  t1.detach();
-  sleep(2);
-  this->testSubscribe();
-  sleep(2);
-  this->publishSubscriptions();
-  sleep(10);
-  this->testUnsubscribe();
-
+  //  std::thread t1(&GEDS::testSubscribeStream, this);
+  //  t1.detach();
+  //  sleep(2);
+  //  this->testSubscribe();
+  //  sleep(2);
+  //  this->publishSubscriptions();
+  //  sleep(10);
+  //  this->testUnsubscribe();
 
   //  std::thread t2(&GEDS::testSubscribeBucket, this);
   //  t2.detach();
@@ -145,10 +144,10 @@ absl::Status GEDS::start() {
   _tcpTransport = TcpTransport::factory(shared_from_this());
   _tcpTransport->start();
 
-//  result = _httpServer.start();
-//  if (!result.ok()) {
-//    LOG_ERROR("Unable to start webserver.");
-//  }
+  //  result = _httpServer.start();
+  //  if (!result.ok()) {
+  //    LOG_ERROR("Unable to start webserver.");
+  //  }
 
   // Update state.
   _state = ServiceState::Running;
@@ -161,34 +160,44 @@ absl::Status GEDS::start() {
   return absl::OkStatus();
 }
 
-void GEDS::testSubscribe() {
-  const std::string bucket = "geds";
-  const std::string key = "part-1";
-  auto subscriptionObject = geds::SubscriptionEvent{bucket, key, "", geds::rpc::OBJECT};
-  auto testResult = _metadataService.subscribe(subscriptionObject);
-
-  const std::string bucket2 = "geds";
-  auto subscriptionBucket2 = geds::SubscriptionEvent{bucket, "", "", geds::rpc::BUCKET};
-  auto testResult2 = _metadataService.subscribe(subscriptionBucket2);
-
+absl::Status GEDS::subscribeStream(const std::string &subscriber_id) {
+  return _metadataService.subscribeStream(subscriber_id);
 }
 
-void GEDS::testSubscribeStream() {
-  auto testResult = _metadataService.subscribeStream();
+absl::Status GEDS::subscribe(const geds::SubscriptionEvent &event,
+                             const std::string &subscriber_id) {
+  return _metadataService.subscribe(event, subscriber_id);
 }
 
-void GEDS::publishSubscriptions() {
-  auto testResultCreate = _metadataService.createOrUpdateObjectStream();
+absl::Status GEDS::unsubscribe(const geds::SubscriptionEvent &event,
+                               const std::string &subscriber_id) {
+  return _metadataService.unsubscribe(event, subscriber_id);
 }
 
-void GEDS::testUnsubscribe() {
-  const std::string bucket = "geds";
-  const std::string key = "part-1";
-  auto subscriptionObject = geds::SubscriptionEvent{bucket, key, "", geds::rpc::OBJECT};
-  auto testResult1 = _metadataService.unsubscribe(subscriptionObject);
-  auto subscriptionBucket = geds::SubscriptionEvent{bucket, "", "", geds::rpc::BUCKET};
-  auto testResult2 = _metadataService.unsubscribe(subscriptionBucket);
-}
+// void GEDS::testSubscribe() {
+////  const std::string bucket = "geds";
+////  const std::string key = "part-1";
+////  auto subscriptionObject = geds::SubscriptionEvent{bucket, key, "", geds::rpc::OBJECT};
+////  auto testResult = _metadataService.subscribe(subscriptionObject);
+////
+////  const std::string bucket2 = "geds";
+////  auto subscriptionBucket2 = geds::SubscriptionEvent{bucket, "", "", geds::rpc::BUCKET};
+////  auto testResult2 = _metadataService.subscribe(subscriptionBucket2);
+//}
+
+
+// void GEDS::publishSubscriptions() {
+//   auto testResultCreate = _metadataService.createOrUpdateObjectStream();
+// }
+
+// void GEDS::testUnsubscribe() {
+////  const std::string bucket = "geds";
+////  const std::string key = "part-1";
+////  auto subscriptionObject = geds::SubscriptionEvent{bucket, key, "", geds::rpc::OBJECT};
+////  auto testResult1 = _metadataService.unsubscribe(subscriptionObject);
+////  auto subscriptionBucket = geds::SubscriptionEvent{bucket, "", "", geds::rpc::BUCKET};
+////  auto testResult2 = _metadataService.unsubscribe(subscriptionBucket);
+//}
 
 absl::Status GEDS::stop() {
   GEDS_CHECK_SERVICE_RUNNING
@@ -357,7 +366,7 @@ absl::Status GEDS::lookupBucket(const std::string &bucket) {
 }
 
 absl::StatusOr<GEDSFile> GEDS::open(const std::string &bucket, const std::string &key) {
-  LOG_DEBUG("open ", bucket, "/", key);
+  //  LOG_DEBUG("open ", bucket, "/", key);
   auto fh = openAsFileHandle(bucket, key);
   if (fh.ok()) {
     *_statisticsFilesOpened += 1;
