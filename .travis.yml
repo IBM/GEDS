@@ -5,6 +5,8 @@
 
 language: c++
 dist: focal
+vm:
+  size: x-large
 
 services:
 - docker

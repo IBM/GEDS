@@ -3,7 +3,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include <algorithm>
 #include <chrono>
 #include <cstdint>
 #include <cstdlib>
@@ -18,6 +17,10 @@
 #include <absl/flags/flag.h>
 #include <absl/flags/parse.h>
 #include <absl/status/status.h>
+#include <boost/lexical_cast.hpp>
+#include <boost/uuid/uuid.hpp>
+#include <boost/uuid/uuid_generators.hpp>
+#include <boost/uuid/uuid_io.hpp>
 
 #include "GEDS.h"
 #include "GEDSFile.h"
@@ -26,26 +29,41 @@
 #include "Ports.h"
 #include "Statistics.h"
 
-ABSL_FLAG(std::string, address, "localhost:" + std::to_string(defaultMetdataServerPort),
-          "Metadata server address.");
+ABSL_FLAG(std::string, address, "10.40.1.4:50003", "Metadata server address.");
 ABSL_FLAG(uint16_t, localPort, defaultGEDSPort, "Local service port.");
 ABSL_FLAG(std::string, gedsRoot, "/tmp/GEDS_XXXXXX", "GEDS root folder.");
 ABSL_FLAG(std::string, bucket, "benchmark", "Bucket used for benchmarking.");
-ABSL_FLAG(size_t, numFiles, 75, "The number of shuffle files per executor.");
 ABSL_FLAG(size_t, numExecutors, 4, "The number of executors.");
 ABSL_FLAG(size_t, numTasksExecutor, 100, "The of tasks per executor.");
-ABSL_FLAG(size_t, numThreadsExecutor, 1, "The number of threads accessing each file.");
+ABSL_FLAG(size_t, numFiles, 1000, "The number of shuffle files to be created.");
 
-absl::StatusOr<size_t> runTask(std::shared_ptr<GEDS> geds, const std::string &bucket, size_t taskId,
-                               size_t readSize, size_t nFiles) {
-  static auto openStatistics = geds::Statistics::createNanoSecondHistogram("Shuffle Read: Open");
-  static auto readStatistics = geds::Statistics::createNanoSecondHistogram("Shuffle Read: Read");
+void makeSubscriberStream(std::shared_ptr<GEDS> geds, const std::string subscriber_id) {
+  LOG_DEBUG("STREAM");
+  auto result = geds->subscribeStream(subscriber_id);
+}
+
+void runSubscriberThread(std::shared_ptr<GEDS> geds, const std::string &bucket) {
+  boost::uuids::uuid uuid_generated = boost::uuids::random_generator()();
+  const auto uuid = boost::lexical_cast<std::string>(uuid_generated);
+
+  auto subscriberTread = std::thread(makeSubscriberStream, geds, uuid);
+  subscriberTread.detach();
+
+  auto subscriptionObject = geds::SubscriptionEvent{bucket, "", "", geds::rpc::BUCKET};
+  auto testResult = geds->subscribe(subscriptionObject, uuid);
+}
+
+absl::StatusOr<size_t> runTask(std::shared_ptr<GEDS> geds, const std::string &bucket, size_t nFiles) {
+  static auto openStatistics =
+      geds::Statistics::createNanoSecondHistogram("Without PubSub Read: Open");
+  static auto readStatistics =
+      geds::Statistics::createNanoSecondHistogram("Without PubSub Read: Read");
 
   size_t totalBytesRead = 0;
-  std::vector<uint8_t> buffer(readSize);
   for (size_t i = 0; i < nFiles; i++) {
     auto timerBegin = std::chrono::high_resolution_clock::now();
     auto file = geds->open(bucket, std::to_string(i));
+    const auto readSize = file->size();
     *openStatistics += std::chrono::duration_cast<std::chrono::nanoseconds>(
                            std::chrono::high_resolution_clock::now() - timerBegin)
                            .count();
@@ -53,8 +71,10 @@ absl::StatusOr<size_t> runTask(std::shared_ptr<GEDS> geds, const std::string &bu
       LOG_ERROR("Unable to open file: ", file.status().message());
       return file.status();
     }
+
     timerBegin = std::chrono::high_resolution_clock::now();
-    auto st = file->read(buffer, taskId * readSize, readSize);
+    std::vector<uint8_t> buffer(readSize);
+    auto st = file->read(buffer, 0, readSize);
     *readStatistics += std::chrono::duration_cast<std::chrono::nanoseconds>(
                            std::chrono::high_resolution_clock::now() - timerBegin)
                            .count();
@@ -68,20 +88,10 @@ absl::StatusOr<size_t> runTask(std::shared_ptr<GEDS> geds, const std::string &bu
 }
 
 void runExecutorThread(std::shared_ptr<GEDS> geds, const std::string &bucket, size_t executorId,
-                       size_t nTasks, size_t /* nThreads */, size_t nFiles, size_t sizePerRead) {
-  std::vector<size_t> tasks(nTasks);
-  for (size_t i = 0; i < nTasks; i++) {
-    tasks[i] = i + (executorId * nTasks);
-  }
-
-  // Use a deterministic seed.
-  std::mt19937 gen;
-  gen.seed(executorId);
-  std::shuffle(std::begin(tasks), std::end(tasks), gen);
-
+                       size_t nTasks, size_t nFiles) {
   size_t totalBytesRead = 0;
-  for (auto taskId : tasks) {
-    auto success = runTask(geds, bucket, taskId, sizePerRead, nFiles);
+  for (size_t i = 0; i < nTasks; i++) {
+    auto success = runTask(geds, bucket, nFiles);
     if (!success.ok()) {
       LOG_ERROR("Unable to execute task: ", success.status().message());
       return;
@@ -106,44 +116,36 @@ int main(int argc, char **argv) {
   }
 
   const auto bucketName = FLAGS_bucket.CurrentValue();
-  const auto nFiles = absl::GetFlag(FLAGS_numFiles);
   const auto nExecutors = absl::GetFlag(FLAGS_numExecutors);
   const auto nTasksExecutor = absl::GetFlag(FLAGS_numTasksExecutor);
-  const auto nThreadsExecutor = absl::GetFlag(FLAGS_numThreadsExecutor);
+  const auto nFiles = absl::GetFlag(FLAGS_numFiles);
 
-  auto folderStatus = geds->listAsFolder(bucketName, "");
-  if (!folderStatus.ok()) {
-    LOG_ERROR("Unable to list bucket ", bucketName, " reason: ", folderStatus.status().message());
-    exit(EXIT_FAILURE);
-  }
-  size_t fileCount = std::count_if(folderStatus->begin(), folderStatus->end(),
-                                   [](const GEDSFileStatus &f) { return !f.isDirectory; });
-  if (fileCount < nFiles) {
-    LOG_ERROR("Invalid number of files: Expected ", nFiles, " got ", fileCount);
-    exit(EXIT_FAILURE);
-  }
-
-  auto startTime = std::chrono::steady_clock::now();
-
-  auto maxSize = std::max_element(
-      folderStatus->begin(), folderStatus->end(),
-      [](const GEDSFileStatus &a, const GEDSFileStatus &b) { return a.size < b.size; });
-  auto sizePerRead = maxSize->size / (nExecutors * nTasksExecutor);
-
-  std::cout << "Starting shuffle Read benchmark."
+  std::cout << "Starting With PubSub Read benchmark."
             << "\n"
             << "Bucket:             " << bucketName << "\n"
-            << "# files:            " << nFiles << "\n"
             << "# executors:        " << nExecutors << "\n"
-            << "# tasks/executor:   " << nTasksExecutor << "\n"
-            << "# threads/executor: " << nThreadsExecutor << "\n"
-            << "size per read:      " << sizePerRead << std::endl;
+            << "# tasks/executor:   " << nTasksExecutor << std::endl;
+
+  auto subscriberThreads = std::vector<std::thread>();
+  subscriberThreads.reserve(nExecutors);
+  for (size_t i = 0; i < nExecutors; i++) {
+    subscriberThreads.emplace_back(
+        std::thread(runSubscriberThread, geds, bucketName));
+  }
+  for (auto &t : subscriberThreads) {
+    t.join();
+  }
+
+  std::string input;
+  std::getline(std::cin, input);
+
+  auto startTime = std::chrono::steady_clock::now();
 
   auto executorThreads = std::vector<std::thread>();
   executorThreads.reserve(nExecutors);
   for (size_t i = 0; i < nExecutors; i++) {
-    executorThreads.emplace_back(std::thread(runExecutorThread, geds, bucketName, i, nTasksExecutor,
-                                             nThreadsExecutor, nFiles, sizePerRead));
+    executorThreads.emplace_back(
+        std::thread(runExecutorThread, geds, bucketName, i, nTasksExecutor, nFiles));
   }
   for (auto &t : executorThreads) {
     t.join();
@@ -151,7 +153,7 @@ int main(int argc, char **argv) {
 
   auto endTime = std::chrono::steady_clock::now();
   std::cout
-      << "Shuffle read took: "
+      << "With PubSub read took: "
       << (double)std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count()
       << " ms" << std::endl;
 

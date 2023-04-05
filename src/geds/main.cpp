@@ -17,11 +17,11 @@
 #include <vector>
 
 #include "GEDS.h"
+#include "GEDSConfig.h"
 #include "Platform.h"
 #include "Ports.h"
 
 ABSL_FLAG(std::string, serverAddress, "localhost", "Metadata server address.");
-;
 ABSL_FLAG(uint16_t, serverPort, defaultMetdataServerPort, "Metadata server port.");
 ABSL_FLAG(uint16_t, port, defaultGEDSPort, "Local service port.");
 ABSL_FLAG(std::string, gedsRoot, "/tmp/GEDS_XXXXXX", "GEDS root folder.");
@@ -133,8 +133,10 @@ void createBigFile(std::shared_ptr<GEDS> gedsInstance, std::string bucket, std::
 int main(int argc, char **argv) {
   absl::ParseCommandLine(argc, argv);
   auto serverAddress = FLAGS_serverAddress.CurrentValue() + ":" + FLAGS_serverPort.CurrentValue();
-  gedsInstance = GEDS::factory(serverAddress, FLAGS_gedsRoot.CurrentValue(), std::nullopt,
-                               absl::GetFlag(FLAGS_port));
+  auto config = GEDSConfig(serverAddress);
+  config.port = absl::GetFlag(FLAGS_port);
+  config.localStoragePath = FLAGS_gedsRoot.CurrentValue();
+  gedsInstance = GEDS::factory(config);
 
   signal(SIGINT, stopHandler);
   auto status = gedsInstance->start();

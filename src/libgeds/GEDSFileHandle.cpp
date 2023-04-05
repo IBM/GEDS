@@ -43,7 +43,9 @@ void GEDSFileHandle::decreaseOpenCount() {
   }
 }
 
-void GEDSFileHandle::notifyUnused() { LOG_DEBUG("The file ", identifier, " is unused."); }
+void GEDSFileHandle::notifyUnused() {
+//  LOG_DEBUG("The file ", identifier, " is unused.");
+}
 
 std::chrono::system_clock::time_point GEDSFileHandle::lastOpened() const { return _lastOpened; }
 std::chrono::system_clock::time_point GEDSFileHandle::lastReleased() const { return _lastReleased; }
@@ -83,7 +85,7 @@ absl::Status GEDSFileHandle::download(std::shared_ptr<GEDSFileHandle> destinatio
     return totalSize.status();
   }
   do {
-    auto length = std::min(_gedsService->blockSize, *totalSize - pos);
+    auto length = std::min(_gedsService->config().cacheBlockSize, *totalSize - pos);
     auto count = downloadRange(destination, pos, length, pos);
     if (!count.ok()) {
       return count.status();
@@ -101,7 +103,7 @@ absl::StatusOr<size_t> GEDSFileHandle::downloadRange(std::shared_ptr<GEDSFileHan
   }
   size_t count = 0;
   try {
-    std::vector<uint8_t> buffer(_gedsService->blockSize, 0);
+    std::vector<uint8_t> buffer(_gedsService->config().cacheBlockSize, 0);
     do {
       auto rcount =
           readBytes(&buffer[0], srcPosition + count, std::min(length - count, buffer.size()));
@@ -127,4 +129,8 @@ absl::Status GEDSFileHandle::seal() {
   return absl::UnavailableError("Seal operation is not available.");
 }
 
-absl::StatusOr<GEDSFile> GEDSFileHandle::open() { return GEDSFile(shared_from_this()); }
+absl::StatusOr<GEDSFile> GEDSFileHandle::open() {
+  // Avoid race-conditions when marking files as unused.
+  auto lock = lockFile();
+  return GEDSFile(shared_from_this());
+}

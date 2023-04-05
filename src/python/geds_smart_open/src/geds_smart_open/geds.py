@@ -196,22 +196,22 @@ class GEDSInstance(object):
                 "GEDS_METADATASERVER",
                 f"geds-metadataserver:{pygeds.GEDS.default_metadata_server_port}",
             )
-
-            args = {}
+            config = pygeds.GEDSConfig(METADATA_SERVER)
             PORT_VALUE = os.environ.get("GEDS_PORT")
             if PORT_VALUE is not None:
-                args["port"] = int(PORT_VALUE)
+                config.port = int(PORT_VALUE)
 
             TMP_FOLDER = os.environ.get("GEDS_TMP")
             if TMP_FOLDER is not None:
-                args["path_prefix"] = TMP_FOLDER
+                config.local_storage_path = TMP_FOLDER
 
             BLOCK_SIZE = os.environ.get("GEDS_BLOCK_SIZE")
             if BLOCK_SIZE is not None:
-                args["block_size"] = int(BLOCK_SIZE)
+                config.cache_block_size = int(BLOCK_SIZE)
 
             # Init GEDS
-            cls._geds = pygeds.GEDS(METADATA_SERVER, **args)
+
+            cls._geds = pygeds.GEDS(config)
             try:
                 cls._geds.start()
             except status.StatusNotOk as e:

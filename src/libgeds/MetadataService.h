@@ -94,9 +94,9 @@ public:
   listFolder(const std::string &bucket, const std::string &keyPrefix);
 
   absl::Status createOrUpdateObjectStream();
-  absl::Status subscribe(const geds::SubscriptionEvent &event);
-  absl::Status subscribeStream();
-  absl::Status unsubscribe(const geds::SubscriptionEvent &event);
+  absl::Status subscribe(const geds::SubscriptionEvent &event, const std::string &subscriber_id);
+  absl::Status subscribeStream(const std::string &subscriber_id);
+  absl::Status unsubscribe(const geds::SubscriptionEvent &event, const std::string &subscriber_id);
 };
 
 } // namespace geds

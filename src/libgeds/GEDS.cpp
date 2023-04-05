@@ -28,6 +28,7 @@
 #include "FileTransferService.h"
 #include "Filesystem.h"
 #include "GEDSCachedFileHandle.h"
+#include "GEDSConfig.h"
 #include "GEDSFile.h"
 #include "GEDSFileHandle.h"
 #include "GEDSFileStatus.h"
@@ -51,21 +52,11 @@ static std::string computeHostUri(const std::string &hostname, uint16_t port) {
   return "geds://" + hostname + ":" + std::to_string(port);
 }
 
-static std::string handlePathPrefix(std::optional<std::string> &path) {
-  auto computedPath = path.value_or("/tmp/GEDS_XXXXXX");
-  if (computedPath.ends_with("XXXXXX")) {
-    return geds::filesystem::mktempdir(computedPath);
-  }
-  return computedPath;
-}
-
-GEDS::GEDS(std::string metadataServiceAddress, std::optional<std::string> pathPrefix,
-           std::optional<std::string> hostname, std::optional<uint16_t> portArg,
-           std::optional<size_t> blockSizeArg)
-    : std::enable_shared_from_this<GEDS>(), _server(hostname.value_or("0.0.0.0"), portArg),
-      _metadataService(std::move(metadataServiceAddress)),
-      _pathPrefix(handlePathPrefix(pathPrefix)), _hostname(hostname.value_or("")),
-      _httpServer(defaultPrometheusPort), blockSize(blockSizeArg.value_or(Default_BlockSize)) {
+GEDS::GEDS(GEDSConfig &&argConfig)
+    : std::enable_shared_from_this<GEDS>(), _config(argConfig),
+      _server(_config.listenAddress, _config.port),
+      _metadataService(_config.metadataServiceAddress), _pathPrefix(_config.localStoragePath),
+      _hostname(_config.hostname.value_or("")), _httpServer(_config.portHttpServer) {
   std::error_code ec;
   auto success = std::filesystem::create_directories(_pathPrefix, ec);
   if (!success && ec.value() != 0) {
@@ -75,13 +66,17 @@ GEDS::GEDS(std::string metadataServiceAddress, std::optional<std::string> pathPr
   }
 }
 
-std::shared_ptr<GEDS> GEDS::factory(std::string metadataServiceAddress,
-                                    std::optional<std::string> pathPrefix,
-                                    std::optional<std::string> hostname,
-                                    std::optional<uint16_t> port, std::optional<size_t> blockSize) {
+static std::string computeLocalStoragePath(std::string path) {
+  if (path.ends_with("XXXXXX")) {
+    return geds::filesystem::mktempdir(path);
+  }
+  return path;
+}
+
+std::shared_ptr<GEDS> GEDS::factory(GEDSConfig config) {
+  config.localStoragePath = computeLocalStoragePath(config.localStoragePath);
   // Call private CTOR.
-  return std::make_shared<GEDS>(std::move(metadataServiceAddress), std::move(pathPrefix),
-                                std::move(hostname), port, blockSize);
+  return std::make_shared<GEDS>(std::move(config));
 }
 
 GEDS::~GEDS() {
@@ -129,15 +124,14 @@ absl::Status GEDS::start() {
     LOG_INFO("Using ", _hostURI, " to announce myself.");
   }
 
-  std::thread t1(&GEDS::testSubscribeStream, this);
-  t1.detach();
-  sleep(2);
-  this->testSubscribe();
-  sleep(2);
-  this->publishSubscriptions();
-  sleep(10);
-  this->testUnsubscribe();
-
+  //  std::thread t1(&GEDS::testSubscribeStream, this);
+  //  t1.detach();
+  //  sleep(2);
+  //  this->testSubscribe();
+  //  sleep(2);
+  //  this->publishSubscriptions();
+  //  sleep(10);
+  //  this->testUnsubscribe();
 
   //  std::thread t2(&GEDS::testSubscribeBucket, this);
   //  t2.detach();
@@ -150,10 +144,10 @@ absl::Status GEDS::start() {
   _tcpTransport = TcpTransport::factory(shared_from_this());
   _tcpTransport->start();
 
-//  result = _httpServer.start();
-//  if (!result.ok()) {
-//    LOG_ERROR("Unable to start webserver.");
-//  }
+  //  result = _httpServer.start();
+  //  if (!result.ok()) {
+  //    LOG_ERROR("Unable to start webserver.");
+  //  }
 
   // Update state.
   _state = ServiceState::Running;
@@ -166,34 +160,44 @@ absl::Status GEDS::start() {
   return absl::OkStatus();
 }
 
-void GEDS::testSubscribe() {
-  const std::string bucket = "geds";
-  const std::string key = "part-1";
-  auto subscriptionObject = geds::SubscriptionEvent{bucket, key, "", geds::rpc::OBJECT};
-  auto testResult = _metadataService.subscribe(subscriptionObject);
-
-  const std::string bucket2 = "geds";
-  auto subscriptionBucket2 = geds::SubscriptionEvent{bucket, "", "", geds::rpc::BUCKET};
-  auto testResult2 = _metadataService.subscribe(subscriptionBucket2);
-
+absl::Status GEDS::subscribeStream(const std::string &subscriber_id) {
+  return _metadataService.subscribeStream(subscriber_id);
 }
 
-void GEDS::testSubscribeStream() {
-  auto testResult = _metadataService.subscribeStream();
+absl::Status GEDS::subscribe(const geds::SubscriptionEvent &event,
+                             const std::string &subscriber_id) {
+  return _metadataService.subscribe(event, subscriber_id);
 }
 
-void GEDS::publishSubscriptions() {
-  auto testResultCreate = _metadataService.createOrUpdateObjectStream();
+absl::Status GEDS::unsubscribe(const geds::SubscriptionEvent &event,
+                               const std::string &subscriber_id) {
+  return _metadataService.unsubscribe(event, subscriber_id);
 }
 
-void GEDS::testUnsubscribe() {
-  const std::string bucket = "geds";
-  const std::string key = "part-1";
-  auto subscriptionObject = geds::SubscriptionEvent{bucket, key, "", geds::rpc::OBJECT};
-  auto testResult1 = _metadataService.unsubscribe(subscriptionObject);
-  auto subscriptionBucket = geds::SubscriptionEvent{bucket, "", "", geds::rpc::BUCKET};
-  auto testResult2 = _metadataService.unsubscribe(subscriptionBucket);
-}
+// void GEDS::testSubscribe() {
+////  const std::string bucket = "geds";
+////  const std::string key = "part-1";
+////  auto subscriptionObject = geds::SubscriptionEvent{bucket, key, "", geds::rpc::OBJECT};
+////  auto testResult = _metadataService.subscribe(subscriptionObject);
+////
+////  const std::string bucket2 = "geds";
+////  auto subscriptionBucket2 = geds::SubscriptionEvent{bucket, "", "", geds::rpc::BUCKET};
+////  auto testResult2 = _metadataService.subscribe(subscriptionBucket2);
+//}
+
+
+// void GEDS::publishSubscriptions() {
+//   auto testResultCreate = _metadataService.createOrUpdateObjectStream();
+// }
+
+// void GEDS::testUnsubscribe() {
+////  const std::string bucket = "geds";
+////  const std::string key = "part-1";
+////  auto subscriptionObject = geds::SubscriptionEvent{bucket, key, "", geds::rpc::OBJECT};
+////  auto testResult1 = _metadataService.unsubscribe(subscriptionObject);
+////  auto subscriptionBucket = geds::SubscriptionEvent{bucket, "", "", geds::rpc::BUCKET};
+////  auto testResult2 = _metadataService.unsubscribe(subscriptionBucket);
+//}
 
 absl::Status GEDS::stop() {
   GEDS_CHECK_SERVICE_RUNNING
@@ -362,7 +366,7 @@ absl::Status GEDS::lookupBucket(const std::string &bucket) {
 }
 
 absl::StatusOr<GEDSFile> GEDS::open(const std::string &bucket, const std::string &key) {
-  LOG_DEBUG("open ", bucket, "/", key);
+  //  LOG_DEBUG("open ", bucket, "/", key);
   auto fh = openAsFileHandle(bucket, key);
   if (fh.ok()) {
     *_statisticsFilesOpened += 1;

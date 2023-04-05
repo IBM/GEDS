@@ -3,7 +3,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include <algorithm>
 #include <cstdint>
 #include <cstdlib>
 #include <iostream>
@@ -24,13 +23,13 @@
 constexpr size_t KILOBYTE = 1024;
 constexpr size_t MEGABYTE = KILOBYTE * KILOBYTE;
 
-ABSL_FLAG(std::string, address, "localhost:" + std::to_string(defaultMetdataServerPort),
-          "Metadata server address.");
+ABSL_FLAG(std::string, address, "10.40.1.4:50003", "Metadata server address.");
 ABSL_FLAG(uint16_t, localPort, defaultGEDSPort, "Local service port.");
 ABSL_FLAG(std::string, gedsRoot, "/tmp/GEDS_XXXXXX", "GEDS root folder.");
 ABSL_FLAG(std::string, bucket, "benchmark", "Bucket used for benchmarking.");
-ABSL_FLAG(size_t, numFiles, 75, "The number of shuffle files to be created.");
-ABSL_FLAG(size_t, fileSizeMB, 18, "The file size for each shuffle file (MegaBytes).");
+ABSL_FLAG(size_t, numFiles, 1000, "The number of shuffle files to be created.");
+ABSL_FLAG(size_t, fileSizeMB, 1, "The file size for each shuffle file (MegaBytes).");
+ABSL_FLAG(size_t, numExecutors, 10, "The number of executors.");
 
 void createFile(std::shared_ptr<GEDS> &geds, const std::string &bucket, size_t fileNum,
                 size_t sizeMB) {
@@ -57,6 +56,15 @@ void createFile(std::shared_ptr<GEDS> &geds, const std::string &bucket, size_t f
   }
 }
 
+void runExecutorThread(std::shared_ptr<GEDS> geds, const std::string &bucket, size_t executorId,
+                       size_t filesPerExecutor, size_t sizeMB) {
+  for (size_t i = 0; i < filesPerExecutor; i++) {
+    createFile(geds, bucket, i + (executorId * filesPerExecutor), sizeMB);
+  }
+
+  LOG_DEBUG("Executor ", executorId, " finished all ", filesPerExecutor, " files created.");
+}
+
 int main(int argc, char **argv) {
   absl::ParseCommandLine(argc, argv);
   auto config = GEDSConfig(FLAGS_address.CurrentValue());
@@ -72,9 +80,19 @@ int main(int argc, char **argv) {
   const auto prefix = FLAGS_bucket.CurrentValue();
   const auto nFiles = absl::GetFlag(FLAGS_numFiles);
   const auto sizeMB = absl::GetFlag(FLAGS_fileSizeMB);
-  for (size_t i = 0; i < nFiles; i++) {
-    createFile(geds, prefix, i, sizeMB);
+  const auto nExecutors = absl::GetFlag(FLAGS_numExecutors);
+  const auto filesPerExecutor = nFiles / nExecutors;
+
+  auto executorThreads = std::vector<std::thread>();
+  executorThreads.reserve(nExecutors);
+  for (size_t i = 0; i < nExecutors; i++) {
+    executorThreads.emplace_back(
+        std::thread(runExecutorThread, geds, prefix, i, filesPerExecutor, sizeMB));
   }
+  for (auto &t : executorThreads) {
+    t.join();
+  }
+
   sleep(10000000);
   return EXIT_SUCCESS;
 }

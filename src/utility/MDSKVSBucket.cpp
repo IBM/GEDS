@@ -30,6 +30,7 @@ MDSKVSBucket::getObject(const std::string &key) {
 
 absl::Status MDSKVSBucket::createObject(const geds::Object &obj) {
   auto lock = getWriteLock();
+  LOG_DEBUG("ADDING_TO_CACHE");
   if (_map.find(utility::Path{obj.id.key}) != _map.end()) {
     LOG_DEBUG("Overwriting ", obj.id.key, " since it already exists!");
   }
@@ -72,10 +73,12 @@ absl::Status MDSKVSBucket::deleteObjectPrefix(const std::string &prefix) {
 absl::StatusOr<geds::Object> MDSKVSBucket::lookup(const std::string &key) {
   auto data = getObject(key);
   if (!data.ok()) {
+    LOG_DEBUG("CACHE_MISS");
     return data.status();
   }
   auto container = data.value();
   auto lock = container->getReadLock();
+  LOG_DEBUG("CACHE_HIT");
   return geds::Object{geds::ObjectID{_name, key}, container->obj};
 }
 
