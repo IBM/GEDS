@@ -273,4 +273,15 @@ public class GEDS {
     }
 
     private native void nativeSyncObjectStoreConfigs(long ptr);
+
+    /**
+         * Create a subscription streaming connection to MDS for the GEDS client. The streaming connection runs from within a Thread.
+    */
+    public boolean subscribeStreamWithThread() throws IOException {
+        checkGEDS();
+        return nativeSubscribeStreamWithThread(nativePtr);
+    }
+
+    private native static boolean nativeSubscribeStreamWithThread(long ptr) throws IOException;
+
 }

@@ -458,4 +458,20 @@ JNIEXPORT void JNICALL Java_com_ibm_geds_GEDS_nativeSyncObjectStoreConfigs(JNIEn
   }
 }
 
+
+// NOLINTNEXTLINE(modernize-use-trailing-return-type)
+JNIEXPORT jboolean JNICALL Java_com_ibm_geds_GEDS_nativeSubscribeStreamWithThread(JNIEnv *env, jclass, jlong nativePtr) {
+  if (nativePtr == 0) {
+    return throwNullPointerException(env, "Invalid nativePtr.");
+  }
+  auto container = reinterpret_cast<GEDSContainer *>(nativePtr); // NOLINT
+
+  auto status = container->element->subscribeStreamWithThread("");
+
+  if (!status.ok()) {
+    throwIOException(env, status.message());
+  }
+  return 0;
+}
+
 // NOLINTEND(modernize-use-trailing-return-type)

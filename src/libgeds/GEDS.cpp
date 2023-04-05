@@ -143,6 +143,15 @@ absl::Status GEDS::start() {
   return absl::OkStatus();
 }
 
+absl::Status GEDS::subscribeStreamWithThread(const std::string &subscriber_id) {
+  GEDS_CHECK_SERVICE_RUNNING
+
+  std::thread subscriberTread(&GEDS::subscribeStream, this, subscriber_id);
+  subscriberTread.detach();
+
+  return absl::OkStatus();
+}
+
 absl::Status GEDS::subscribeStream(const std::string &subscriber_id) {
   GEDS_CHECK_SERVICE_RUNNING
   return _metadataService.subscribeStream(subscriber_id);

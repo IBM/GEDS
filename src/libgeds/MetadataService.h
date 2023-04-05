@@ -95,6 +95,7 @@ public:
 
   /**
    * @brief Create subscription stream for the subscriber. This has to be called in a thread.
+   * However, possible memory leakage, as the thread will be running for ever until it is closed by the MDS.
    */
   absl::Status subscribeStream(const std::string &subscriber_id);
   /**
