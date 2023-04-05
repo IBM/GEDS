@@ -49,12 +49,6 @@ public class GEDSFile {
         }
     }
 
-    private void checkByteBuffer(ByteBuffer buffer) {
-        if (!buffer.isDirect()) {
-            throw new IllegalArgumentException("ByteBuffer is not direct.");
-        }
-    }
-
     private void checkBuffer(byte[] buffer, int offset, int length) {
         if (length < 0) {
             throw new IllegalArgumentException("Invalid length!");
@@ -75,21 +69,26 @@ public class GEDSFile {
     }
 
     /**
-     * Reads up to buf.remaining() bytes at buf.position() into buffer. buf.remaining() can be
-     * controlled by configuring buf.limit().
+     * Reads up to buffer.remaining() bytes at buffer.position() into buffer.
+     * buffer.remaining() can be
+     * controlled by configuring buffer.limit().
      */
-    public int read(long position, ByteBuffer buf) throws IOException {
+    public int read(long position, ByteBuffer buffer) throws IOException {
         checkClosed();
-        checkByteBuffer(buf);
 
-        int offset = buf.position();
-        int length = buf.remaining();
+        int offset = buffer.position();
+        int length = buffer.remaining();
         if (length == 0) {
             return 0;
         }
-        int numBytes = readNative(nativePtr, position, buf, offset, length);
+        int numBytes;
+        if (buffer.isDirect()) {
+            numBytes = readNative(nativePtr, position, buffer, offset, length);
+        } else {
+            numBytes = read(position, buffer.array(), offset, length);
+        }
         if (numBytes > 0) {
-            buf.position(offset + numBytes);
+            buffer.position(offset + numBytes);
         }
         return numBytes;
     }
@@ -106,14 +105,16 @@ public class GEDSFile {
      */
     public int write(long position, ByteBuffer buffer) throws IOException {
         checkClosed();
-        checkByteBuffer(buffer);
-
         int offset = buffer.position();
         int length = buffer.remaining();
         if (length == 0) {
             return 0;
         }
-        writeNative(nativePtr, position, buffer, offset, length);
+        if (buffer.isDirect()) {
+            writeNative(nativePtr, position, buffer, offset, length);
+        } else {
+            write(position, buffer.array(), offset, length);
+        }
         buffer.position(offset + length);
         return length;
     }
