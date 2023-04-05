@@ -140,7 +140,7 @@ absl::StatusOr<size_t> FileTransferService::readBytes(const std::string &bucket,
     return absl::UnavailableError("No TCP for " + nodeAddress);
   }
 
-//  LOG_DEBUG("Found TCP peer for ", nodeAddress);
+  LOG_DEBUG("Found TCP peer for ", nodeAddress);
   auto prom = tcpPeer->sendRpcRequest((uint64_t)buffer, bucket + "/" + key, position, length);
   auto fut = prom->get_future();
   auto status = fut.get();

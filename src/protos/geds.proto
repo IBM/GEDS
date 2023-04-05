@@ -90,7 +90,6 @@ enum PublicationType {
   CREATE_OBJECT = 1;
   UPDATE_OBJECT = 2;
   DELETE_OBJECT = 3;
-  CREATE_UPDATE_OBJECT = 4;
 }
 
 message SubscriptionStreamResponse {
@@ -113,7 +112,6 @@ service MetadataService {
   rpc Lookup(ObjectID) returns (ObjectResponse);
   rpc List(ObjectListRequest) returns (ObjectListResponse);
 
-  rpc CreateOrUpdateObjectStream(stream Object) returns (StatusResponse);
   rpc Subscribe(SubscriptionEvent) returns (StatusResponse);
   rpc SubscribeStream(SubscriptionStreamEvent) returns (stream SubscriptionStreamResponse);
   rpc Unsubscribe(SubscriptionEvent) returns (StatusResponse);

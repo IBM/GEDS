@@ -44,7 +44,7 @@ void GEDSFileHandle::decreaseOpenCount() {
 }
 
 void GEDSFileHandle::notifyUnused() {
-//  LOG_DEBUG("The file ", identifier, " is unused.");
+  LOG_DEBUG("The file ", identifier, " is unused.");
 }
 
 std::chrono::system_clock::time_point GEDSFileHandle::lastOpened() const { return _lastOpened; }
