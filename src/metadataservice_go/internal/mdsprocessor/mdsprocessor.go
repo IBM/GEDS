@@ -5,7 +5,6 @@ import (
 	"errors"
 	"github.com/IBM/gedsmds/internal/config"
 	"github.com/IBM/gedsmds/internal/keyvaluestore"
-	"github.com/IBM/gedsmds/internal/logger"
 	"github.com/IBM/gedsmds/internal/pubsub"
 	"github.com/IBM/gedsmds/protos"
 	"google.golang.org/grpc/peer"
@@ -75,19 +74,6 @@ func (s *Service) CreateObject(object *protos.Object) error {
 		}
 	}
 	return nil
-}
-
-func (s *Service) CreateOrUpdateObjectStream(object *protos.Object) {
-	if err := s.kvStore.CreateObject(object); err != nil {
-		logger.ErrorLogger.Println(err)
-		return
-	}
-	if config.Config.PubSubEnabled {
-		s.pubsub.Publication <- &protos.SubscriptionStreamResponse{
-			Object:          object,
-			PublicationType: protos.PublicationType_CREATE_UPDATE_OBJECT,
-		}
-	}
 }
 
 func (s *Service) UpdateObject(object *protos.Object) error {

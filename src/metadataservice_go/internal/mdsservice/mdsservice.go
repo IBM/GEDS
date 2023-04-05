@@ -6,7 +6,6 @@ import (
 	"github.com/IBM/gedsmds/internal/mdsprocessor"
 	"github.com/IBM/gedsmds/internal/prommetrics"
 	"github.com/IBM/gedsmds/protos"
-	"io"
 )
 
 func NewService(metrics *prommetrics.Metrics) *Service {
@@ -123,19 +122,6 @@ func (s *Service) List(_ context.Context, objectListRequest *protos.ObjectListRe
 	logger.InfoLogger.Println("list objects")
 	s.metrics.IncrementListObject()
 	return s.processor.List(objectListRequest)
-}
-
-func (s *Service) CreateOrUpdateObjectStream(stream protos.MetadataService_CreateOrUpdateObjectStreamServer) error {
-	for {
-		object, err := stream.Recv()
-		if err == io.EOF {
-			return stream.SendAndClose(&protos.StatusResponse{Code: protos.StatusCode_OK})
-		}
-		if err != nil {
-			return err
-		}
-		s.processor.CreateOrUpdateObjectStream(object)
-	}
 }
 
 func (s *Service) Subscribe(_ context.Context, subscription *protos.SubscriptionEvent) (*protos.StatusResponse, error) {

@@ -24,23 +24,22 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	MetadataService_GetConnectionInformation_FullMethodName   = "/geds.rpc.MetadataService/GetConnectionInformation"
-	MetadataService_RegisterObjectStore_FullMethodName        = "/geds.rpc.MetadataService/RegisterObjectStore"
-	MetadataService_ListObjectStores_FullMethodName           = "/geds.rpc.MetadataService/ListObjectStores"
-	MetadataService_CreateBucket_FullMethodName               = "/geds.rpc.MetadataService/CreateBucket"
-	MetadataService_DeleteBucket_FullMethodName               = "/geds.rpc.MetadataService/DeleteBucket"
-	MetadataService_ListBuckets_FullMethodName                = "/geds.rpc.MetadataService/ListBuckets"
-	MetadataService_LookupBucket_FullMethodName               = "/geds.rpc.MetadataService/LookupBucket"
-	MetadataService_Create_FullMethodName                     = "/geds.rpc.MetadataService/Create"
-	MetadataService_Update_FullMethodName                     = "/geds.rpc.MetadataService/Update"
-	MetadataService_Delete_FullMethodName                     = "/geds.rpc.MetadataService/Delete"
-	MetadataService_DeletePrefix_FullMethodName               = "/geds.rpc.MetadataService/DeletePrefix"
-	MetadataService_Lookup_FullMethodName                     = "/geds.rpc.MetadataService/Lookup"
-	MetadataService_List_FullMethodName                       = "/geds.rpc.MetadataService/List"
-	MetadataService_CreateOrUpdateObjectStream_FullMethodName = "/geds.rpc.MetadataService/CreateOrUpdateObjectStream"
-	MetadataService_Subscribe_FullMethodName                  = "/geds.rpc.MetadataService/Subscribe"
-	MetadataService_SubscribeStream_FullMethodName            = "/geds.rpc.MetadataService/SubscribeStream"
-	MetadataService_Unsubscribe_FullMethodName                = "/geds.rpc.MetadataService/Unsubscribe"
+	MetadataService_GetConnectionInformation_FullMethodName = "/geds.rpc.MetadataService/GetConnectionInformation"
+	MetadataService_RegisterObjectStore_FullMethodName      = "/geds.rpc.MetadataService/RegisterObjectStore"
+	MetadataService_ListObjectStores_FullMethodName         = "/geds.rpc.MetadataService/ListObjectStores"
+	MetadataService_CreateBucket_FullMethodName             = "/geds.rpc.MetadataService/CreateBucket"
+	MetadataService_DeleteBucket_FullMethodName             = "/geds.rpc.MetadataService/DeleteBucket"
+	MetadataService_ListBuckets_FullMethodName              = "/geds.rpc.MetadataService/ListBuckets"
+	MetadataService_LookupBucket_FullMethodName             = "/geds.rpc.MetadataService/LookupBucket"
+	MetadataService_Create_FullMethodName                   = "/geds.rpc.MetadataService/Create"
+	MetadataService_Update_FullMethodName                   = "/geds.rpc.MetadataService/Update"
+	MetadataService_Delete_FullMethodName                   = "/geds.rpc.MetadataService/Delete"
+	MetadataService_DeletePrefix_FullMethodName             = "/geds.rpc.MetadataService/DeletePrefix"
+	MetadataService_Lookup_FullMethodName                   = "/geds.rpc.MetadataService/Lookup"
+	MetadataService_List_FullMethodName                     = "/geds.rpc.MetadataService/List"
+	MetadataService_Subscribe_FullMethodName                = "/geds.rpc.MetadataService/Subscribe"
+	MetadataService_SubscribeStream_FullMethodName          = "/geds.rpc.MetadataService/SubscribeStream"
+	MetadataService_Unsubscribe_FullMethodName              = "/geds.rpc.MetadataService/Unsubscribe"
 )
 
 // MetadataServiceClient is the client API for MetadataService service.
@@ -60,7 +59,6 @@ type MetadataServiceClient interface {
 	DeletePrefix(ctx context.Context, in *ObjectID, opts ...grpc.CallOption) (*StatusResponse, error)
 	Lookup(ctx context.Context, in *ObjectID, opts ...grpc.CallOption) (*ObjectResponse, error)
 	List(ctx context.Context, in *ObjectListRequest, opts ...grpc.CallOption) (*ObjectListResponse, error)
-	CreateOrUpdateObjectStream(ctx context.Context, opts ...grpc.CallOption) (MetadataService_CreateOrUpdateObjectStreamClient, error)
 	Subscribe(ctx context.Context, in *SubscriptionEvent, opts ...grpc.CallOption) (*StatusResponse, error)
 	SubscribeStream(ctx context.Context, in *SubscriptionStreamEvent, opts ...grpc.CallOption) (MetadataService_SubscribeStreamClient, error)
 	Unsubscribe(ctx context.Context, in *SubscriptionEvent, opts ...grpc.CallOption) (*StatusResponse, error)
@@ -191,40 +189,6 @@ func (c *metadataServiceClient) List(ctx context.Context, in *ObjectListRequest,
 	return out, nil
 }
 
-func (c *metadataServiceClient) CreateOrUpdateObjectStream(ctx context.Context, opts ...grpc.CallOption) (MetadataService_CreateOrUpdateObjectStreamClient, error) {
-	stream, err := c.cc.NewStream(ctx, &MetadataService_ServiceDesc.Streams[0], MetadataService_CreateOrUpdateObjectStream_FullMethodName, opts...)
-	if err != nil {
-		return nil, err
-	}
-	x := &metadataServiceCreateOrUpdateObjectStreamClient{stream}
-	return x, nil
-}
-
-type MetadataService_CreateOrUpdateObjectStreamClient interface {
-	Send(*Object) error
-	CloseAndRecv() (*StatusResponse, error)
-	grpc.ClientStream
-}
-
-type metadataServiceCreateOrUpdateObjectStreamClient struct {
-	grpc.ClientStream
-}
-
-func (x *metadataServiceCreateOrUpdateObjectStreamClient) Send(m *Object) error {
-	return x.ClientStream.SendMsg(m)
-}
-
-func (x *metadataServiceCreateOrUpdateObjectStreamClient) CloseAndRecv() (*StatusResponse, error) {
-	if err := x.ClientStream.CloseSend(); err != nil {
-		return nil, err
-	}
-	m := new(StatusResponse)
-	if err := x.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
-}
-
 func (c *metadataServiceClient) Subscribe(ctx context.Context, in *SubscriptionEvent, opts ...grpc.CallOption) (*StatusResponse, error) {
 	out := new(StatusResponse)
 	err := c.cc.Invoke(ctx, MetadataService_Subscribe_FullMethodName, in, out, opts...)
@@ -235,7 +199,7 @@ func (c *metadataServiceClient) Subscribe(ctx context.Context, in *SubscriptionE
 }
 
 func (c *metadataServiceClient) SubscribeStream(ctx context.Context, in *SubscriptionStreamEvent, opts ...grpc.CallOption) (MetadataService_SubscribeStreamClient, error) {
-	stream, err := c.cc.NewStream(ctx, &MetadataService_ServiceDesc.Streams[1], MetadataService_SubscribeStream_FullMethodName, opts...)
+	stream, err := c.cc.NewStream(ctx, &MetadataService_ServiceDesc.Streams[0], MetadataService_SubscribeStream_FullMethodName, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -292,7 +256,6 @@ type MetadataServiceServer interface {
 	DeletePrefix(context.Context, *ObjectID) (*StatusResponse, error)
 	Lookup(context.Context, *ObjectID) (*ObjectResponse, error)
 	List(context.Context, *ObjectListRequest) (*ObjectListResponse, error)
-	CreateOrUpdateObjectStream(MetadataService_CreateOrUpdateObjectStreamServer) error
 	Subscribe(context.Context, *SubscriptionEvent) (*StatusResponse, error)
 	SubscribeStream(*SubscriptionStreamEvent, MetadataService_SubscribeStreamServer) error
 	Unsubscribe(context.Context, *SubscriptionEvent) (*StatusResponse, error)
@@ -340,9 +303,6 @@ func (UnimplementedMetadataServiceServer) Lookup(context.Context, *ObjectID) (*O
 }
 func (UnimplementedMetadataServiceServer) List(context.Context, *ObjectListRequest) (*ObjectListResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method List not implemented")
-}
-func (UnimplementedMetadataServiceServer) CreateOrUpdateObjectStream(MetadataService_CreateOrUpdateObjectStreamServer) error {
-	return status.Errorf(codes.Unimplemented, "method CreateOrUpdateObjectStream not implemented")
 }
 func (UnimplementedMetadataServiceServer) Subscribe(context.Context, *SubscriptionEvent) (*StatusResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Subscribe not implemented")
@@ -599,32 +559,6 @@ func _MetadataService_List_Handler(srv interface{}, ctx context.Context, dec fun
 	return interceptor(ctx, in, info, handler)
 }
 
-func _MetadataService_CreateOrUpdateObjectStream_Handler(srv interface{}, stream grpc.ServerStream) error {
-	return srv.(MetadataServiceServer).CreateOrUpdateObjectStream(&metadataServiceCreateOrUpdateObjectStreamServer{stream})
-}
-
-type MetadataService_CreateOrUpdateObjectStreamServer interface {
-	SendAndClose(*StatusResponse) error
-	Recv() (*Object, error)
-	grpc.ServerStream
-}
-
-type metadataServiceCreateOrUpdateObjectStreamServer struct {
-	grpc.ServerStream
-}
-
-func (x *metadataServiceCreateOrUpdateObjectStreamServer) SendAndClose(m *StatusResponse) error {
-	return x.ServerStream.SendMsg(m)
-}
-
-func (x *metadataServiceCreateOrUpdateObjectStreamServer) Recv() (*Object, error) {
-	m := new(Object)
-	if err := x.ServerStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
-}
-
 func _MetadataService_Subscribe_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(SubscriptionEvent)
 	if err := dec(in); err != nil {
@@ -751,11 +685,6 @@ var MetadataService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams: []grpc.StreamDesc{
-		{
-			StreamName:    "CreateOrUpdateObjectStream",
-			Handler:       _MetadataService_CreateOrUpdateObjectStream_Handler,
-			ClientStreams: true,
-		},
 		{
 			StreamName:    "SubscribeStream",
 			Handler:       _MetadataService_SubscribeStream_Handler,
