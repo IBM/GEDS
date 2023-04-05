@@ -64,6 +64,8 @@ func (s *Service) Subscribe(subscription *protos.SubscriptionEvent) error {
 
 func (s *Service) SubscribeStream(subscription *protos.SubscriptionStreamEvent,
 	stream protos.MetadataService_SubscribeStreamServer) error {
+	logger.ErrorLogger.Println("got subscription: ", subscription)
+
 	finished := make(chan bool, 2)
 	s.subscribersStreamLock.Lock()
 	if streamer, ok := s.subscriberStreams[subscription.SubscriberID]; !ok {
