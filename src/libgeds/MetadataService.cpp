@@ -405,6 +405,7 @@ MetadataService::listFolder(const std::string &bucket, const std::string &keyPre
 }
 
 absl::Status MetadataService::createOrUpdateObjectStream() {
+  
   METADATASERVICE_CHECK_CONNECTED
   geds::rpc::StatusResponse response;
   grpc::ClientContext context;
