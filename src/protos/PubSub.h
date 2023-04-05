@@ -1,7 +1,7 @@
 /**
-* Copyright 2022- IBM Inc. All rights reserved
-* SPDX-License-Identifier: Apache-2.0
-*/
+ * Copyright 2022- IBM Inc. All rights reserved
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 #ifndef GEDS_PUBSUB_H
 #define GEDS_PUBSUB_H
@@ -14,17 +14,24 @@
 namespace geds {
 
 struct SubscriptionEvent {
- std::string bucket;
- std::string key;
- geds::rpc::SubscriptionType subscriptionType;
+  std::string subscriber_id;
+  std::string bucket;
+  std::string key;
+  geds::rpc::SubscriptionType subscriptionType;
 
- SubscriptionEvent(std::string bucket, std::string key, geds::rpc::SubscriptionType subscriptionType)
-     : bucket(std::move(bucket)), key(std::move(key)), subscriptionType(subscriptionType) {}
+  SubscriptionEvent(std::string subscriber_id, std::string bucket, std::string key,
+                    geds::rpc::SubscriptionType subscriptionType)
+      : subscriber_id(std::move(subscriber_id)), bucket(std::move(bucket)), key(std::move(key)),
+        subscriptionType(subscriptionType) {}
 
- bool operator==(const SubscriptionEvent &other) const {
-   return bucket == other.bucket && key == other.key &&
-          subscriptionType == other.subscriptionType;
- }
+  SubscriptionEvent(std::string subscriber_id) : subscriber_id(std::move(subscriber_id)) {}
+
+  SubscriptionEvent() {}
+
+  bool operator==(const SubscriptionEvent &other) const {
+    return subscriber_id == other.subscriber_id && bucket == other.bucket && key == other.key &&
+           subscriptionType == other.subscriptionType;
+  }
 };
 
 } // namespace geds

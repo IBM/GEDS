@@ -97,12 +97,12 @@ public:
    * @brief Create subscription stream for the subscriber. This has to be called in a thread.
    * However, possible memory leakage, as the thread will be running for ever until it is closed by the MDS.
    */
-  absl::Status subscribeStream(const std::string &subscriber_id);
+  absl::Status subscribeStream(const geds::SubscriptionEvent &event);
   /**
    * @brief Create subscription for bucket, objects and prefixes.
    */
-  absl::Status subscribe(const geds::SubscriptionEvent &event, const std::string &subscriber_id);
-  absl::Status unsubscribe(const geds::SubscriptionEvent &event, const std::string &subscriber_id);
+  absl::Status subscribe(const geds::SubscriptionEvent &event);
+  absl::Status unsubscribe(const geds::SubscriptionEvent &event);
 };
 
 } // namespace geds

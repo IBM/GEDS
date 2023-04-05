@@ -143,30 +143,28 @@ absl::Status GEDS::start() {
   return absl::OkStatus();
 }
 
-absl::Status GEDS::subscribeStreamWithThread(const std::string &subscriber_id) {
+absl::Status GEDS::subscribeStreamWithThread(const geds::SubscriptionEvent &event) {
   GEDS_CHECK_SERVICE_RUNNING
 
-  std::thread subscriberTread(&GEDS::subscribeStream, this, subscriber_id);
+  std::thread subscriberTread(&GEDS::subscribeStream, this, event);
   subscriberTread.detach();
 
   return absl::OkStatus();
 }
 
-absl::Status GEDS::subscribeStream(const std::string &subscriber_id) {
+absl::Status GEDS::subscribeStream(const geds::SubscriptionEvent &event) {
   GEDS_CHECK_SERVICE_RUNNING
-  return _metadataService.subscribeStream(subscriber_id);
+  return _metadataService.subscribeStream(event);
 }
 
-absl::Status GEDS::subscribe(const geds::SubscriptionEvent &event,
-                             const std::string &subscriber_id) {
+absl::Status GEDS::subscribe(const geds::SubscriptionEvent &event) {
   GEDS_CHECK_SERVICE_RUNNING
-  return _metadataService.subscribe(event, subscriber_id);
+  return _metadataService.subscribe(event);
 }
 
-absl::Status GEDS::unsubscribe(const geds::SubscriptionEvent &event,
-                               const std::string &subscriber_id) {
+absl::Status GEDS::unsubscribe(const geds::SubscriptionEvent &event) {
   GEDS_CHECK_SERVICE_RUNNING
-  return _metadataService.unsubscribe(event, subscriber_id);
+  return _metadataService.unsubscribe(event);
 }
 
 absl::Status GEDS::stop() {

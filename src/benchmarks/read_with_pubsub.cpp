@@ -38,21 +38,23 @@ ABSL_FLAG(size_t, numTasksExecutor, 100, "The of tasks per executor.");
 ABSL_FLAG(size_t, numFiles, 1000, "The number of shuffle files to be created.");
 
 void makeSubscriberStream(std::shared_ptr<GEDS> geds, const std::string subscriber_id) {
-  auto result = geds->subscribeStream(subscriber_id);
+  auto subscriptionEventObject = geds::SubscriptionEvent{subscriber_id};
+  auto result = geds->subscribeStream(subscriptionEventObject);
 }
 
 void runSubscriberThread(std::shared_ptr<GEDS> geds, const std::string &bucket) {
   boost::uuids::uuid uuid_generated = boost::uuids::random_generator()();
-  const auto uuid = boost::lexical_cast<std::string>(uuid_generated);
+  const auto subscriber_id = boost::lexical_cast<std::string>(uuid_generated);
 
-  auto subscriberTread = std::thread(makeSubscriberStream, geds, uuid);
+  auto subscriberTread = std::thread(makeSubscriberStream, geds, subscriber_id);
   subscriberTread.detach();
 
-  auto subscriptionObject = geds::SubscriptionEvent{bucket, "", geds::rpc::BUCKET};
-  auto testResult = geds->subscribe(subscriptionObject, uuid);
+  auto subscriptionObject = geds::SubscriptionEvent{subscriber_id, bucket, "", geds::rpc::BUCKET};
+  auto testResult = geds->subscribe(subscriptionObject);
 }
 
-absl::StatusOr<size_t> runTask(std::shared_ptr<GEDS> geds, const std::string &bucket, size_t nFiles) {
+absl::StatusOr<size_t> runTask(std::shared_ptr<GEDS> geds, const std::string &bucket,
+                               size_t nFiles) {
   static auto openStatistics =
       geds::Statistics::createNanoSecondHistogram("Without PubSub Read: Open");
   static auto readStatistics =
@@ -128,8 +130,7 @@ int main(int argc, char **argv) {
   auto subscriberThreads = std::vector<std::thread>();
   subscriberThreads.reserve(nExecutors);
   for (size_t i = 0; i < nExecutors; i++) {
-    subscriberThreads.emplace_back(
-        std::thread(runSubscriberThread, geds, bucketName));
+    subscriberThreads.emplace_back(std::thread(runSubscriberThread, geds, bucketName));
   }
   for (auto &t : subscriberThreads) {
     t.join();

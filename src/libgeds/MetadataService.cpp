@@ -404,17 +404,17 @@ MetadataService::listFolder(const std::string &bucket, const std::string &keyPre
   return listPrefix(bucket, keyPrefix, Default_GEDSFolderDelimiter);
 }
 
-absl::Status MetadataService::subscribeStream(const std::string &subscriber_id) {
+absl::Status MetadataService::subscribeStream(const geds::SubscriptionEvent &event) {
   METADATASERVICE_CHECK_CONNECTED;
 
   geds::rpc::SubscriptionStreamEvent subscription_stream_event;
   geds::rpc::SubscriptionStreamResponse subscription_response;
   grpc::ClientContext context;
 
-  if (subscriber_id.empty()) {
+  if (event.subscriber_id.empty()) {
     subscription_stream_event.set_subscriberid(uuid);
   } else {
-    subscription_stream_event.set_subscriberid(subscriber_id);
+    subscription_stream_event.set_subscriberid(event.subscriber_id);
   }
 
   std::unique_ptr<grpc::ClientReader<geds::rpc::SubscriptionStreamResponse>> reader(
@@ -446,18 +446,17 @@ absl::Status MetadataService::subscribeStream(const std::string &subscriber_id) 
   return absl::OkStatus();
 }
 
-absl::Status MetadataService::subscribe(const geds::SubscriptionEvent &event,
-                                        const std::string &subscriber_id) {
+absl::Status MetadataService::subscribe(const geds::SubscriptionEvent &event) {
   METADATASERVICE_CHECK_CONNECTED
 
   geds::rpc::SubscriptionEvent subscription_event;
   geds::rpc::StatusResponse response;
   grpc::ClientContext context;
 
-  if (subscriber_id.empty()) {
+  if (event.subscriber_id.empty()) {
     subscription_event.set_subscriberid(uuid);
   } else {
-    subscription_event.set_subscriberid(subscriber_id);
+    subscription_event.set_subscriberid(event.subscriber_id);
   }
   subscription_event.set_bucketid(std::string{event.bucket});
   subscription_event.set_key(std::string{event.key});
@@ -471,17 +470,17 @@ absl::Status MetadataService::subscribe(const geds::SubscriptionEvent &event,
   return convertStatus(response);
 }
 
-absl::Status MetadataService::unsubscribe(const geds::SubscriptionEvent &event, const std::string &subscriber_id) {
+absl::Status MetadataService::unsubscribe(const geds::SubscriptionEvent &event) {
   METADATASERVICE_CHECK_CONNECTED;
 
   geds::rpc::SubscriptionEvent subscription_event;
   geds::rpc::StatusResponse response;
   grpc::ClientContext context;
 
-  if (subscriber_id.empty()) {
+  if (event.subscriber_id.empty()) {
     subscription_event.set_subscriberid(uuid);
   } else {
-    subscription_event.set_subscriberid(subscriber_id);
+    subscription_event.set_subscriberid(event.subscriber_id);
   }
   subscription_event.set_bucketid(std::string{event.bucket});
   subscription_event.set_key(std::string{event.key});
