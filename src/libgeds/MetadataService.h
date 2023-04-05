@@ -93,9 +93,14 @@ public:
   absl::StatusOr<std::pair<std::vector<geds::Object>, std::vector<std::string>>>
   listFolder(const std::string &bucket, const std::string &keyPrefix);
 
-  absl::Status createOrUpdateObjectStream();
-  absl::Status subscribe(const geds::SubscriptionEvent &event, const std::string &subscriber_id);
+  /**
+   * @brief Create subscription stream for the subscriber. This has to be called in a thread.
+   */
   absl::Status subscribeStream(const std::string &subscriber_id);
+  /**
+   * @brief Create subscription for bucket, objects and prefixes.
+   */
+  absl::Status subscribe(const geds::SubscriptionEvent &event, const std::string &subscriber_id);
   absl::Status unsubscribe(const geds::SubscriptionEvent &event, const std::string &subscriber_id);
 };
 

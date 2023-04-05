@@ -289,10 +289,6 @@ public:
   absl::Status subscribe(const geds::SubscriptionEvent &event, const std::string &subscriber_id);
   absl::Status unsubscribe(const geds::SubscriptionEvent &event, const std::string &subscriber_id);
 
-//  void testSubscribe();
-//  void testSubscribeStream();
-//  void testUnsubscribe();
-//  void publishSubscriptions();
 };
 
 #endif // GEDS_GEDS_H

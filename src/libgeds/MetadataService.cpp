@@ -404,71 +404,6 @@ MetadataService::listFolder(const std::string &bucket, const std::string &keyPre
   return listPrefix(bucket, keyPrefix, Default_GEDSFolderDelimiter);
 }
 
-absl::Status MetadataService::createOrUpdateObjectStream() {
-  
-  METADATASERVICE_CHECK_CONNECTED
-  geds::rpc::StatusResponse response;
-  grpc::ClientContext context;
-  const int objects = 10;
-
-  const std::string bucket = "geds";
-  const std::string key = "part-";
-  const std::string location = "somewhere/in/the/clouds";
-  const uint64_t size = 1000;
-  const uint64_t sealed_offset = 1000;
-
-  std::unique_ptr<grpc::ClientWriter<geds::rpc::Object>> writer(
-      _stub->CreateOrUpdateObjectStream(&context, &response));
-  for (int i = 0; i < objects; i++) {
-
-    geds::rpc::Object request;
-    auto id = request.mutable_id();
-    id->set_bucket(bucket);
-    auto newKey = key + std::to_string(i);
-    id->set_key(newKey);
-    auto info = request.mutable_info();
-    info->set_location(location);
-    info->set_size(size);
-    info->set_sealedoffset(sealed_offset);
-
-    if (!writer->Write(request)) {
-      // Broken stream.
-      break;
-    }
-  }
-  writer->WritesDone();
-  auto status = writer->Finish();
-  if (!status.ok()) {
-    return absl::InternalError(status.error_message());
-  }
-  return absl::OkStatus();
-}
-
-absl::Status MetadataService::subscribe(const geds::SubscriptionEvent &event,
-                                        const std::string &subscriber_id) {
-  METADATASERVICE_CHECK_CONNECTED
-
-  geds::rpc::SubscriptionEvent subscription_event;
-  geds::rpc::StatusResponse response;
-  grpc::ClientContext context;
-
-  if (subscriber_id.empty()) {
-    subscription_event.set_subscriberid(uuid);
-  } else {
-    subscription_event.set_subscriberid(subscriber_id);
-  }
-  subscription_event.set_bucketid(std::string{event.bucket});
-  subscription_event.set_key(std::string{event.key});
-  subscription_event.set_subscriptiontype(event.subscriptionType);
-
-  auto status = _stub->Subscribe(&context, subscription_event, &response);
-  if (!status.ok()) {
-    return absl::UnavailableError("Unable to execute CreateBucket command: " +
-                                  status.error_message());
-  }
-  return convertStatus(response);
-}
-
 absl::Status MetadataService::subscribeStream(const std::string &subscriber_id) {
   METADATASERVICE_CHECK_CONNECTED;
 
@@ -498,21 +433,42 @@ absl::Status MetadataService::subscribeStream(const std::string &subscriber_id) 
       (void)_mdsCache.createObject(obj, true);
     } else if (subscription_response.publicationtype() == geds::rpc::UPDATE_OBJECT) {
       (void)_mdsCache.updateObject(obj);
-    } else if (subscription_response.publicationtype() == geds::rpc::CREATE_UPDATE_OBJECT) {
-      // might be inefficient as we we may be updating the object instead of creating
-      (void)_mdsCache.createObject(obj, true);
     } else if (subscription_response.publicationtype() == geds::rpc::DELETE_OBJECT) {
       (void)_mdsCache.deleteObject(obj.id.bucket, obj.id.key);
     }
 
-    LOG_DEBUG("Received subscription and added to cache: ", obj.id.bucket);
+    LOG_DEBUG("Received subscription and added to cache (bucket, key): ", obj.id.bucket, " , ", obj.id.key);
   }
-
   auto status = reader->Finish();
   if (!status.ok()) {
     return absl::InternalError(status.error_message());
   }
   return absl::OkStatus();
+}
+
+absl::Status MetadataService::subscribe(const geds::SubscriptionEvent &event,
+                                        const std::string &subscriber_id) {
+  METADATASERVICE_CHECK_CONNECTED
+
+  geds::rpc::SubscriptionEvent subscription_event;
+  geds::rpc::StatusResponse response;
+  grpc::ClientContext context;
+
+  if (subscriber_id.empty()) {
+    subscription_event.set_subscriberid(uuid);
+  } else {
+    subscription_event.set_subscriberid(subscriber_id);
+  }
+  subscription_event.set_bucketid(std::string{event.bucket});
+  subscription_event.set_key(std::string{event.key});
+  subscription_event.set_subscriptiontype(event.subscriptionType);
+
+  auto status = _stub->Subscribe(&context, subscription_event, &response);
+  if (!status.ok()) {
+    return absl::UnavailableError("Unable to execute CreateBucket command: " +
+                                  status.error_message());
+  }
+  return convertStatus(response);
 }
 
 absl::Status MetadataService::unsubscribe(const geds::SubscriptionEvent &event, const std::string &subscriber_id) {

@@ -38,7 +38,6 @@ ABSL_FLAG(size_t, numTasksExecutor, 100, "The of tasks per executor.");
 ABSL_FLAG(size_t, numFiles, 1000, "The number of shuffle files to be created.");
 
 void makeSubscriberStream(std::shared_ptr<GEDS> geds, const std::string subscriber_id) {
-  LOG_DEBUG("STREAM");
   auto result = geds->subscribeStream(subscriber_id);
 }
 
@@ -49,7 +48,7 @@ void runSubscriberThread(std::shared_ptr<GEDS> geds, const std::string &bucket) 
   auto subscriberTread = std::thread(makeSubscriberStream, geds, uuid);
   subscriberTread.detach();
 
-  auto subscriptionObject = geds::SubscriptionEvent{bucket, "", "", geds::rpc::BUCKET};
+  auto subscriptionObject = geds::SubscriptionEvent{bucket, "", geds::rpc::BUCKET};
   auto testResult = geds->subscribe(subscriptionObject, uuid);
 }
 

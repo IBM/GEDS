@@ -16,16 +16,13 @@ namespace geds {
 struct SubscriptionEvent {
  std::string bucket;
  std::string key;
- std::string keyPrefix;
  geds::rpc::SubscriptionType subscriptionType;
 
- SubscriptionEvent(std::string bucket, std::string key, std::string keyPrefix,
-                   geds::rpc::SubscriptionType subscriptionType)
-     : bucket(std::move(bucket)), key(std::move(key)), keyPrefix(std::move(keyPrefix)),
-       subscriptionType(subscriptionType) {}
+ SubscriptionEvent(std::string bucket, std::string key, geds::rpc::SubscriptionType subscriptionType)
+     : bucket(std::move(bucket)), key(std::move(key)), subscriptionType(subscriptionType) {}
 
  bool operator==(const SubscriptionEvent &other) const {
-   return bucket == other.bucket && key == other.key && keyPrefix == other.keyPrefix &&
+   return bucket == other.bucket && key == other.key &&
           subscriptionType == other.subscriptionType;
  }
 };
