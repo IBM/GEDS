@@ -8,6 +8,8 @@ package com.ibm.geds;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
+import sun.nio.ch.DirectBuffer;
+
 public class GEDSFile {
     private long nativePtr = 0;
     public final String bucket;
@@ -83,7 +85,8 @@ public class GEDSFile {
         }
         int numBytes;
         if (buffer.isDirect()) {
-            numBytes = readNative(nativePtr, position, buffer, offset, length);
+            long addr = ((DirectBuffer) buffer).address();
+            numBytes = readNative(nativePtr, position, addr, offset, length);
         } else {
             numBytes = read(position, buffer.array(), offset, length);
         }
@@ -111,7 +114,8 @@ public class GEDSFile {
             return 0;
         }
         if (buffer.isDirect()) {
-            writeNative(nativePtr, position, buffer, offset, length);
+            long addr = ((DirectBuffer) buffer).address();
+            writeNative(nativePtr, position, addr, offset, length);
         } else {
             write(position, buffer.array(), offset, length);
         }
@@ -149,13 +153,9 @@ public class GEDSFile {
 
     private native void writeNative(long nativePtr, long position, byte[] buffer, int offset, int length) throws IOException;
 
-    /*
-     * Note: We are expecting that the client extracts the offset/length from the byte buffer since
-     * we do not want to extract the data when we're in the native layer.
-     */
-    private native int readNative(long nativePtr, long position, ByteBuffer buffer, int offset, int length) throws IOException;
+    private native int readNative(long nativePtr, long position, long ptr, int offset, int length) throws IOException;
 
-    private native void writeNative(long nativePtr, long position, ByteBuffer buffer, int offset, int length) throws IOException;
+    private native void writeNative(long nativePtr, long position, long ptr, int offset, int length) throws IOException;
 
     private native void sealNative(long nativePtr) throws IOException;
 
