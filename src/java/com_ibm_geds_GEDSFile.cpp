@@ -136,10 +136,10 @@ JNIEXPORT void JNICALL Java_com_ibm_geds_GEDSFile_writeNative__JJ_3BII(JNIEnv *e
                 .count();
 }
 
-// NOLINTNEXTLINE
-JNIEXPORT jint JNICALL Java_com_ibm_geds_GEDSFile_readNative__JJLjava_nio_ByteBuffer_2II(
-    JNIEnv *env, jobject, jlong nativePtr, jlong position, jobject jBuffer, jint offset,
-    jint length) {
+JNIEXPORT jint JNICALL Java_com_ibm_geds_GEDSFile_readNative__JJJII(JNIEnv *env, jobject,
+                                                                    jlong nativePtr, jlong position,
+                                                                    jlong buffer, jint offset,
+                                                                    jint length) {
   static auto counter = geds::Statistics::createIOHistogram("Java GEDSFile: bytes read");
   static auto timer = geds::Statistics::createNanoSecondHistogram("Java GEDSFile: read");
   auto timerBegin = std::chrono::high_resolution_clock::now();
@@ -147,16 +147,12 @@ JNIEXPORT jint JNICALL Java_com_ibm_geds_GEDSFile_readNative__JJLjava_nio_ByteBu
   if (nativePtr == 0) {
     return throwNullPointerException(env, "The pointer representation is NULL!");
   }
-  auto file = reinterpret_cast<GEDSFile *>(nativePtr);           // NOLINT
-  auto buffer = (uint8_t *)env->GetDirectBufferAddress(jBuffer); // NOLINT
-#ifndef NDEBUG
-  auto capacity = env->GetDirectBufferCapacity(jBuffer);
-  if ((size_t)offset + (size_t)length > (size_t)capacity) {
-    throwRuntimeException(env, "Offset + length are bigger than buffer capacity.");
-    return -1;
+  if (buffer == 0) {
+    return throwNullPointerException(env, "The buffer is NULL!");
   }
-#endif
-  auto readStatus = file->read(&buffer[offset], position, length); // NOLINT
+  auto buf = reinterpret_cast<uint8_t *>(buffer);
+  auto file = reinterpret_cast<GEDSFile *>(nativePtr);          // NOLINT
+  auto readStatus = file->read(&buf[offset], position, length); // NOLINT
   if (!readStatus.ok()) {
     throwIOException(env, readStatus.status().message());
     return 0;
@@ -169,9 +165,10 @@ JNIEXPORT jint JNICALL Java_com_ibm_geds_GEDSFile_readNative__JJLjava_nio_ByteBu
   return *readStatus; // NOLINT
 }
 
-JNIEXPORT void JNICALL Java_com_ibm_geds_GEDSFile_writeNative__JJLjava_nio_ByteBuffer_2II(
-    JNIEnv *env, jobject, jlong nativePtr, jlong position, jobject jBuffer, jint offset,
-    jint length) {
+JNIEXPORT void JNICALL Java_com_ibm_geds_GEDSFile_writeNative__JJJII(JNIEnv *env, jobject,
+                                                                     jlong nativePtr,
+                                                                     jlong position, jlong buffer,
+                                                                     jint offset, jint length) {
   static auto counter = geds::Statistics::createIOHistogram("Java GEDSFile: bytes written");
   static auto timer = geds::Statistics::createNanoSecondHistogram("Java GEDSFile: write");
   auto timerBegin = std::chrono::high_resolution_clock::now();
@@ -180,16 +177,13 @@ JNIEXPORT void JNICALL Java_com_ibm_geds_GEDSFile_writeNative__JJLjava_nio_ByteB
     throwNullPointerException(env, "The pointer representation is NULL!");
     return;
   }
-  auto file = reinterpret_cast<GEDSFile *>(nativePtr);                                   // NOLINT
-  auto buffer = reinterpret_cast<const uint8_t *>(env->GetDirectBufferAddress(jBuffer)); // NOLINT
-#ifndef NDEBUG
-  auto capacity = env->GetDirectBufferCapacity(jBuffer);
-  if ((size_t)offset + (size_t)length > (size_t)capacity) {
-    throwRuntimeException(env, "Offset + length are bigger than buffer capacity.");
+  if (buffer == 0) {
+    throwNullPointerException(env, "The buffer is NULL!");
     return;
   }
-#endif
-  auto writeStatus = file->write(&buffer[offset], position, length); // NOLINT
+  auto file = reinterpret_cast<GEDSFile *>(nativePtr);            // NOLINT
+  auto buf = reinterpret_cast<const uint8_t *>(buffer);           // NOLINT
+  auto writeStatus = file->write(&buf[offset], position, length); // NOLINT
   if (!writeStatus.ok()) {
     throwIOException(env, writeStatus.message());
   }
