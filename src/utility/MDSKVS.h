@@ -24,6 +24,7 @@ private:
 
   absl::StatusOr<std::shared_ptr<MDSKVSBucket>> getBucket(const std::string &bucket);
   absl::StatusOr<std::shared_ptr<MDSKVSBucket>> getBucket(const geds::ObjectID &id);
+  bool isCachePopulated;
 
 public:
   MDSKVS();
@@ -91,4 +92,7 @@ public:
 
   absl::StatusOr<std::pair<std::vector<geds::Object>, std::vector<std::string>>>
   listObjects(const std::string &bucket, const std::string &prefix, char delimiter = 0);
+
+  void setIsCachePopulated() { isCachePopulated = true; };
+  bool getIsCachePopulated() { return isCachePopulated; };
 };

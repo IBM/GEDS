@@ -345,7 +345,8 @@ JNIEXPORT jboolean JNICALL Java_com_ibm_geds_GEDS_nativeDeletePrefix(JNIEnv *env
 // NOLINTNEXTLINE
 JNIEXPORT jobjectArray JNICALL Java_com_ibm_geds_GEDS_nativeList(JNIEnv *env, jclass,
                                                                  jlong nativePtr, jstring jBucket,
-                                                                 jstring jKey, jchar delimiter) {
+                                                                 jstring jKey, jchar delimiter,
+                                                                 jboolean useCache) {
   static auto counter = geds::Statistics::createCounter("Java GEDS: list");
 
   if (nativePtr == 0) {
@@ -356,7 +357,7 @@ JNIEXPORT jobjectArray JNICALL Java_com_ibm_geds_GEDS_nativeList(JNIEnv *env, jc
 
   auto bucket = env->GetStringUTFChars(jBucket, nullptr);
   auto key = env->GetStringUTFChars(jKey, nullptr);
-  auto listStatus = container->element->list(bucket, key, delimiter);
+  auto listStatus = container->element->listFromCache(bucket, key, delimiter, useCache);
   env->ReleaseStringUTFChars(jBucket, bucket);
   env->ReleaseStringUTFChars(jKey, key);
   *counter += 1;
@@ -466,13 +467,11 @@ JNIEXPORT jboolean JNICALL Java_com_ibm_geds_GEDS_nativeSubscribeStreamWithThrea
     return throwNullPointerException(env, "Invalid nativePtr.");
   }
   auto container = reinterpret_cast<GEDSContainer *>(nativePtr); // NOLINT
-
   auto status = container->element->subscribeStreamWithThread(geds::SubscriptionEvent{});
-
   if (!status.ok()) {
     throwIOException(env, status.message());
   }
-  return 0;
+  return JNI_TRUE;
 }
 
 // NOLINTNEXTLINE(modernize-use-trailing-return-type)
@@ -487,17 +486,15 @@ JNIEXPORT jboolean JNICALL Java_com_ibm_geds_GEDS_nativeSubscribe(JNIEnv *env, j
 
   auto bucket = env->GetStringUTFChars(jBucket, nullptr);
   auto key = env->GetStringUTFChars(jKey, nullptr);
-
   auto status = container->element->subscribe(geds::SubscriptionEvent{
       "", bucket, key, static_cast<geds::rpc::SubscriptionType>(jSubscriptionType)});
-
   env->ReleaseStringUTFChars(jBucket, bucket);
   env->ReleaseStringUTFChars(jKey, key);
 
   if (!status.ok()) {
     throwIOException(env, status.message());
   }
-  return 0;
+  return JNI_TRUE;
 }
 
 // NOLINTNEXTLINE(modernize-use-trailing-return-type)
@@ -512,7 +509,6 @@ JNIEXPORT jboolean JNICALL Java_com_ibm_geds_GEDS_nativeUnsubscribe(JNIEnv *env,
 
   auto bucket = env->GetStringUTFChars(jBucket, nullptr);
   auto key = env->GetStringUTFChars(jKey, nullptr);
-
   auto status = container->element->unsubscribe(geds::SubscriptionEvent{
       "", bucket, key, static_cast<geds::rpc::SubscriptionType>(jSubscriptionType)});
 
@@ -522,7 +518,7 @@ JNIEXPORT jboolean JNICALL Java_com_ibm_geds_GEDS_nativeUnsubscribe(JNIEnv *env,
   if (!status.ok()) {
     throwIOException(env, status.message());
   }
-  return 0;
+  return JNI_TRUE;
 }
 
 // NOLINTEND(modernize-use-trailing-return-type)

@@ -201,6 +201,13 @@ public:
                                                    const std::string &prefix, char delimiter);
 
   /**
+   * @brief List objects from cache in `bucket` where the key starts with `prefix` and the postfix does not
+   * contain `delimiter`.
+   */
+  absl::StatusOr<std::vector<GEDSFileStatus>> listFromCache(const std::string &bucket,
+                                                   const std::string &prefix, char delimiter, const bool useCache);
+
+  /**
    * @brief List objects in `bucket` with `/` acting as delimiter.
    */
   absl::StatusOr<std::vector<GEDSFileStatus>> listAsFolder(const std::string &bucket,

@@ -474,8 +474,20 @@ absl::StatusOr<std::vector<GEDSFileStatus>> GEDS::list(const std::string &bucket
 
 absl::StatusOr<std::vector<GEDSFileStatus>> GEDS::list(const std::string &bucket,
                                                        const std::string &prefix, char delimiter) {
+  return listFromCache(bucket, prefix, delimiter, false);
+}
+
+absl::StatusOr<std::vector<GEDSFileStatus>> GEDS::listFromCache(const std::string &bucket,
+                                                                const std::string &prefix,
+                                                                char delimiter,
+                                                                const bool useCache) {
   bool prefixExists = false;
-  auto list = _metadataService.listPrefix(bucket, prefix, delimiter);
+  absl::StatusOr<std::pair<std::vector<geds::Object>, std::vector<std::string>>> list;
+  if (useCache) {
+    list = _metadataService.listPrefixFromCache(bucket, prefix, delimiter);
+  } else {
+    list = _metadataService.listPrefix(bucket, prefix, delimiter);
+  }
   if (!list.ok()) {
     return list.status();
   }

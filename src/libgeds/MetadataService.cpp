@@ -400,6 +400,17 @@ MetadataService::listPrefix(const std::string &bucket, const std::string &keyPre
 }
 
 absl::StatusOr<std::pair<std::vector<geds::Object>, std::vector<std::string>>>
+MetadataService::listPrefixFromCache(const std::string &bucket, const std::string &keyPrefix,
+                                     char delimiter) {
+  if (!_mdsCache.getIsCachePopulated()) {
+    auto objects = listPrefix(bucket, keyPrefix, delimiter);
+    _mdsCache.setIsCachePopulated();
+    return objects;
+  }
+  return _mdsCache.listObjects(bucket, keyPrefix, delimiter);
+}
+
+absl::StatusOr<std::pair<std::vector<geds::Object>, std::vector<std::string>>>
 MetadataService::listFolder(const std::string &bucket, const std::string &keyPrefix) {
   return listPrefix(bucket, keyPrefix, Default_GEDSFolderDelimiter);
 }
@@ -437,7 +448,8 @@ absl::Status MetadataService::subscribeStream(const geds::SubscriptionEvent &eve
       (void)_mdsCache.deleteObject(obj.id.bucket, obj.id.key);
     }
 
-    LOG_DEBUG("Received subscription and added to cache (bucket, key): ", obj.id.bucket, " , ", obj.id.key);
+    LOG_DEBUG("Received subscription and added to cache (bucket, key): ", obj.id.bucket, " , ",
+              obj.id.key);
   }
   auto status = reader->Finish();
   if (!status.ok()) {

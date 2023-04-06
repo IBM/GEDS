@@ -88,6 +88,13 @@ public:
   listPrefix(const std::string &bucket, const std::string &keyPrefix, char delimiter);
 
   /**
+   * @brief List objects from cache in `bucket` starting with `key` as prefix. Objects that contain `delimiter`
+   * in the postfix of the key are filtered. Delimiter `\0` is treated as no filter.
+   */
+  absl::StatusOr<std::pair<std::vector<geds::Object>, std::vector<std::string>>>
+  listPrefixFromCache(const std::string &bucket, const std::string &keyPrefix, char delimiter);
+
+  /**
    * @brief Prefix search with `/` as delimiter.
    */
   absl::StatusOr<std::pair<std::vector<geds::Object>, std::vector<std::string>>>
