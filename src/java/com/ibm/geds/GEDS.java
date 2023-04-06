@@ -15,6 +15,7 @@ public class GEDS {
 
     private long nativePtr = 0;
     private final GEDSConfig config;
+    private boolean isPubSubEnabled = false;
 
     public GEDS(GEDSConfig config) {
         this.config = config;
@@ -98,6 +99,14 @@ public class GEDS {
     public static native int getDefaultGEDSPort();
 
     public static native int getDefaultMetdataServerPort();
+
+    public void setIsPubSubEnabled(boolean enabled) {
+        isPubSubEnabled = enabled;
+    }
+
+    public boolean getIsPubSubEnabled() {
+        return isPubSubEnabled;
+    }
 
     /**
      * Create a file in bucket at key.
@@ -240,15 +249,20 @@ public class GEDS {
 
     public GEDSFileStatus[] listAsFolder(String bucket, String key) throws IOException {
         checkGEDS();
-        return nativeList(nativePtr, bucket, key, '/');
+        return nativeList(nativePtr, bucket, key, '/', false);
+    }
+
+    public GEDSFileStatus[] listAsFolderFromCacheOnly(String bucket, String key) throws IOException {
+        checkGEDS();
+        return nativeList(nativePtr, bucket, key, '/', true);
     }
 
     public GEDSFileStatus[] list(String bucket, String key) throws IOException {
         checkGEDS();
-        return nativeList(nativePtr, bucket, key, '\0');
+        return nativeList(nativePtr, bucket, key, '\0', false);
     }
 
-    private native static GEDSFileStatus[] nativeList(long ptr, String bucket, String key, char delimiter)
+    private native static GEDSFileStatus[] nativeList(long ptr, String bucket, String key, char delimiter, boolean useCache)
             throws IOException;
 
     public GEDSFileStatus status(String bucket, String key) throws IOException, FileNotFoundException {
@@ -273,4 +287,38 @@ public class GEDS {
     }
 
     private native void nativeSyncObjectStoreConfigs(long ptr);
+
+    /**
+         * Create a subscription streaming connection to MDS for the GEDS client. The streaming connection runs from within a Thread.
+    */
+    public boolean subscribeStreamWithThread() throws IOException {
+        checkGEDS();
+        return nativeSubscribeStreamWithThread(nativePtr);
+    }
+
+    private native static boolean nativeSubscribeStreamWithThread(long ptr) throws IOException;
+
+     /**
+         * Create a PubSub subscription, based in these subscription types:
+           BUCKET = 1,
+           OBJECT = 2,
+           PREFIX = 3,
+    */
+    public boolean subscribe(String bucket, String key, int subscriptionType) throws IOException {
+        checkGEDS();
+        return nativeSubscribe(nativePtr, bucket, key, subscriptionType);
+    }
+
+    private native static boolean nativeSubscribe(long ptr, String bucket, String key, int subscriptionType) throws IOException;
+
+    /**
+        * Remove a PubSub subscription
+    */
+    public boolean unsubscribe(String bucket, String key, int subscriptionType) throws IOException {
+         checkGEDS();
+         return nativeUnsubscribe(nativePtr, bucket, key, subscriptionType);
+    }
+
+    private native static boolean nativeUnsubscribe(long ptr, String bucket, String key, int subscriptionType) throws IOException;
+
 }

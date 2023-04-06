@@ -201,6 +201,13 @@ public:
                                                    const std::string &prefix, char delimiter);
 
   /**
+   * @brief List objects from cache in `bucket` where the key starts with `prefix` and the postfix does not
+   * contain `delimiter`.
+   */
+  absl::StatusOr<std::vector<GEDSFileStatus>> listFromCache(const std::string &bucket,
+                                                   const std::string &prefix, char delimiter, const bool useCache);
+
+  /**
    * @brief List objects in `bucket` with `/` acting as delimiter.
    */
   absl::StatusOr<std::vector<GEDSFileStatus>> listAsFolder(const std::string &bucket,
@@ -285,10 +292,11 @@ public:
   absl::StatusOr<std::shared_ptr<geds::FileTransferService>>
   getFileTransferService(const std::string &hostname);
 
-  absl::Status subscribeStream(const std::string &uuid);
-  absl::Status subscribe(const geds::SubscriptionEvent &event, const std::string &subscriber_id);
-  absl::Status unsubscribe(const geds::SubscriptionEvent &event, const std::string &subscriber_id);
-
+  // memory leak maybe, the thread will run, as long as the connections is open on the server side.
+  absl::Status subscribeStreamWithThread(const geds::SubscriptionEvent &event);
+  absl::Status subscribeStream(const geds::SubscriptionEvent &event);
+  absl::Status subscribe(const geds::SubscriptionEvent &event);
+  absl::Status unsubscribe(const geds::SubscriptionEvent &event);
 };
 
 #endif // GEDS_GEDS_H

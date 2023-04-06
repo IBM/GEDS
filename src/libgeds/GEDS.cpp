@@ -143,21 +143,28 @@ absl::Status GEDS::start() {
   return absl::OkStatus();
 }
 
-absl::Status GEDS::subscribeStream(const std::string &subscriber_id) {
+absl::Status GEDS::subscribeStreamWithThread(const geds::SubscriptionEvent &event) {
   GEDS_CHECK_SERVICE_RUNNING
-  return _metadataService.subscribeStream(subscriber_id);
+
+  std::thread subscriberTread(&GEDS::subscribeStream, this, event);
+  subscriberTread.detach();
+
+  return absl::OkStatus();
 }
 
-absl::Status GEDS::subscribe(const geds::SubscriptionEvent &event,
-                             const std::string &subscriber_id) {
+absl::Status GEDS::subscribeStream(const geds::SubscriptionEvent &event) {
   GEDS_CHECK_SERVICE_RUNNING
-  return _metadataService.subscribe(event, subscriber_id);
+  return _metadataService.subscribeStream(event);
 }
 
-absl::Status GEDS::unsubscribe(const geds::SubscriptionEvent &event,
-                               const std::string &subscriber_id) {
+absl::Status GEDS::subscribe(const geds::SubscriptionEvent &event) {
   GEDS_CHECK_SERVICE_RUNNING
-  return _metadataService.unsubscribe(event, subscriber_id);
+  return _metadataService.subscribe(event);
+}
+
+absl::Status GEDS::unsubscribe(const geds::SubscriptionEvent &event) {
+  GEDS_CHECK_SERVICE_RUNNING
+  return _metadataService.unsubscribe(event);
 }
 
 absl::Status GEDS::stop() {
@@ -467,8 +474,20 @@ absl::StatusOr<std::vector<GEDSFileStatus>> GEDS::list(const std::string &bucket
 
 absl::StatusOr<std::vector<GEDSFileStatus>> GEDS::list(const std::string &bucket,
                                                        const std::string &prefix, char delimiter) {
+  return listFromCache(bucket, prefix, delimiter, false);
+}
+
+absl::StatusOr<std::vector<GEDSFileStatus>> GEDS::listFromCache(const std::string &bucket,
+                                                                const std::string &prefix,
+                                                                char delimiter,
+                                                                const bool useCache) {
   bool prefixExists = false;
-  auto list = _metadataService.listPrefix(bucket, prefix, delimiter);
+  absl::StatusOr<std::pair<std::vector<geds::Object>, std::vector<std::string>>> list;
+  if (useCache) {
+    list = _metadataService.listPrefixFromCache(bucket, prefix, delimiter);
+  } else {
+    list = _metadataService.listPrefix(bucket, prefix, delimiter);
+  }
   if (!list.ok()) {
     return list.status();
   }

@@ -61,8 +61,6 @@ docker tag $IMAGE_BUILD ${REGISTRY}/${PREFIX}/geds-build_${DOCKER_BUILD_TARGET}:
 #docker push ${IMAGE_NAME}:latest
 #docker push ${IMAGE_NAME}:${GEDS_VERSION}
 
-
-
 docker push ${REGISTRY}/${PREFIX}/geds-build_${DOCKER_BUILD_TARGET}:latest
 
 

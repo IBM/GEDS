@@ -88,6 +88,13 @@ public:
   listPrefix(const std::string &bucket, const std::string &keyPrefix, char delimiter);
 
   /**
+   * @brief List objects from cache in `bucket` starting with `key` as prefix. Objects that contain `delimiter`
+   * in the postfix of the key are filtered. Delimiter `\0` is treated as no filter.
+   */
+  absl::StatusOr<std::pair<std::vector<geds::Object>, std::vector<std::string>>>
+  listPrefixFromCache(const std::string &bucket, const std::string &keyPrefix, char delimiter);
+
+  /**
    * @brief Prefix search with `/` as delimiter.
    */
   absl::StatusOr<std::pair<std::vector<geds::Object>, std::vector<std::string>>>
@@ -95,13 +102,14 @@ public:
 
   /**
    * @brief Create subscription stream for the subscriber. This has to be called in a thread.
+   * However, possible memory leakage, as the thread will be running for ever until it is closed by the MDS.
    */
-  absl::Status subscribeStream(const std::string &subscriber_id);
+  absl::Status subscribeStream(const geds::SubscriptionEvent &event);
   /**
    * @brief Create subscription for bucket, objects and prefixes.
    */
-  absl::Status subscribe(const geds::SubscriptionEvent &event, const std::string &subscriber_id);
-  absl::Status unsubscribe(const geds::SubscriptionEvent &event, const std::string &subscriber_id);
+  absl::Status subscribe(const geds::SubscriptionEvent &event);
+  absl::Status unsubscribe(const geds::SubscriptionEvent &event);
 };
 
 } // namespace geds
