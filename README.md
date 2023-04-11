@@ -1,5 +1,3 @@
-
-
 # GEDS - A Generic Ephemeral Data Store
 
 GEDS is a distributed epehemeral datastore that enables flexible scaling of compute and storage. It uses a centralized namenode to store active objects and transparently integrates into S3-like object-stores.
