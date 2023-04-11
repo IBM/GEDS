@@ -252,7 +252,7 @@ public class GEDS {
         return nativeList(nativePtr, bucket, key, '/', false);
     }
 
-    public GEDSFileStatus[] listAsFolderFromCacheOnly(String bucket, String key) throws IOException {
+    public GEDSFileStatus[] listAsFolderFromCache(String bucket, String key) throws IOException {
         checkGEDS();
         return nativeList(nativePtr, bucket, key, '/', true);
     }
