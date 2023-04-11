@@ -3,14 +3,16 @@ package pubsub
 import (
 	"github.com/IBM/gedsmds/internal/keyvaluestore"
 	"github.com/IBM/gedsmds/internal/logger"
+	"github.com/IBM/gedsmds/internal/prommetrics"
 	"github.com/IBM/gedsmds/protos"
 	"strings"
 	"sync"
 )
 
-func InitService(kvStore *keyvaluestore.Service) *Service {
+func InitService(kvStore *keyvaluestore.Service, metrics *prommetrics.Metrics) *Service {
 	service := &Service{
 		kvStore: kvStore,
+		metrics: metrics,
 
 		subscribersStreamLock: &sync.RWMutex{},
 		subscriberStreams:     map[string]*SubscriberStream{},
@@ -91,6 +93,7 @@ func (s *Service) SubscribeStream(subscription *protos.SubscriptionStreamEvent,
 }
 
 func (s *Service) matchPubSub(publication *protos.SubscriptionStreamResponse) {
+	s.metrics.IncrementPubSubMatching()
 	var subscribers []string
 	bucketID, objectID := s.createSubscriptionKeyForMatching(publication.Object)
 	s.subscribedItemsLock.RLock()
@@ -121,6 +124,7 @@ func (s *Service) matchPubSub(publication *protos.SubscriptionStreamResponse) {
 }
 
 func (s *Service) sendPublication(publication *protos.SubscriptionStreamResponse, subscriberID string) {
+	s.metrics.IncrementPubSubSendPublication()
 	s.subscribersStreamLock.RLock()
 	streamer, ok := s.subscriberStreams[subscriberID]
 	s.subscribersStreamLock.RUnlock()
