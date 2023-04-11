@@ -402,12 +402,12 @@ MetadataService::listPrefix(const std::string &bucket, const std::string &keyPre
 absl::StatusOr<std::pair<std::vector<geds::Object>, std::vector<std::string>>>
 MetadataService::listPrefixFromCache(const std::string &bucket, const std::string &keyPrefix,
                                      char delimiter) {
-  if (!_mdsCache.getIsCachePopulated()) {
-    auto objects = listPrefix(bucket, keyPrefix, delimiter);
-    _mdsCache.setIsCachePopulated();
-    return objects;
+
+  auto status_or_objects = _mdsCache.listObjects(bucket, keyPrefix, delimiter);
+  if (!status_or_objects.ok()) {
+    status_or_objects = listPrefix(bucket, keyPrefix, delimiter);
   }
-  return _mdsCache.listObjects(bucket, keyPrefix, delimiter);
+  return status_or_objects;
 }
 
 absl::StatusOr<std::pair<std::vector<geds::Object>, std::vector<std::string>>>

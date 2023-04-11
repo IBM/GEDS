@@ -92,7 +92,4 @@ public:
 
   absl::StatusOr<std::pair<std::vector<geds::Object>, std::vector<std::string>>>
   listObjects(const std::string &bucket, const std::string &prefix, char delimiter = 0);
-
-  void setIsCachePopulated() { isCachePopulated = true; };
-  bool getIsCachePopulated() { return isCachePopulated; };
 };

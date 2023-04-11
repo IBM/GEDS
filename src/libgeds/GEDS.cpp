@@ -146,6 +146,7 @@ absl::Status GEDS::start() {
 absl::Status GEDS::subscribeStreamWithThread(const geds::SubscriptionEvent &event) {
   GEDS_CHECK_SERVICE_RUNNING
 
+  // Possible issue with the memory leakage. The thread will run as long as the connection is not closed.
   std::thread subscriberTread(&GEDS::subscribeStream, this, event);
   subscriberTread.detach();
 
