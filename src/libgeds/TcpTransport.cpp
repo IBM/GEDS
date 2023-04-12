@@ -118,6 +118,7 @@ void TcpPeer::cleanup() {
     LOG_DEBUG("Endpoint shutdown: socket: ", tep->sock, " sent: ", tep->tx_bytes,
               " received: ", tep->rx_bytes);
   }
+  endpoints.clear();
   epMux.unlock();
 }
 
@@ -547,6 +548,7 @@ bool TcpPeer::processEndpointRecv(int sock) {
           auto message = "Error during GET_REPLY: " + std::to_string(ctx->hdr.error) +
                          "length: " + std::to_string(datalen) + " Ep: " + std::to_string(tep->sock);
           ctx->p->set_value(absl::AbortedError(message));
+          ctx->state = PROC_IDLE;
           break;
         }
       }
