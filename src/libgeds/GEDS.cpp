@@ -319,11 +319,10 @@ absl::StatusOr<GEDSFile> GEDS::open(const std::string &bucket, const std::string
   return fh.status();
 }
 
-absl::StatusOr<GEDSFile> GEDS::reOpen(const std::string &bucket, const std::string &key) {
+absl::StatusOr<GEDSFile> GEDS::localOpen(const std::string &bucket, const std::string &key) {
   GEDS_CHECK_SERVICE_RUNNING
 
   const auto path = getPath(bucket, key);
-
   auto fileHandle = _fileHandles.get(path);
   if (fileHandle.has_value()) {
     return (*fileHandle)->open();
@@ -332,10 +331,26 @@ absl::StatusOr<GEDSFile> GEDS::reOpen(const std::string &bucket, const std::stri
 }
 
 absl::StatusOr<std::shared_ptr<GEDSFileHandle>>
-GEDS::openAsFileHandle(const std::string &bucket, const std::string &key, bool invalidate) {
-  const auto path = getPath(bucket, key);
+GEDS::reopen(std::shared_ptr<GEDSFileHandle> existing) {
+  GEDS_CHECK_SERVICE_RUNNING;
 
+  // Avoid race condition when reopening.
+  auto lock = existing->lockFile();
+
+  auto path = getPath(existing->bucket, existing->key);
+  auto check = _fileHandles.get(path);
+  if (check.has_value() && check->get() != existing.get()) {
+    return *check;
+  }
+  (void)_fileHandles.remove(path);
+  return openAsFileHandle(existing->bucket, existing->key, true /* invalidate */);
+}
+
+absl::StatusOr<std::shared_ptr<GEDSFileHandle>>
+GEDS::openAsFileHandle(const std::string &bucket, const std::string &key, bool invalidate) {
   GEDS_CHECK_SERVICE_RUNNING
+
+  const auto path = getPath(bucket, key);
   auto check = GEDS::isValid(bucket, key);
   if (!check.ok()) {
     return check;

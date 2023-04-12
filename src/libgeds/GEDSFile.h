@@ -16,6 +16,7 @@
 
 #include "GEDSInternal.h"
 
+class GEDS;
 class GEDSFileHandle;
 
 /**
@@ -27,14 +28,16 @@ class GEDSFileHandle;
  */
 class GEDSFile {
 protected:
+  std::shared_ptr<GEDS> _geds;
   std::shared_ptr<GEDSFileHandle> _fileHandle;
 
-  virtual absl::StatusOr<size_t> readBytes(uint8_t *bytes, size_t position, size_t length);
-  virtual absl::Status writeBytes(const uint8_t *bytes, size_t position, size_t length);
+  absl::StatusOr<size_t> readBytes(uint8_t *bytes, size_t position, size_t length,
+                                   bool retry = true);
+  absl::Status writeBytes(const uint8_t *bytes, size_t position, size_t length);
 
 public:
   GEDSFile() = delete;
-  GEDSFile(std::shared_ptr<GEDSFileHandle> fileHandle);
+  GEDSFile(std::shared_ptr<GEDS> geds, std::shared_ptr<GEDSFileHandle> fileHandle);
   GEDSFile(const GEDSFile &other);
   GEDSFile(GEDSFile &&other);
   GEDSFile &operator=(const GEDSFile &other);

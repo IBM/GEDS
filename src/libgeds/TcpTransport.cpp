@@ -371,7 +371,7 @@ void TcpPeer::TcpProcessRpcGet(uint64_t reqId, const std::string objName, size_t
 
   auto bucket = objName.substr(0, separator);
   auto key = objName.substr(separator + 1);
-  auto file = _geds->reOpen(bucket, key);
+  auto file = _geds->localOpen(bucket, key);
   if (!file.ok()) {
     LOG_ERROR("cannot open file: ", objName);
     sendRpcReply(reqId, -1, 0, 0, EINVAL);
