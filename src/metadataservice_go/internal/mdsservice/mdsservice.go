@@ -10,7 +10,7 @@ import (
 
 func NewService(metrics *prommetrics.Metrics) *Service {
 	return &Service{
-		processor: mdsprocessor.InitService(),
+		processor: mdsprocessor.InitService(metrics),
 		metrics:   metrics,
 	}
 }

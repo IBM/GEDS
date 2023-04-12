@@ -35,6 +35,16 @@ func InitMetrics(registry prometheus.Registerer) *Metrics {
 		Name:      "mds_list_objects_total",
 		Help:      "The total number of list object calls",
 	})
+	metrics.pubSubMatchingCounter = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: promNamespace,
+		Name:      "mds_pubsub_matching",
+		Help:      "The total number of PubSub matching performed",
+	})
+	metrics.pubSubSendPublicationCounter = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: promNamespace,
+		Name:      "mds_pubsub_send_publication",
+		Help:      "The total number of sent publications",
+	})
 	registry.MustRegister(metrics.createObjectCounter, metrics.lookupObjectCounter,
 		metrics.updateObjectCounter, metrics.deleteObjectCounter, metrics.listObjectCounter)
 	return metrics
@@ -67,5 +77,17 @@ func (m *Metrics) IncrementDeleteObject() {
 func (m *Metrics) IncrementListObject() {
 	if config.Config.PrometheusEnabled {
 		m.listObjectCounter.Inc()
+	}
+}
+
+func (m *Metrics) IncrementPubSubMatching() {
+	if config.Config.PrometheusEnabled {
+		m.pubSubMatchingCounter.Inc()
+	}
+}
+
+func (m *Metrics) IncrementPubSubSendPublication() {
+	if config.Config.PrometheusEnabled {
+		m.pubSubSendPublicationCounter.Inc()
 	}
 }

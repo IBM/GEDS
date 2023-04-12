@@ -5,17 +5,19 @@ import (
 	"errors"
 	"github.com/IBM/gedsmds/internal/config"
 	"github.com/IBM/gedsmds/internal/keyvaluestore"
+	"github.com/IBM/gedsmds/internal/prommetrics"
 	"github.com/IBM/gedsmds/internal/pubsub"
 	"github.com/IBM/gedsmds/protos"
 	"google.golang.org/grpc/peer"
 	"strings"
 )
 
-func InitService() *Service {
+func InitService(metrics *prommetrics.Metrics) *Service {
 	kvStore := keyvaluestore.InitKeyValueStoreService()
 	return &Service{
-		pubsub:  pubsub.InitService(kvStore),
+		pubsub:  pubsub.InitService(kvStore, metrics),
 		kvStore: kvStore,
+		metrics: metrics,
 	}
 }
 

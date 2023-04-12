@@ -2,6 +2,7 @@ package pubsub
 
 import (
 	"github.com/IBM/gedsmds/internal/keyvaluestore"
+	"github.com/IBM/gedsmds/internal/prommetrics"
 	"github.com/IBM/gedsmds/protos"
 	"sync"
 )
@@ -16,6 +17,7 @@ type SubscriberStream struct {
 
 type Service struct {
 	kvStore *keyvaluestore.Service
+	metrics *prommetrics.Metrics
 
 	subscribersStreamLock *sync.RWMutex
 	subscriberStreams     map[string]*SubscriberStream
