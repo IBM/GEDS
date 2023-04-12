@@ -34,7 +34,6 @@ public:
    * @brief Mutex to protect rw operations.
    */
   mutable std::recursive_mutex __mutex;
-  auto lockFile() const { return std::lock_guard(__mutex); }
 
 protected:
   std::atomic<int64_t> _openCount{0};
@@ -50,6 +49,8 @@ protected:
   GEDSFileHandle(std::shared_ptr<GEDS> gedsService, std::string bucketArg, std::string keyArg);
 
 public:
+  auto lockFile() const { return std::lock_guard(__mutex); }
+
   GEDSFileHandle() = delete;
   virtual ~GEDSFileHandle();
 

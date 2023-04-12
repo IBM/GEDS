@@ -130,5 +130,5 @@ absl::Status GEDSFileHandle::seal() {
 absl::StatusOr<GEDSFile> GEDSFileHandle::open() {
   // Avoid race-conditions when marking files as unused.
   auto lock = lockFile();
-  return GEDSFile(shared_from_this());
+  return GEDSFile(_gedsService, shared_from_this());
 }

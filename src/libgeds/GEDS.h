@@ -178,9 +178,14 @@ public:
   openAsFileHandle(const std::string &bucket, const std::string &key, bool invalidate = false);
 
   /**
-   * @brief Only open local files.
+   * @brief Reopen a file after a unsuccessful read.
    */
-  absl::StatusOr<GEDSFile> reOpen(const std::string &bucket, const std::string &key);
+  absl::StatusOr<std::shared_ptr<GEDSFileHandle>> reopen(std::shared_ptr<GEDSFileHandle> existing);
+
+  /**
+   * @brief Only open local filehandles.
+   */
+  absl::StatusOr<GEDSFile> localOpen(const std::string &bucket, const std::string &key);
 
   /**
    * @brief Mark the file associated with fileHandle as sealed.
