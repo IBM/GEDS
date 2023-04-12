@@ -292,8 +292,8 @@ public:
   absl::StatusOr<std::shared_ptr<geds::FileTransferService>>
   getFileTransferService(const std::string &hostname);
 
-  // memory leak maybe, the thread will run, as long as the connections is open on the server side.
   absl::Status subscribeStreamWithThread(const geds::SubscriptionEvent &event);
+  absl::Status stopSubscribeStreamWithThread();
   absl::Status subscribeStream(const geds::SubscriptionEvent &event);
   absl::Status subscribe(const geds::SubscriptionEvent &event);
   absl::Status unsubscribe(const geds::SubscriptionEvent &event);

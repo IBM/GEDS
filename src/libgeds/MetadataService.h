@@ -32,6 +32,8 @@ class MetadataService {
   std::shared_ptr<grpc::Channel> _channel;
   std::unique_ptr<geds::rpc::MetadataService::Stub> _stub;
   std::string uuid;
+  std::atomic<bool> subscribeStreamSingletonThreadFlag;
+  std::atomic<bool> subscribeStreamContinueThreadFlag;
 
 public:
   const std::string serverAddress;
@@ -88,8 +90,8 @@ public:
   listPrefix(const std::string &bucket, const std::string &keyPrefix, char delimiter);
 
   /**
-   * @brief List objects from cache in `bucket` starting with `key` as prefix. Objects that contain `delimiter`
-   * in the postfix of the key are filtered. Delimiter `\0` is treated as no filter.
+   * @brief List objects from cache in `bucket` starting with `key` as prefix. Objects that contain
+   * `delimiter` in the postfix of the key are filtered. Delimiter `\0` is treated as no filter.
    */
   absl::StatusOr<std::pair<std::vector<geds::Object>, std::vector<std::string>>>
   listPrefixFromCache(const std::string &bucket, const std::string &keyPrefix, char delimiter);
@@ -102,9 +104,11 @@ public:
 
   /**
    * @brief Create subscription stream for the subscriber. This has to be called in a thread.
-   * However, possible memory leakage, as the thread will be running for ever until it is closed by the MDS.
+   * However, possible memory leakage, as the thread will be running for ever until it is closed by
+   * the MDS.
    */
   absl::Status subscribeStream(const geds::SubscriptionEvent &event);
+  absl::Status setSubscribeStreamContinueAbortThreadFlag(bool threadFlag);
   /**
    * @brief Create subscription for bucket, objects and prefixes.
    */
