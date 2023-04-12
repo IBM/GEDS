@@ -96,9 +96,9 @@ absl::Status MDSKVS::deleteObject(const geds::ObjectID &id) {
   if (!bucket.ok()) {
     return bucket.status();
   }
-
   return bucket.value()->deleteObject(id.key);
 }
+
 absl::Status MDSKVS::deleteObject(const std::string &bucket, const std::string &key) {
   auto b = getBucket(bucket);
   if (!b.ok()) {
