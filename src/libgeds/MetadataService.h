@@ -104,8 +104,10 @@ public:
 
   /**
    * @brief Create subscription stream for the subscriber. This has to be called in a thread.
-   * However, possible memory leakage, as the thread will be running for ever until it is closed by
-   * the MDS.
+   * The thread will be running for ever until it is stopped by
+   * setSubscribeStreamContinueAbortThreadFlag (false). The subscribeStreamContinueThreadFlag must
+   * be set first to true by setSubscribeStreamContinueAbortThreadFlag(true), before calling the
+   * method.
    */
   absl::Status subscribeStream(const geds::SubscriptionEvent &event);
   absl::Status setSubscribeStreamContinueAbortThreadFlag(bool threadFlag);
