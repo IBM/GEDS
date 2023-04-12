@@ -341,7 +341,7 @@ absl::StatusOr<geds::Object> MetadataService::lookup(const std::string &bucket,
   const auto &r = response.result();
   auto obj_id = geds::ObjectID{r.id().bucket(), r.id().key()};
   auto obj_info = geds::ObjectInfo{r.info().location(), r.info().size(), r.info().sealedoffset()};
-  return geds::Object{obj_id, obj_info};
+//  return geds::Object{obj_id, obj_info};
 
   auto result = geds::Object{obj_id, obj_info};
   (void)_mdsCache.createObject(result, true);
