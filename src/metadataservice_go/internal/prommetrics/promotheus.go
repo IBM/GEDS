@@ -46,7 +46,8 @@ func InitMetrics(registry prometheus.Registerer) *Metrics {
 		Help:      "The total number of sent publications",
 	})
 	registry.MustRegister(metrics.createObjectCounter, metrics.lookupObjectCounter,
-		metrics.updateObjectCounter, metrics.deleteObjectCounter, metrics.listObjectCounter)
+		metrics.updateObjectCounter, metrics.deleteObjectCounter, metrics.listObjectCounter,
+		metrics.pubSubMatchingCounter, metrics.pubSubSendPublicationCounter)
 	return metrics
 }
 
