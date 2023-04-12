@@ -146,11 +146,15 @@ absl::Status GEDS::start() {
 absl::Status GEDS::subscribeStreamWithThread(const geds::SubscriptionEvent &event) {
   GEDS_CHECK_SERVICE_RUNNING
 
-  // Possible issue with the memory leakage. The thread will run as long as the connection is not closed.
+  auto status = _metadataService.setSubscribeStreamContinueAbortThreadFlag(true);
   std::thread subscriberTread(&GEDS::subscribeStream, this, event);
   subscriberTread.detach();
 
   return absl::OkStatus();
+}
+
+absl::Status GEDS::stopSubscribeStreamWithThread() {
+  return _metadataService.setSubscribeStreamContinueAbortThreadFlag(false);
 }
 
 absl::Status GEDS::subscribeStream(const geds::SubscriptionEvent &event) {

@@ -298,6 +298,13 @@ public class GEDS {
 
     private native static boolean nativeSubscribeStreamWithThread(long ptr) throws IOException;
 
+    public boolean stopSubscribeStreamWithThread() throws IOException {
+        checkGEDS();
+        return nativeStopSubscribeStreamWithThread(nativePtr);
+    }
+
+    private native static boolean nativeStopSubscribeStreamWithThread(long ptr) throws IOException;
+
      /**
          * Create a PubSub subscription, based in these subscription types:
            BUCKET = 1,

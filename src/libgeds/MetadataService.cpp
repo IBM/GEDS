@@ -341,7 +341,7 @@ absl::StatusOr<geds::Object> MetadataService::lookup(const std::string &bucket,
   const auto &r = response.result();
   auto obj_id = geds::ObjectID{r.id().bucket(), r.id().key()};
   auto obj_info = geds::ObjectInfo{r.info().location(), r.info().size(), r.info().sealedoffset()};
-  return geds::Object{obj_id, obj_info};
+//  return geds::Object{obj_id, obj_info};
 
   auto result = geds::Object{obj_id, obj_info};
   (void)_mdsCache.createObject(result, true);
@@ -418,6 +418,11 @@ MetadataService::listFolder(const std::string &bucket, const std::string &keyPre
 absl::Status MetadataService::subscribeStream(const geds::SubscriptionEvent &event) {
   METADATASERVICE_CHECK_CONNECTED;
 
+  if (subscribeStreamSingletonThreadFlag) {
+    return absl::OkStatus();
+  }
+  subscribeStreamSingletonThreadFlag = true;
+
   geds::rpc::SubscriptionStreamEvent subscription_stream_event;
   geds::rpc::SubscriptionStreamResponse subscription_response;
   grpc::ClientContext context;
@@ -431,7 +436,7 @@ absl::Status MetadataService::subscribeStream(const geds::SubscriptionEvent &eve
   std::unique_ptr<grpc::ClientReader<geds::rpc::SubscriptionStreamResponse>> reader(
       _stub->SubscribeStream(&context, subscription_stream_event));
 
-  while (reader->Read(&subscription_response)) {
+  while (reader->Read(&subscription_response) && subscribeStreamContinueThreadFlag) {
 
     const auto &objectPublication = subscription_response.object();
     auto obj_id = geds::ObjectID{objectPublication.id().bucket(), objectPublication.id().key()};
@@ -451,10 +456,19 @@ absl::Status MetadataService::subscribeStream(const geds::SubscriptionEvent &eve
     LOG_DEBUG("Received subscription and added to cache (bucket, key): ", obj.id.bucket, " , ",
               obj.id.key);
   }
+  subscribeStreamSingletonThreadFlag = false;
   auto status = reader->Finish();
   if (!status.ok()) {
     return absl::InternalError(status.error_message());
   }
+  if (subscribeStreamContinueThreadFlag) {
+    return subscribeStream(event);
+  }
+  return absl::OkStatus();
+}
+
+absl::Status MetadataService::setSubscribeStreamContinueAbortThreadFlag(bool threadFlag) {
+  subscribeStreamContinueThreadFlag = threadFlag;
   return absl::OkStatus();
 }
 
