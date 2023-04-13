@@ -18,6 +18,7 @@
 #include <memory>
 #include <mutex>
 #include <pthread.h>
+#include <shared_mutex>
 #include <string>
 #include <sys/epoll.h>
 #include <sys/sendfile.h>
@@ -111,7 +112,7 @@ TcpPeer::~TcpPeer() {
 }
 
 void TcpPeer::cleanup() {
-  epMux.lock();
+  auto lock = getWriteLock();
   for (auto &endpoint : endpoints) {
     auto tep = endpoint.second;
     shutdown(tep->sock, SHUT_RDWR);
@@ -119,20 +120,18 @@ void TcpPeer::cleanup() {
               " received: ", tep->rx_bytes);
   }
   endpoints.clear();
-  epMux.unlock();
 }
 
 bool TcpPeer::SocketTxReady(int sock) {
   bool rv = false;
-  epMux.lock_shared();
+  auto lock = getReadLock();
   auto it = endpoints.find(sock);
-  if (it->second) {
+  if (it != endpoints.end()) {
     auto tep = it->second;
     tep->send_ctx.stateMux.lock();
     rv = processEndpointSend(tep);
     tep->send_ctx.stateMux.unlock();
   }
-  epMux.unlock_shared();
   return rv;
 }
 
@@ -334,10 +333,9 @@ void TcpTransport::tcpTxThread(unsigned int id) {
 }
 
 bool TcpPeer::SocketStateChange(int sock, uint32_t change) {
-  epMux.lock();
+  auto lock = getWriteLock();
   auto it = endpoints.find(sock);
-  if (!it->second) {
-    epMux.unlock();
+  if (it == endpoints.end()) {
     return true;
   }
   auto tep = it->second;
@@ -357,8 +355,6 @@ bool TcpPeer::SocketStateChange(int sock, uint32_t change) {
   }
   if (endpoints.size() != 0)
     dead = false;
-  epMux.unlock();
-
   return dead;
 }
 
@@ -422,16 +418,16 @@ void TcpPeer::TcpProcessRpcGet(uint64_t reqId, const std::string objName, size_t
  */
 bool TcpPeer::processEndpointRecv(int sock) {
   std::shared_ptr<TcpEndpoint> tep;
-  epMux.lock_shared();
-  auto it = endpoints.find(sock);
-  if (it->second) {
+  {
+    auto lock = getReadLock();
+    auto it = endpoints.find(sock);
+    if (it == endpoints.end()) {
+      LOG_ERROR("No peer for this endpoint: ", sock);
+      return false;
+    }
     tep = it->second;
-    epMux.unlock_shared();
-  } else {
-    epMux.unlock_shared();
-    LOG_ERROR("No peer for this endpoint: ", sock);
-    return false;
   }
+
   TcpRcvState *ctx = &tep->recv_ctx;
   int op = -1;
   ssize_t rv = 0;
@@ -818,7 +814,7 @@ std::shared_ptr<TcpPeer> TcpTransport::getPeer(sockaddr *peer) {
 }
 
 void TcpPeer::updateIoStats() {
-  epMux.lock_shared();
+  auto lock = getReadLock();
   for (auto &endpoint : endpoints) {
     auto tep = endpoint.second;
     /*
@@ -827,14 +823,13 @@ void TcpPeer::updateIoStats() {
     tep->tx_bytes /= 2;
     tep->rx_bytes /= 2;
   }
-  epMux.unlock_shared();
 }
 
 std::shared_ptr<TcpEndpoint> TcpPeer::getLeastUsedTx(size_t to_send) {
   std::shared_ptr<TcpEndpoint> send_tep = nullptr, tep = nullptr;
   size_t min_sent = UINT_LEAST32_MAX;
 
-  epMux.lock_shared();
+  auto lock = getReadLock();
   for (auto &endpoint : endpoints) {
     tep = endpoint.second;
     if (tep->state != ALL_OPEN) {
@@ -850,7 +845,6 @@ std::shared_ptr<TcpEndpoint> TcpPeer::getLeastUsedTx(size_t to_send) {
       send_tep = tep;
     }
   }
-  epMux.unlock_shared();
   if (send_tep)
     return send_tep;
 
