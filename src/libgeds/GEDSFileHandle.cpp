@@ -32,15 +32,23 @@ GEDSFileHandle::~GEDSFileHandle() {
 
 int64_t GEDSFileHandle::openCount() const { return _openCount; }
 void GEDSFileHandle::increaseOpenCount() {
+  auto lock = lockFile();
   _openCount++;
   _lastOpened = std::chrono::system_clock::now();
 }
 void GEDSFileHandle::decreaseOpenCount() {
+  auto lock = lockFile();
+
   _openCount--;
   _lastReleased = std::chrono::system_clock::now();
   if (_openCount == 0) {
     notifyUnused();
   }
+}
+
+bool GEDSFileHandle::isValid() const {
+  auto lock = lockFile();
+  return _isValid;
 }
 
 void GEDSFileHandle::notifyUnused() { LOG_DEBUG("The file ", identifier, " is unused."); }

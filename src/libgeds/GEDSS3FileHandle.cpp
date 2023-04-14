@@ -90,16 +90,19 @@ GEDSS3FileHandle::factory(std::shared_ptr<GEDS> gedsService, const std::string &
   }
 }
 
-bool GEDSS3FileHandle::isValid() const { return _isValid; }
-
-absl::StatusOr<size_t> GEDSS3FileHandle::size() const { return _size; }
+absl::StatusOr<size_t> GEDSS3FileHandle::size() const {
+  auto lock = lockShared();
+  return _size;
+}
 
 absl::StatusOr<size_t> GEDSS3FileHandle::readBytes(uint8_t *bytes, size_t position, size_t length) {
   if (!_isValid) {
     return absl::NotFoundError("The file is no longer valid!");
   }
+  auto lock = lockShared();
   auto status = _s3Endpoint->readBytes(s3Bucket, s3Key, bytes, position, length);
   if (!status.ok() || status.status().code() == absl::StatusCode::kNotFound) {
+    auto flock = lockFile();
     _isValid = false;
   }
   *_readStatistics += status.value_or(0);
@@ -122,4 +125,8 @@ absl::StatusOr<size_t> GEDSS3FileHandle::downloadRange(std::shared_ptr<GEDSFileH
   return *count;
 }
 
-absl::Status GEDSS3FileHandle::seal() { return _gedsService->seal(*this, false, _size, location); }
+absl::Status GEDSS3FileHandle::seal() {
+  auto lock = lockFile();
+  auto ioLock = lockExclusive();
+  return _gedsService->seal(*this, false, _size, location);
+}

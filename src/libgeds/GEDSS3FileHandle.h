@@ -21,7 +21,6 @@ public:
 protected:
   const std::shared_ptr<geds::s3::Endpoint> _s3Endpoint;
   size_t _size;
-  bool _isValid{true};
   std::shared_ptr<geds::StatisticsCounter> _readStatistics =
       geds::Statistics::createCounter("GEDSS3FileHandle: bytes read");
 
@@ -32,13 +31,14 @@ private:
                    std::optional<size_t> fileSize = std::nullopt);
 
 public:
+  ~GEDSS3FileHandle() override = default;
+
   [[nodiscard]] static absl::StatusOr<std::shared_ptr<GEDSFileHandle>>
   factory(std::shared_ptr<GEDS> gedsService, const geds::Object &object);
 
   [[nodiscard]] static absl::StatusOr<std::shared_ptr<GEDSFileHandle>>
   factory(std::shared_ptr<GEDS> gedsService, const std::string &bucket, const std::string &key);
 
-  bool isValid() const override;
   absl::StatusOr<size_t> size() const override;
 
   absl::StatusOr<size_t> readBytes(uint8_t *bytes, size_t position, size_t length) override;

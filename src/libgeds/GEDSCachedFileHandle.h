@@ -18,8 +18,6 @@
 #include "GEDS.h"
 
 class GEDSCachedFileHandle : public GEDSFileHandle {
-  mutable bool _isValid{true};
-
   std::shared_ptr<GEDSFileHandle> _remoteFileHandle;
   std::shared_ptr<GEDSFile> _remoteFile;
 
@@ -81,8 +79,6 @@ public:
   absl::StatusOr<size_t> readBytes(uint8_t *bytes, size_t position, size_t length) override;
 
   absl::Status seal() override;
-
-  bool isValid() const override;
 };
 
 #endif

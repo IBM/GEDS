@@ -3,8 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef GEDS_GEDSFILEHANDLE_H
-#define GEDS_GEDSFILEHANDLE_H
+#pragma once
 
 #include <atomic>
 #include <chrono>
@@ -14,6 +13,7 @@
 #include <memory>
 #include <mutex>
 #include <optional>
+#include <shared_mutex>
 #include <string>
 
 #include <absl/status/status.h>
@@ -30,26 +30,29 @@ public:
   const std::string key;
   const std::string identifier;
 
-  /**
-   * @brief Mutex to protect rw operations.
-   */
-  mutable std::recursive_mutex __mutex;
-
 protected:
   std::atomic<int64_t> _openCount{0};
+  bool _isValid{true};
+
+  /** Mutex for file-based operations. */
+  mutable std::recursive_mutex _fileMutex;
+
+  std::optional<std::string> _metadata = std::nullopt;
   std::chrono::system_clock::time_point _lastOpened;
   std::chrono::system_clock::time_point _lastReleased;
 
+  /** Mutex for IO operations.*/
+  mutable std::shared_mutex _ioMutex;
+  auto lockShared() const { return std::shared_lock<std::shared_mutex>(_ioMutex); }
+  auto lockExclusive() const { return std::unique_lock<std::shared_mutex>(_ioMutex); }
+
   std::shared_ptr<GEDS> _gedsService;
 
-  std::shared_ptr<GEDSFileHandle> getPtr() { return shared_from_this(); }
-
-protected:
   // Constructors are private to enable `shared_from_this`.
   GEDSFileHandle(std::shared_ptr<GEDS> gedsService, std::string bucketArg, std::string keyArg);
 
 public:
-  auto lockFile() const { return std::lock_guard(__mutex); }
+  auto lockFile() const { return std::lock_guard(_fileMutex); }
 
   GEDSFileHandle() = delete;
   virtual ~GEDSFileHandle();
@@ -67,38 +70,29 @@ public:
   std::chrono::system_clock::time_point lastOpened() const;
   std::chrono::system_clock::time_point lastReleased() const;
 
-  virtual bool isValid() const = 0;
+  virtual bool isValid() const;
+  virtual bool isSpillable() const { return false; }
   virtual bool isWriteable() const { return false; }
 
-  size_t roundToNearestMultiple(size_t number, size_t factor) const;
-
-  /**
-   * @brief Read length bytes from file handle (or until EOF) at position into buffer. The API needs
-   * to handle POSIX errors.
-   * @return Effective number of bytes read.
-   */
   virtual absl::StatusOr<size_t> readBytes(uint8_t *bytes, size_t position, size_t length);
 
-  virtual absl::StatusOr<int> rawFd() const;
-
-  /**
-   * @brief Write length bytes into file handle at position. The API needs to handle POSIX errors.
-   */
   virtual absl::Status writeBytes(const uint8_t *bytes, size_t position, size_t length);
 
   virtual absl::Status write(std::istream &stream, size_t position = 0,
                              std::optional<size_t> lengthOptional = std::nullopt);
-
-  absl::Status download(std::shared_ptr<GEDSFileHandle> destination);
-  virtual absl::StatusOr<size_t> downloadRange(std::shared_ptr<GEDSFileHandle> destination,
-                                               size_t srcPosition, size_t length,
-                                               size_t destPosition);
 
   virtual absl::Status truncate(size_t targetSize);
 
   virtual absl::Status seal();
 
   virtual absl::StatusOr<GEDSFile> open();
-};
 
-#endif // GEDS_GEDSFILEHANDLE_H
+  virtual absl::StatusOr<int> rawFd() const;
+
+  size_t roundToNearestMultiple(size_t number, size_t factor) const;
+
+  absl::Status download(std::shared_ptr<GEDSFileHandle> destination);
+  virtual absl::StatusOr<size_t> downloadRange(std::shared_ptr<GEDSFileHandle> destination,
+                                               size_t srcPosition, size_t length,
+                                               size_t destPosition);
+};

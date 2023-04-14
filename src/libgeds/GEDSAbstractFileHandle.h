@@ -25,9 +25,6 @@ absl::Status seal(std::shared_ptr<GEDS> geds, GEDSFileHandle &fileHandle, bool u
 
 template <class T> class GEDSAbstractFileHandle : public GEDSFileHandle {
   bool _isSealed{false};
-  size_t _sealedSize{0};
-
-  bool _isValid{true};
 
   T _file;
 
@@ -83,10 +80,11 @@ public:
   absl::StatusOr<size_t> size() const override { return _file.size(); }
   size_t localStorageSize() const override { return _file.localStorageSize(); }
   size_t localMemorySize() const override { return _file.localMemorySize(); }
-  virtual size_t sealedSize() const { return _sealedSize; }
+
   bool isWriteable() const override { return true; }
 
   absl::StatusOr<size_t> readBytes(uint8_t *bytes, size_t position, size_t length) override {
+    auto lock = lockShared();
     auto result = _file.readBytes(bytes, position, length);
     if (result.ok()) {
       *_readStatistics += *result;
@@ -95,6 +93,7 @@ public:
   }
 
   absl::Status writeBytes(const uint8_t *bytes, size_t position, size_t length) override {
+    auto lock = lockShared();
     auto result = _file.writeBytes(bytes, position, length);
     if (result.ok()) {
       *_writeStatistics += length;
@@ -104,6 +103,7 @@ public:
 
   absl::Status write(std::istream &stream, size_t position,
                      std::optional<size_t> lengthOptional) override {
+    auto lock = lockShared();
     auto result = _file.write(stream, position, lengthOptional);
     if (result.ok()) {
       *_writeStatistics += *result;
@@ -111,9 +111,13 @@ public:
     return absl::OkStatus();
   }
 
-  absl::Status truncate(size_t targetSize) override { return _file.truncate(targetSize); }
+  absl::Status truncate(size_t targetSize) override {
+    auto lock = lockExclusive();
+    return _file.truncate(targetSize);
+  }
 
   absl::Status seal() override {
+    auto ioLock = lockExclusive();
     auto lock = lockFile();
     size_t currentSize = _file.size();
     absl::Status status = absl::OkStatus();
@@ -123,12 +127,12 @@ public:
     }
     if (status.ok()) {
       _isSealed = true;
-      _sealedSize = currentSize;
     }
     return status;
   }
 
   void notifyUnused() override {
+    auto iolock = lockExclusive();
     auto lock = lockFile();
     if (_openCount > 0) {
       return;
@@ -136,7 +140,8 @@ public:
     _file.notifyUnused();
   };
 
-  bool isValid() const override { return _isValid; }
-
-  absl::StatusOr<int> rawFd() const override { return _file.rawFd(); }
+  absl::StatusOr<int> rawFd() const override {
+    auto lock = lockShared();
+    return _file.rawFd();
+  }
 };
