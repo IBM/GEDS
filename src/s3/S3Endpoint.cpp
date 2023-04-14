@@ -275,10 +275,20 @@ absl::Status Endpoint::putObject(const std::string &bucket, const std::string &k
   request.SetContentType("application/octet-stream");
 
   *totalRequestsSent += 1;
-  auto outcome = _s3Client->PutObject(request);
-  if (!outcome.IsSuccess()) {
-    auto &error = outcome.GetError();
-    return convertS3Error(error, "put", key);
+  try {
+    auto outcome = _s3Client->PutObject(request);
+    if (!outcome.IsSuccess()) {
+      auto &error = outcome.GetError();
+      return convertS3Error(error, "put", key);
+    }
+  } catch (const std::exception &e) {
+    auto message = "Caught exception using put: " + bucket + "/" + key + ": " + e.what();
+    LOG_ERROR(message);
+    return absl::UnknownError(message);
+  } catch (...) {
+    auto message = "Caught exception using an unknown error for put: " + bucket + "/" + key;
+    LOG_ERROR(message);
+    return absl::UnknownError(message);
   }
   return absl::OkStatus();
 }
