@@ -43,6 +43,31 @@ GEDSCachedFileHandle::GEDSCachedFileHandle(std::shared_ptr<GEDS> gedsService, st
 
 absl::StatusOr<size_t> GEDSCachedFileHandle::size() const { return _remoteSize; }
 
+size_t GEDSCachedFileHandle::localStorageSize() const {
+  size_t result = 0;
+  for (size_t idx = 0; idx < _blocks.size(); idx++) {
+    auto lock = std::lock_guard(_blockMutex[idx]);
+    if (_blocks[idx].get() == nullptr) {
+      continue;
+    }
+    auto fh = _blocks[idx]->fileHandle();
+    result += fh->localStorageSize();
+  }
+  return result;
+}
+
+size_t GEDSCachedFileHandle::localMemorySize() const {
+  size_t result = 0;
+  for (size_t idx = 0; idx < _blocks.size(); idx++) {
+    auto lock = std::lock_guard(_blockMutex[idx]);
+    if (_blocks[idx].get() == nullptr) {
+      continue;
+    }
+    auto fh = _blocks[idx]->fileHandle();
+    result += fh->localMemorySize();
+  }
+  return result;
+}
 absl::StatusOr<size_t> GEDSCachedFileHandle::readBytes(uint8_t *bytes, size_t position,
                                                        size_t length) {
 

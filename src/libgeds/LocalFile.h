@@ -50,6 +50,8 @@ public:
   void notifyUnused();
 
   [[nodiscard]] size_t size() const { return _size; }
+  [[nodiscard]] size_t localStorageSize() const { return _size; }
+  [[nodiscard]] size_t localMemorySize() const { return 0; }
 
   absl::StatusOr<int> rawFd() const;
 
