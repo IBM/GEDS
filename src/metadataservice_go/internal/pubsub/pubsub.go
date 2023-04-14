@@ -134,8 +134,7 @@ func (s *Service) sendPublication(publication *protos.SubscriptionStreamResponse
 		return
 	}
 	logger.InfoLogger.Println("sending publication", publication, subscriberID)
-	// BUG FIX: This may create a panic
-	if streamer != nil {
+	if streamer.stream != nil {
 		if err := streamer.stream.Send(publication); err != nil {
 			logger.ErrorLogger.Println("could not send the publication to subscriber " + subscriberID)
 			s.removeSubscriberStreamWithLock(streamer)
