@@ -172,7 +172,6 @@ func (s *Service) removeSubscriber(unsubscription *protos.SubscriptionEvent) err
 	if err != nil {
 		return err
 	}
-	// possible bottleneck
 	s.subscribedItemsLock.Lock()
 	if currentSubscribers, ok := s.subscribedItems[subscribedItemId]; ok {
 		s.removeElementFromSlice(currentSubscribers, unsubscription.SubscriberID)

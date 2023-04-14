@@ -7,7 +7,7 @@ import (
 	"sync"
 )
 
-const channelBufferSize = 200
+const channelBufferSize = 500
 
 type SubscriberStream struct {
 	stream               protos.MetadataService_SubscribeStreamServer

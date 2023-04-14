@@ -6,7 +6,6 @@ import (
 	"github.com/IBM/gedsmds/internal/logger"
 	"github.com/IBM/gedsmds/protos"
 	"io"
-	"strconv"
 )
 
 type Executor struct {
@@ -349,39 +348,6 @@ func (e *Executor) Subscribe() {
 		logger.ErrorLogger.Println(err)
 	}
 	logger.InfoLogger.Println(result2.Code)
-
-	if errCon := conn.Close(); errCon != nil {
-		logger.ErrorLogger.Println(errCon)
-	}
-}
-
-func (e *Executor) SentUpdateAndCreate() {
-	conn, err := e.mdsConnections["127.0.0.1"].Get(context.Background())
-	if conn == nil || err != nil {
-		logger.ErrorLogger.Println(err)
-	}
-	client := protos.NewMetadataServiceClient(conn.ClientConn)
-
-	streamer, err := client.CreateOrUpdateObjectStream(context.Background())
-	if err != nil {
-		logger.InfoLogger.Println(err)
-	}
-	for i := 0; i < 3; i++ {
-		object := &protos.Object{
-			Id: &protos.ObjectID{
-				Key:    "path1/path2/path3/file" + strconv.Itoa(i),
-				Bucket: "b2",
-			},
-			Info: &protos.ObjectInfo{
-				Location:     "here",
-				Size:         3000,
-				SealedOffset: 3000,
-			},
-		}
-		if err = streamer.Send(object); err != nil {
-			logger.ErrorLogger.Println(err)
-		}
-	}
 
 	if errCon := conn.Close(); errCon != nil {
 		logger.ErrorLogger.Println(errCon)
