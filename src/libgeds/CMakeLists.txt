@@ -83,6 +83,7 @@ target_link_libraries(geds_objlib
         geds_utility
         geds_statistics
         geds_s3
+        ${GEDS_EXTRA_LINKER_FLAGS}
 )
  
 # Static library
