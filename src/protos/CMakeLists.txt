@@ -32,6 +32,7 @@ target_link_libraries(geds_proto
         PUBLIC
         ${Protobuf_LIBRARIES}
         ${GRPC_LIBRARIES}
+        ${GEDS_EXTRA_LINKER_FLAGS}
 )
 set_target_properties(geds_proto
         PROPERTIES

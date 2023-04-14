@@ -29,6 +29,7 @@ target_link_libraries(geds_utility
         PUBLIC
         ${GRPC_LIBRARIES}
         geds_proto
+        ${GEDS_EXTRA_LINKER_FLAGS}
 )
 target_include_directories(geds_utility
         PUBLIC

@@ -19,6 +19,7 @@ add_library(geds_statistics STATIC ${SOURCES})
 target_link_libraries(geds_statistics
     PUBLIC
     geds_utility
+    ${GEDS_EXTRA_LINKER_FLAGS}
 )
 target_include_directories(geds_statistics
     PUBLIC
