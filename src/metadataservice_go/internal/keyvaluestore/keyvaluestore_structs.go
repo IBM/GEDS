@@ -23,8 +23,15 @@ type Object struct {
 	object *protos.Object
 }
 
+type NestedObjects struct {
+	objects          map[string]*Object
+	currentDirectory string
+	childDirectories map[string]*NestedObjects
+}
+
 type Bucket struct {
-	objectsLock *sync.RWMutex
-	objects     map[string]*Object
-	bucket      *protos.Bucket
+	objectsLock   *sync.RWMutex
+	objects       map[string]*Object
+	nestedObjects *NestedObjects
+	bucket        *protos.Bucket
 }

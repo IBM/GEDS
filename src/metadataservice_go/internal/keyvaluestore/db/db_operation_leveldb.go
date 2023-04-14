@@ -90,15 +90,15 @@ func (o *Operations) GetObjectStoreConfig(storeConfigQuery *protos.ObjectStoreCo
 }
 
 func (o *Operations) GetAllObjectStoreConfig() (
-	map[string]*protos.ObjectStoreConfig, error) {
-	objectStoreConfigs := map[string]*protos.ObjectStoreConfig{}
+	[]*protos.ObjectStoreConfig, error) {
+	var objectStoreConfigs []*protos.ObjectStoreConfig
 	iter := o.dbObjectStoreConfig.NewIterator(util.BytesPrefix([]byte(o.createObjectStoreConfigKeyPrefix())), nil)
 	for iter.Next() {
 		value := &protos.ObjectStoreConfig{}
 		if err := proto.Unmarshal(iter.Value(), value); err != nil {
 			return nil, err
 		}
-		objectStoreConfigs[string(iter.Key())] = value
+		objectStoreConfigs = append(objectStoreConfigs, value)
 	}
 	iter.Release()
 	return objectStoreConfigs, iter.Error()
@@ -140,16 +140,24 @@ func (o *Operations) GetBucket(bucketQuery *protos.Bucket) (*protos.Bucket, erro
 	return bucket, nil
 }
 
+func (o *Operations) LookupBucket(bucketQuery *protos.Bucket) error {
+	if _, err := o.dbBucket.Get([]byte(o.createBucketKey(bucketQuery)), nil); err != nil {
+		return err
+	} else {
+		return nil
+	}
+}
+
 func (o *Operations) GetAllBuckets() (
-	map[string]*protos.Bucket, error) {
-	buckets := map[string]*protos.Bucket{}
+	[]*protos.Bucket, error) {
+	var buckets []*protos.Bucket
 	iter := o.dbBucket.NewIterator(util.BytesPrefix([]byte(o.createBucketKeyPrefix())), nil)
 	for iter.Next() {
 		value := &protos.Bucket{}
 		if err := proto.Unmarshal(iter.Value(), value); err != nil {
 			return nil, err
 		}
-		buckets[string(iter.Key())] = value
+		buckets = append(buckets, value)
 	}
 	iter.Release()
 	return buckets, iter.Error()
@@ -183,20 +191,6 @@ func (o *Operations) GetObject(objectQuery *protos.Object) (*protos.Object, erro
 func (o *Operations) GetAllObjectsInBucket(objectQuery *protos.Object) (map[string]*protos.Object, error) {
 	objects := map[string]*protos.Object{}
 	iter := o.dbObject.NewIterator(util.BytesPrefix([]byte(o.createObjectKeyPrefixWithBucket(objectQuery))), nil)
-	for iter.Next() {
-		value := &protos.Object{}
-		if err := proto.Unmarshal(iter.Value(), value); err != nil {
-			return nil, err
-		}
-		objects[string(iter.Key())] = value
-	}
-	iter.Release()
-	return objects, iter.Error()
-}
-
-func (o *Operations) GetAllObjects() (map[string]*protos.Object, error) {
-	objects := map[string]*protos.Object{}
-	iter := o.dbObject.NewIterator(util.BytesPrefix([]byte(o.createObjectKeyPrefixWithoutBucket())), nil)
 	for iter.Next() {
 		value := &protos.Object{}
 		if err := proto.Unmarshal(iter.Value(), value); err != nil {
