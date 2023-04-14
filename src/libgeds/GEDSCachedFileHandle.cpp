@@ -41,9 +41,13 @@ GEDSCachedFileHandle::GEDSCachedFileHandle(std::shared_ptr<GEDS> gedsService, st
   _blockMutex = std::vector<std::mutex>(_remoteSize / _blockSize + 1);
 }
 
-absl::StatusOr<size_t> GEDSCachedFileHandle::size() const { return _remoteSize; }
+absl::StatusOr<size_t> GEDSCachedFileHandle::size() const {
+  auto lock = lockShared();
+  return _remoteSize;
+}
 
 size_t GEDSCachedFileHandle::localStorageSize() const {
+  auto lock = lockShared();
   size_t result = 0;
   for (size_t idx = 0; idx < _blocks.size(); idx++) {
     auto lock = std::lock_guard(_blockMutex[idx]);
@@ -57,6 +61,7 @@ size_t GEDSCachedFileHandle::localStorageSize() const {
 }
 
 size_t GEDSCachedFileHandle::localMemorySize() const {
+  auto lock = lockShared();
   size_t result = 0;
   for (size_t idx = 0; idx < _blocks.size(); idx++) {
     auto lock = std::lock_guard(_blockMutex[idx]);
@@ -70,10 +75,10 @@ size_t GEDSCachedFileHandle::localMemorySize() const {
 }
 absl::StatusOr<size_t> GEDSCachedFileHandle::readBytes(uint8_t *bytes, size_t position,
                                                        size_t length) {
-
   if (position >= _remoteSize || length == 0) {
     return 0;
   }
+  auto lock = lockShared();
   length = std::min(length, _remoteSize - position);
 
   auto computeBlock = [&](size_t pos) { return pos / _blockSize; };
@@ -165,6 +170,8 @@ absl::StatusOr<size_t> GEDSCachedFileHandle::readBytes(uint8_t *bytes, size_t po
   return count;
 }
 
-absl::Status GEDSCachedFileHandle::seal() { return _remoteFileHandle->seal(); }
-
-bool GEDSCachedFileHandle::isValid() const { return _isValid; };
+absl::Status GEDSCachedFileHandle::seal() {
+  auto lock = lockFile();
+  auto iolock = lockExclusive();
+  return _remoteFileHandle->seal();
+}
