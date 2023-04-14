@@ -55,6 +55,9 @@ public:
   virtual ~GEDSFileHandle();
 
   virtual absl::StatusOr<size_t> size() const = 0;
+  virtual size_t localStorageSize() const { return 0; }
+  virtual size_t localMemorySize() const { return 0; }
+
   int64_t openCount() const;
   void increaseOpenCount();
   void decreaseOpenCount();

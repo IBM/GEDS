@@ -27,7 +27,7 @@ class GEDSCachedFileHandle : public GEDSFileHandle {
   size_t _blockSize;
 
   std::vector<std::shared_ptr<GEDSFile>> _blocks;
-  std::vector<std::mutex> _blockMutex;
+  mutable std::vector<std::mutex> _blockMutex;
 
   std::shared_ptr<geds::StatisticsCounter> _readStatistics =
       geds::Statistics::createCounter("GEDSCachedFileHandle: bytes read");
@@ -75,6 +75,8 @@ public:
   GEDSCachedFileHandle &operator=(GEDSCachedFileHandle &&) = delete;
 
   absl::StatusOr<size_t> size() const override;
+  size_t localStorageSize() const override;
+  size_t localMemorySize() const override;
 
   absl::StatusOr<size_t> readBytes(uint8_t *bytes, size_t position, size_t length) override;
 

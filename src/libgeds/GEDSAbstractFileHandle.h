@@ -81,6 +81,8 @@ public:
   }
 
   absl::StatusOr<size_t> size() const override { return _file.size(); }
+  size_t localStorageSize() const override { return _file.localStorageSize(); }
+  size_t localMemorySize() const override { return _file.localMemorySize(); }
   virtual size_t sealedSize() const { return _sealedSize; }
   bool isWriteable() const override { return true; }
 
