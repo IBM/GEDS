@@ -264,7 +264,7 @@ absl::Status Endpoint::putObject(const std::string &bucket, const std::string &k
 
 absl::Status Endpoint::putObject(const std::string &bucket, const std::string &key,
                                  std::shared_ptr<std::iostream> stream,
-                                 std::optional<size_t> length) {
+                                 std::optional<size_t> length) const {
   Aws::S3::Model::PutObjectRequest request;
   request.SetBucket(bucket);
   request.SetKey(key);
@@ -308,9 +308,13 @@ absl::StatusOr<size_t> Endpoint::read(const std::string &bucket, const std::stri
   request.SetKey(key);
   request.SetResponseContentType("application/octet-stream");
   if (position.has_value() || length.has_value()) {
-    request.SetRange(
-        "bytes=" + (position.has_value() ? std::to_string(position.value()) : "") + "-" +
-        (length.has_value() ? std::to_string(position.value_or(0) + length.value()) : ""));
+    if (length.has_value() && length.value() == 0) {
+      return 0;
+    }
+    size_t startPos = position.value_or(0);
+    size_t endPos = startPos + length.value_or(0) - 1;
+    request.SetRange("bytes=" + (position.has_value() ? std::to_string(startPos) : "") + "-" +
+                     (length.has_value() ? std::to_string(endPos) : ""));
   }
 
   *totalRequestsSent += 1;
