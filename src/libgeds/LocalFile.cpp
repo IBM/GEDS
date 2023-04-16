@@ -10,6 +10,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
+#include <cstring>
 #include <fcntl.h>
 #include <ios>
 #include <stdexcept>
@@ -65,6 +66,20 @@ LocalFile::~LocalFile() {
 
 void LocalFile::notifyUnused() {
   // NOOP.
+}
+
+absl::Status LocalFile::fsync() {
+  CHECK_FILE_OPEN
+
+  int e = 0;
+  do {
+    e = ::fsync(_fd);
+  } while (e != 0 && errno == EINTR);
+  if (e != 0) {
+    int err = errno;
+    return absl::UnknownError("Unable to fsync " + _path + ": " + strerror(err));
+  }
+  return absl::OkStatus();
 }
 
 absl::StatusOr<size_t> LocalFile::fileSize() const {
