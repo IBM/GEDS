@@ -312,6 +312,7 @@ absl::StatusOr<geds::Object> MetadataService::lookup(const std::string &bucket,
   METADATASERVICE_CHECK_CONNECTED;
 
   if (!invalidate) {
+    LOG_DEBUG("Lookup cache", bucket, "/", key);
     auto c = _mdsCache.lookup(bucket, key);
     if (c.ok()) {
       return c;
@@ -324,6 +325,8 @@ absl::StatusOr<geds::Object> MetadataService::lookup(const std::string &bucket,
 
   geds::rpc::ObjectResponse response;
   grpc::ClientContext context;
+
+  LOG_DEBUG("Lookup remote", bucket, "/", key);
 
   auto status = _stub->Lookup(&context, request, &response);
   if (!status.ok()) {
