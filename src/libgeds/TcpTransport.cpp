@@ -179,6 +179,7 @@ bool TcpPeer::processEndpointSend(std::shared_ptr<TcpEndpoint> tep) {
       ctx->hdr.datalen = work->len;
       ctx->hdr.offset = work->off;
       ctx->hdr.type = work->type;
+      ctx->hdr.error = work->error;
       ctx->va = work->va;
       ctx->in_fd = work->in_fd;
       ctx->progress = 0;
@@ -370,7 +371,7 @@ void TcpPeer::TcpProcessRpcGet(uint64_t reqId, const std::string objName, size_t
   auto key = objName.substr(separator + 1);
   auto file = _geds->localOpen(bucket, key);
   if (!file.ok()) {
-    LOG_ERROR("cannot open file: ", objName);
+    LOG_DEBUG("cannot open file: ", objName, " reason: ", file.status().message());
     sendRpcReply(reqId, -1, 0, 0, EINVAL);
     return;
   }
@@ -541,10 +542,12 @@ bool TcpPeer::processEndpointRecv(int sock) {
                       " Ep: ", tep->sock);
             ctx->hdr.datalen = 0;
           }
-          auto message = "Error during GET_REPLY: " + std::to_string(ctx->hdr.error) +
+          auto message = "Error from GET_REPLY: " + std::to_string(ctx->hdr.error) +
                          "length: " + std::to_string(datalen) + " Ep: " + std::to_string(tep->sock);
+          LOG_DEBUG(message);
           ctx->p->set_value(absl::AbortedError(message));
           ctx->state = PROC_IDLE;
+          ctx->progress = 0;
           break;
         }
       }
