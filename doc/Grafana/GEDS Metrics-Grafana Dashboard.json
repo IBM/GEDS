@@ -143,8 +143,8 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "sum by (spark_app_name) (geds__storage_spilled{namespace=\"$Namespace\"})",
-          "legendFormat": "{{spark_app_name}} - Storage Spilled",
+          "expr": "sum by (spark_app_name) (geds__storage_relocated{namespace=\"$Namespace\"})",
+          "legendFormat": "{{spark_app_name}} - Storage Relocated",
           "range": true,
           "refId": "A"
         },
@@ -161,7 +161,7 @@
           "refId": "B"
         }
       ],
-      "title": "GEDS Spilling",
+      "title": "GEDS Relocating",
       "type": "timeseries"
     },
     {

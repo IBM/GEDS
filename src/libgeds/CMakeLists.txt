@@ -28,6 +28,8 @@ SET(SOURCES
         GEDSFileHandle.cpp
         GEDSProtocol.h
         GEDSProtocol.cpp
+        GEDSRelocatableFileHandle.cpp
+        GEDSRelocatableFileHandle.h
         GEDSService.cpp
         GEDSService.h
         HttpServer.cpp

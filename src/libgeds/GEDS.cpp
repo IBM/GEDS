@@ -6,18 +6,25 @@
 #include "GEDS.h"
 
 #include <algorithm>
+#include <condition_variable>
+#include <cstddef>
 #include <cstdint>
 #include <filesystem>
 #include <iostream>
+#include <iterator>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <regex>
 #include <set>
+#include <shared_mutex>
 #include <stdexcept>
 #include <string>
 #include <string_view>
 #include <system_error>
+#include <thread>
 #include <typeinfo>
+#include <unistd.h>
 #include <utility>
 
 #include <absl/status/status.h>
@@ -35,6 +42,7 @@
 #include "GEDSInternal.h"
 #include "GEDSLocalFileHandle.h"
 #include "GEDSMMapFileHandle.h"
+#include "GEDSRelocatableFileHandle.h"
 #include "GEDSRemoteFileHandle.h"
 #include "GEDSS3FileHandle.h"
 #include "Logging.h"
@@ -56,7 +64,8 @@ GEDS::GEDS(GEDSConfig &&argConfig)
     : std::enable_shared_from_this<GEDS>(), _config(argConfig),
       _server(_config.listenAddress, _config.port),
       _metadataService(_config.metadataServiceAddress), _pathPrefix(_config.localStoragePath),
-      _hostname(_config.hostname.value_or("")), _httpServer(_config.portHttpServer) {
+      _hostname(_config.hostname.value_or("")), _httpServer(_config.portHttpServer),
+      _ioThreadPool(_config.io_thread_pool_size) {
   std::error_code ec;
   auto success = std::filesystem::create_directories(_pathPrefix, ec);
   if (!success && ec.value() != 0) {
@@ -135,6 +144,8 @@ absl::Status GEDS::start() {
   // Update state.
   _state = ServiceState::Running;
 
+  startStorageMonitoringThread();
+
   auto st = syncObjectStoreConfigs();
   if (!syncObjectStoreConfigs().ok()) {
     LOG_ERROR("Unable to synchronize object store configs on boot.");
@@ -170,6 +181,9 @@ absl::Status GEDS::stop() {
   _tcpTransport->stop();
 
   _state = ServiceState::Stopped;
+
+  _storageMonitoringThread.join();
+
   return result;
 }
 
@@ -231,6 +245,7 @@ absl::StatusOr<std::shared_ptr<GEDSFileHandle>>
 GEDS::createAsFileHandle(const std::string &bucket, const std::string &key, bool overwrite) {
   GEDS_CHECK_SERVICE_RUNNING
 
+  LOG_DEBUG(bucket, "/", key);
   const auto check = GEDS::isValid(bucket, key);
   if (!check.ok()) {
     return check;
@@ -241,23 +256,26 @@ GEDS::createAsFileHandle(const std::string &bucket, const std::string &key, bool
   }
 
   const auto path = getPath(bucket, key);
-  auto handle = GEDSLocalFileHandle::factory(shared_from_this(), bucket, key, std::nullopt);
-  if (!handle.ok()) {
-    return handle.status();
+  auto local_handle = GEDSLocalFileHandle::factory(shared_from_this(), bucket, key, std::nullopt);
+  if (!local_handle.ok()) {
+    return local_handle.status();
   }
+  auto handle = GEDSRelocatableFileHandle::factory(shared_from_this(), *local_handle);
 
   if (overwrite) {
-    _fileHandles.insertOrReplace(path, *handle);
-    return *handle;
+    _fileHandles.insertOrReplace(path, handle);
+    return handle;
   }
-  auto newHandle = _fileHandles.insertOrExists(path, *handle);
-  if (newHandle.get() != handle->get()) {
+  auto newHandle = _fileHandles.insertOrExists(path, handle);
+  if (newHandle.get() != handle.get()) {
     return absl::AlreadyExistsError("The file " + path.name + "already exists!");
   }
   return newHandle;
 }
 
 absl::Status GEDS::mkdirs(const std::string &bucket, const std::string &path, char delimiter) {
+  LOG_DEBUG(bucket, "/", path);
+
   if (path.empty() || (path.size() == 1 && path[0] == delimiter)) {
     return absl::OkStatus();
   }
@@ -287,6 +305,8 @@ absl::Status GEDS::mkdirs(const std::string &bucket, const std::string &path, ch
 }
 
 absl::Status GEDS::createBucket(const std::string &bucket) {
+  LOG_DEBUG(bucket);
+
   auto status = GEDS::isValidBucketName(bucket);
   if (!status.ok()) {
     return status;
@@ -303,6 +323,8 @@ absl::Status GEDS::createBucket(const std::string &bucket) {
 }
 
 absl::Status GEDS::lookupBucket(const std::string &bucket) {
+  LOG_DEBUG(bucket);
+
   if (_knownBuckets.exists(bucket)) {
     return absl::OkStatus();
   }
@@ -327,6 +349,7 @@ absl::StatusOr<GEDSFile> GEDS::open(const std::string &bucket, const std::string
 absl::StatusOr<GEDSFile> GEDS::localOpen(const std::string &bucket, const std::string &key) {
   GEDS_CHECK_SERVICE_RUNNING
 
+  LOG_DEBUG(bucket, "/", key);
   const auto path = getPath(bucket, key);
   auto fileHandle = _fileHandles.get(path);
   if (fileHandle.has_value() && (*fileHandle)->rawFd().ok()) {
@@ -340,6 +363,8 @@ absl::StatusOr<GEDSFile> GEDS::localOpen(const std::string &bucket, const std::s
 absl::StatusOr<std::shared_ptr<GEDSFileHandle>>
 GEDS::reopen(std::shared_ptr<GEDSFileHandle> existing) {
   GEDS_CHECK_SERVICE_RUNNING;
+
+  LOG_DEBUG(existing->identifier);
 
   // Avoid race condition when reopening.
   auto lock = existing->lockFile();
@@ -356,6 +381,8 @@ GEDS::reopen(std::shared_ptr<GEDSFileHandle> existing) {
 absl::StatusOr<std::shared_ptr<GEDSFileHandle>>
 GEDS::openAsFileHandle(const std::string &bucket, const std::string &key, bool invalidate) {
   GEDS_CHECK_SERVICE_RUNNING
+
+  LOG_DEBUG(bucket, "/", key);
 
   const auto path = getPath(bucket, key);
   auto check = GEDS::isValid(bucket, key);
@@ -405,8 +432,10 @@ GEDS::openAsFileHandle(const std::string &bucket, const std::string &key, bool i
     LOG_ERROR("Unable to open ", bucket, "/", key, " reason: ", fileHandle.status().message());
     return fileHandle.status();
   }
-  // Prevent race condition.
-  return _fileHandles.insertOrExists(path, *fileHandle);
+
+  // Wrap filehandle.
+  auto wrapped = GEDSRelocatableFileHandle::factory(shared_from_this(), *fileHandle);
+  return _fileHandles.insertOrExists(path, wrapped);
 }
 
 absl::StatusOr<std::shared_ptr<geds::s3::Endpoint>> GEDS::getS3Endpoint(const std::string &bucket) {
@@ -415,6 +444,8 @@ absl::StatusOr<std::shared_ptr<geds::s3::Endpoint>> GEDS::getS3Endpoint(const st
 
 absl::StatusOr<std::shared_ptr<geds::FileTransferService>>
 GEDS::getFileTransferService(const std::string &hostname) {
+  LOG_DEBUG(hostname);
+
   {
     auto fileTransferService = _fileTransfers.get(hostname);
     if (fileTransferService.has_value()) {
@@ -436,9 +467,13 @@ GEDS::getFileTransferService(const std::string &hostname) {
 absl::Status GEDS::seal(GEDSFileHandle &fileHandle, bool update, size_t size,
                         std::optional<std::string> uri) {
   GEDS_CHECK_SERVICE_RUNNING
+
+  LOG_DEBUG(fileHandle.identifier);
+
   auto obj =
       geds::Object{geds::ObjectID{fileHandle.bucket, fileHandle.key},
                    geds::ObjectInfo{uri.value_or(_hostURI), size, size, fileHandle.metadata()}};
+
   if (update) {
     return _metadataService.updateObject(obj);
   }
@@ -467,6 +502,8 @@ absl::StatusOr<std::vector<GEDSFileStatus>> GEDS::list(const std::string &bucket
 
 absl::StatusOr<std::vector<GEDSFileStatus>> GEDS::list(const std::string &bucket,
                                                        const std::string &prefix, char delimiter) {
+  LOG_DEBUG(bucket, "/", prefix);
+
   bool prefixExists = false;
   auto list = _metadataService.listPrefix(bucket, prefix, delimiter);
   if (!list.ok()) {
@@ -505,6 +542,8 @@ absl::StatusOr<GEDSFileStatus> GEDS::status(const std::string &bucket, const std
 
 absl::StatusOr<GEDSFileStatus> GEDS::status(const std::string &bucket, const std::string &key,
                                             char delimiter) {
+  LOG_DEBUG(bucket, "/", key);
+
   // Base case: Empty key, or key matching `/`.
   if (key.size() == 0 || (key.size() == 1 && key[0] == delimiter)) {
     auto isRegistered = lookupBucket(bucket);
@@ -725,6 +764,7 @@ absl::Status GEDS::syncObjectStoreConfigs() {
     return configs.status();
   }
   for (const auto &c : configs.value()) {
+    LOG_INFO("Registering object store for ", c->bucket, " and endpoint ", c->endpointURL);
     auto status =
         _objectStores.registerStore(c->bucket, c->endpointURL, c->accessKey, c->secretKey);
     if (!status.ok()) {
@@ -732,4 +772,129 @@ absl::Status GEDS::syncObjectStoreConfigs() {
     }
   }
   return absl::OkStatus();
+}
+
+void GEDS::relocate(bool force) {
+  LOG_INFO("Relocating...");
+  std::vector<std::shared_ptr<GEDSFileHandle>> relocatable;
+
+  _fileHandles.forall([&relocatable, force](std::shared_ptr<GEDSFileHandle> &item) {
+    if (item->openCount() == 0 || force) {
+      relocatable.push_back(item);
+    }
+  });
+  relocate(relocatable, force);
+}
+
+void GEDS::relocate(std::vector<std::shared_ptr<GEDSFileHandle>> &relocatable, bool force) {
+  struct RelocateHelper {
+    std::mutex mutex;
+    std::condition_variable cv;
+    size_t nTasks;
+    auto lock() { return std::unique_lock<std::mutex>(mutex); }
+  };
+  auto h = std::make_shared<RelocateHelper>();
+  {
+    auto lock = h->lock();
+    h->nTasks = relocatable.size();
+  }
+
+  LOG_INFO("Relocating ", relocatable.size(), " objects.");
+
+  auto self = shared_from_this();
+  size_t off = 3 * _config.io_thread_pool_size;
+
+  for (size_t offset = 0; offset < relocatable.size(); offset += off) {
+    auto rbegin = offset;
+    auto rend = rbegin + off;
+    if (rend > relocatable.size()) {
+      rend = relocatable.size();
+    }
+    for (auto i = rbegin; i < rend; i++) {
+      auto fh = relocatable[i];
+      boost::asio::post(_ioThreadPool, [self, fh, h, force]() {
+        try {
+          self->relocate(fh, force);
+        } catch (...) {
+          LOG_ERROR("Encountered an exception during relocation ", fh->identifier);
+        }
+        {
+          auto lock = h->lock();
+          h->nTasks -= 1;
+        }
+        h->cv.notify_all();
+      });
+    }
+    auto relocateLock = h->lock();
+    h->cv.wait(relocateLock, [h]() { return h->nTasks == 0; });
+    LOG_INFO("Relocated ", relocatable.size(), " objects.");
+  }
+}
+
+void GEDS::relocate(std::shared_ptr<GEDSFileHandle> handle, bool force) {
+  LOG_DEBUG(handle->identifier);
+
+  auto lock = handle->lockFile();
+  if (handle->openCount() > 0 && !force) {
+    // File is open: Unable to relocate.
+    return;
+  }
+
+  static auto stats = geds::Statistics::createCounter("GEDS: Storage Relocated");
+  *stats += handle->localStorageSize();
+
+  // Remove cached files.
+  const auto path = getPath(handle->bucket, handle->key);
+  if (handle->key.starts_with(GEDSCachedFileHandle::CacheBlockMarker)) {
+    _fileHandles.removeIf(path, [handle](const std::shared_ptr<GEDSFileHandle> &existing) {
+      return handle.get() == existing.get();
+    });
+    return;
+  }
+
+  // Relocate all other files.
+  (void)handle->relocate();
+}
+
+void GEDS::startStorageMonitoringThread() {
+  _storageMonitoringThread = std::thread([&]() {
+    auto statsLocalStorage = geds::Statistics::createGauge("GEDS: Local Storage used");
+    std::vector<std::shared_ptr<GEDSFileHandle>> relocatable;
+    while (_state == ServiceState::Running) {
+      relocatable.clear();
+      size_t localStorage = 0;
+      _fileHandles.forall([&relocatable, &localStorage](std::shared_ptr<GEDSFileHandle> &fh) {
+        localStorage += fh->localStorageSize();
+        if (fh->isRelocatable()) {
+          if (fh->openCount() == 0) {
+            relocatable.push_back(fh);
+          }
+        }
+      });
+      *statsLocalStorage = localStorage;
+
+      auto targetStorage = (size_t)(0.7 * (double)_config.available_local_storage);
+      if (localStorage > targetStorage) {
+        std::sort(std::begin(relocatable), std::end(relocatable),
+                  [](std::shared_ptr<GEDSFileHandle> a, std::shared_ptr<GEDSFileHandle> b) {
+                    return a->lastReleased() < b->lastReleased();
+                  });
+
+        std::vector<std::shared_ptr<GEDSFileHandle>> tasks;
+        size_t relocateBytes = 0;
+        for (auto &f : relocatable) {
+          if (relocateBytes > targetStorage) {
+            break;
+          }
+          relocateBytes += f->localStorageSize();
+          tasks.push_back(f);
+        }
+        if (tasks.size()) {
+          relocate(tasks);
+        }
+      }
+      relocatable.clear();
+      sleep(1);
+    }
+  });
 }

@@ -74,6 +74,7 @@ public:
   GEDSCachedFileHandle &operator=(const GEDSCachedFileHandle &) = delete;
   GEDSCachedFileHandle &operator=(GEDSCachedFileHandle &&) = delete;
 
+  bool isRelocatable() const override { return true; }
   absl::StatusOr<size_t> size() const override;
   size_t localStorageSize() const override;
   size_t localMemorySize() const override;
@@ -81,6 +82,8 @@ public:
   absl::StatusOr<size_t> readBytes(uint8_t *bytes, size_t position, size_t length) override;
 
   absl::Status seal() override;
+
+  absl::StatusOr<std::shared_ptr<GEDSFileHandle>> relocate() override;
 };
 
 #endif

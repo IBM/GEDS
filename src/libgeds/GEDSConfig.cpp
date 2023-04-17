@@ -42,6 +42,12 @@ absl::Status GEDSConfig::set(const std::string &key, size_t value) {
     portHttpServer = value;
   } else if (key == "cache_block_size") {
     cacheBlockSize = value;
+  } else if (key == "io_thread_pool_size") {
+    io_thread_pool_size = value;
+  } else if (key == "available_local_storage") {
+    available_local_storage = value;
+  } else if (key == "available_local_memory") {
+    available_local_memory = value;
   } else {
     LOG_ERROR("Configuration " + key + " not supported (type: signed/unsigned integer).");
     return absl::NotFoundError("Key " + key + " not found.");
@@ -83,6 +89,15 @@ absl::StatusOr<size_t> GEDSConfig::getUnsignedInt(const std::string &key) const 
   }
   if (key == "cache_block_size") {
     return cacheBlockSize;
+  }
+  if (key == "io_thread_pool_size") {
+    return io_thread_pool_size;
+  }
+  if (key == "available_local_storage") {
+    return available_local_storage;
+  }
+  if (key == "available_local_memory") {
+    return available_local_memory;
   }
   LOG_ERROR("Configuration " + key + " not supported (type: signed/unsigned integer).");
   return absl::NotFoundError("Key " + key + " not found.");

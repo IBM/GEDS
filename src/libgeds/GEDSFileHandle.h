@@ -61,7 +61,6 @@ public:
   virtual absl::StatusOr<size_t> size() const = 0;
   virtual size_t localStorageSize() const { return 0; }
   virtual size_t localMemorySize() const { return 0; }
-
   int64_t openCount() const;
   void increaseOpenCount();
   void decreaseOpenCount();
@@ -72,7 +71,10 @@ public:
   std::chrono::system_clock::time_point lastReleased() const;
 
   virtual bool isValid() const;
+  virtual bool isRelocatable() const { return false; }
   virtual bool isWriteable() const { return false; }
+
+  virtual absl::StatusOr<std::shared_ptr<GEDSFileHandle>> relocate();
 
   virtual std::optional<std::string> metadata() const;
 

@@ -21,6 +21,7 @@
 
 #include <absl/status/status.h>
 #include <absl/status/statusor.h>
+#include <boost/asio/thread_pool.hpp>
 
 #include "ConcurrentMap.h"
 #include "ConcurrentSet.h"
@@ -101,6 +102,10 @@ protected:
       geds::Statistics::createCounter("GEDS: files created");
 
   geds::HttpServer _httpServer;
+
+  boost::asio::thread_pool _ioThreadPool;
+  std::thread _storageMonitoringThread;
+  void startStorageMonitoringThread();
 
 public:
   /**
@@ -294,6 +299,10 @@ public:
   absl::StatusOr<std::shared_ptr<geds::s3::Endpoint>> getS3Endpoint(const std::string &s3Bucket);
   absl::StatusOr<std::shared_ptr<geds::FileTransferService>>
   getFileTransferService(const std::string &hostname);
+
+  void relocate(bool force = false);
+  void relocate(std::vector<std::shared_ptr<GEDSFileHandle>> &relocatable, bool force = false);
+  void relocate(std::shared_ptr<GEDSFileHandle> handle, bool force = false);
 };
 
 #endif // GEDS_GEDS_H
