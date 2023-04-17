@@ -178,7 +178,8 @@ public:
   /**
    * @brief Open object located at bucket/key.
    */
-  absl::StatusOr<GEDSFile> open(const std::string &bucket, const std::string &key);
+  absl::StatusOr<GEDSFile> open(const std::string &bucket, const std::string &key,
+                                bool retry = true);
   absl::StatusOr<std::shared_ptr<GEDSFileHandle>>
   openAsFileHandle(const std::string &bucket, const std::string &key, bool invalidate = false);
 
