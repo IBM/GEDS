@@ -16,7 +16,8 @@
 TEST(GEDSFileHandle, openCount) {
   auto service_mock = std::shared_ptr<GEDS>(nullptr);
   auto path = geds::filesystem::tempFile("test_GEDSFileHandle");
-  auto handleStatus = GEDSLocalFileHandle::factory(service_mock, "test", "test", path);
+  auto handleStatus =
+      GEDSLocalFileHandle::factory(service_mock, "test", "test", std::nullopt, path);
   ASSERT_TRUE(handleStatus.ok());
   auto handle = handleStatus.value();
   ASSERT_TRUE(handle->seal().ok());
@@ -37,7 +38,8 @@ TEST(GEDSFileHandle, stringstream) {
 
   auto service_mock = std::shared_ptr<GEDS>(nullptr);
   auto path = geds::filesystem::tempFile("test_GEDSFileHandle");
-  auto handleStatus = GEDSLocalFileHandle::factory(service_mock, "test", "test", path);
+  auto handleStatus =
+      GEDSLocalFileHandle::factory(service_mock, "test", "test", std::nullopt, path);
   ASSERT_TRUE(handleStatus.ok());
   auto handle = handleStatus.value();
 }

@@ -38,6 +38,7 @@ class GEDSCachedFileHandle : public GEDSFileHandle {
   // private:
 public:
   GEDSCachedFileHandle(std::shared_ptr<GEDS> gedsService, std::string bucketArg, std::string keyArg,
+                       std::optional<std::string> metadataArg,
                        std::shared_ptr<GEDSFileHandle> remoteFile);
 
 public:
@@ -45,13 +46,14 @@ public:
 
   template <class TRemote>
   [[nodiscard]] static absl::StatusOr<std::shared_ptr<GEDSFileHandle>>
-  factory(std::shared_ptr<GEDS> gedsService, const std::string &bucket, const std::string &key) {
-    auto remoteFH = TRemote::factory(gedsService, bucket, key);
+  factory(std::shared_ptr<GEDS> gedsService, const std::string &bucket, const std::string &key,
+          std::optional<std::string> metadataArg) {
+    auto remoteFH = TRemote::factory(gedsService, bucket, key, metadataArg);
     if (!remoteFH.ok()) {
       return remoteFH.status();
     }
     return std::shared_ptr<GEDSFileHandle>(
-        new GEDSCachedFileHandle(gedsService, bucket, key, *remoteFH));
+        new GEDSCachedFileHandle(gedsService, bucket, key, std::move(metadataArg), *remoteFH));
   }
 
   template <class TRemote>
@@ -61,8 +63,8 @@ public:
     if (!remoteFH.ok()) {
       return remoteFH.status();
     }
-    return std::shared_ptr<GEDSFileHandle>(
-        new GEDSCachedFileHandle(gedsService, object.id.bucket, object.id.key, *remoteFH));
+    return std::shared_ptr<GEDSFileHandle>(new GEDSCachedFileHandle(
+        gedsService, object.id.bucket, object.id.key, object.info.metadata, *remoteFH));
   }
 
   GEDSCachedFileHandle() = delete;

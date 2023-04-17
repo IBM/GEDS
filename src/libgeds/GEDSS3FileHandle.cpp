@@ -10,6 +10,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <utility>
 
 #include "GEDS.h"
 #include "GEDSFileHandle.h"
@@ -19,10 +20,11 @@
 GEDSS3FileHandle::GEDSS3FileHandle(std::shared_ptr<GEDS> gedsService,
                                    std::shared_ptr<geds::s3::Endpoint> s3Endpoint,
                                    const std::string &bucketArg, const std::string &keyArg,
+                                   std::optional<std::string> metadataArg,
                                    const std::string &s3BucketArg, const std::string &s3KeyArg,
                                    std::optional<size_t> fileSize)
-    : GEDSFileHandle(gedsService, bucketArg, keyArg), s3Bucket(s3BucketArg), s3Key(s3KeyArg),
-      location("s3://" + s3Bucket + "/" + s3Key), _s3Endpoint(s3Endpoint) {
+    : GEDSFileHandle(gedsService, bucketArg, keyArg, std::move(metadataArg)), s3Bucket(s3BucketArg),
+      s3Key(s3KeyArg), location("s3://" + s3Bucket + "/" + s3Key), _s3Endpoint(s3Endpoint) {
   static auto counter = geds::Statistics::createCounter("GEDSS3FileHandle: count");
   *counter += 1;
   if (fileSize.has_value()) {
@@ -64,8 +66,8 @@ GEDSS3FileHandle::factory(std::shared_ptr<GEDS> gedsService, const geds::Object 
     return exists.status();
   }
   try {
-    return std::shared_ptr<GEDSFileHandle>(
-        new GEDSS3FileHandle(gedsService, s3Endpoint.value(), bucket, key, s3Bucket, s3Key));
+    return std::shared_ptr<GEDSFileHandle>(new GEDSS3FileHandle(
+        gedsService, s3Endpoint.value(), bucket, key, object.info.metadata, s3Bucket, s3Key));
   } catch (absl::Status &err) {
     return err;
   }
@@ -73,7 +75,7 @@ GEDSS3FileHandle::factory(std::shared_ptr<GEDS> gedsService, const geds::Object 
 
 absl::StatusOr<std::shared_ptr<GEDSFileHandle>>
 GEDSS3FileHandle::factory(std::shared_ptr<GEDS> gedsService, const std::string &bucket,
-                          const std::string &key) {
+                          const std::string &key, std::optional<std::string> metadataArg) {
   auto s3Endpoint = gedsService->getS3Endpoint(bucket);
   if (!s3Endpoint.ok()) {
     return s3Endpoint.status();
@@ -83,8 +85,8 @@ GEDSS3FileHandle::factory(std::shared_ptr<GEDS> gedsService, const std::string &
     return exists.status();
   }
   try {
-    return std::shared_ptr<GEDSS3FileHandle>(
-        new GEDSS3FileHandle(gedsService, s3Endpoint.value(), bucket, key, bucket, key));
+    return std::shared_ptr<GEDSS3FileHandle>(new GEDSS3FileHandle(
+        gedsService, s3Endpoint.value(), bucket, key, std::move(metadataArg), bucket, key));
   } catch (absl::Status &err) {
     return err;
   }

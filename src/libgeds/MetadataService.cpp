@@ -8,7 +8,7 @@
 #include <grpcpp/client_context.h>
 #include <grpcpp/support/status.h>
 #include <grpcpp/support/status_code_enum.h>
-#include <string>
+#include <optional>
 
 #include "GEDS.h"
 #include "Logging.h"
@@ -225,6 +225,9 @@ absl::Status MetadataService::createObject(const geds::Object &obj) {
   info->set_location(obj.info.location);
   info->set_size(obj.info.size);
   info->set_sealedoffset(obj.info.sealedOffset);
+  if (obj.info.metadata.has_value()) {
+    info->set_metadata(obj.info.metadata.value());
+  }
 
   geds::rpc::StatusResponse response;
   grpc::ClientContext context;
@@ -247,6 +250,9 @@ absl::Status MetadataService::updateObject(const geds::Object &obj) {
   info->set_location(obj.info.location);
   info->set_size(obj.info.size);
   info->set_sealedoffset(obj.info.sealedOffset);
+  if (obj.info.metadata.has_value()) {
+    info->set_metadata(obj.info.metadata.value());
+  }
   geds::rpc::StatusResponse response;
   grpc::ClientContext context;
 
@@ -337,7 +343,9 @@ absl::StatusOr<geds::Object> MetadataService::lookup(const std::string &bucket,
   }
   const auto &r = response.result();
   auto obj_id = geds::ObjectID{r.id().bucket(), r.id().key()};
-  auto obj_info = geds::ObjectInfo{r.info().location(), r.info().size(), r.info().sealedoffset()};
+  auto obj_info = geds::ObjectInfo{
+      r.info().location(), r.info().size(), r.info().sealedoffset(),
+      (r.info().has_metadata() ? std::make_optional(r.info().metadata()) : std::nullopt)};
 
   auto result = geds::Object{obj_id, obj_info};
   (void)_mdsCache.createObject(result, true);
@@ -386,7 +394,9 @@ MetadataService::listPrefix(const std::string &bucket, const std::string &keyPre
   objects.reserve(rpc_results.size());
   for (auto i : rpc_results) {
     auto obj_id = geds::ObjectID{i.id().bucket(), i.id().key()};
-    auto obj_info = geds::ObjectInfo{i.info().location(), i.info().size(), i.info().sealedoffset()};
+    auto obj_info = geds::ObjectInfo{
+        i.info().location(), i.info().size(), i.info().sealedoffset(),
+        i.info().has_metadata() ? std::make_optional(i.info().metadata()) : std::nullopt};
     auto obj = geds::Object{obj_id, obj_info};
     (void)_mdsCache.createObject(obj, true);
     objects.emplace_back(std::move(obj));

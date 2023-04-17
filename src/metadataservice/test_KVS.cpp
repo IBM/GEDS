@@ -19,8 +19,9 @@ TEST(KVS, Basic) {
   EXPECT_EQ(kvs.createBucket(bucket).code(), absl::StatusCode::kOk);
 
   for (size_t i = 0; i <= NUM_ELEMENTS; i++) {
-    EXPECT_EQ(kvs.createObject(geds::Object{geds::ObjectID{bucket, "/" + std::to_string(i)},
-                                            geds::ObjectInfo{"node" + std::to_string(i), 0, 0}})
+    EXPECT_EQ(kvs.createObject(
+                     geds::Object{geds::ObjectID{bucket, "/" + std::to_string(i)},
+                                  geds::ObjectInfo{"node" + std::to_string(i), 0, 0, std::nullopt}})
                   .code(),
               absl::StatusCode::kOk);
   }
@@ -31,8 +32,9 @@ TEST(KVS, Basic) {
   }
 
   for (size_t i = 0; i <= NUM_ELEMENTS; i++) {
-    EXPECT_EQ(kvs.createObject(geds::Object{geds::ObjectID{bucket, "/2/" + std::to_string(i)},
-                                            geds::ObjectInfo{"node" + std::to_string(i), 0, 0}})
+    EXPECT_EQ(kvs.createObject(
+                     geds::Object{geds::ObjectID{bucket, "/2/" + std::to_string(i)},
+                                  geds::ObjectInfo{"node" + std::to_string(i), 0, 0, std::nullopt}})
                   .code(),
               absl::StatusCode::kOk);
   }
@@ -61,8 +63,9 @@ TEST(KVS, Delete) {
   EXPECT_EQ(kvs.createBucket(bucket).code(), absl::StatusCode::kOk);
 
   for (size_t i = 0; i <= NUM_ELEMENTS; i++) {
-    EXPECT_EQ(kvs.createObject(geds::Object{geds::ObjectID{bucket, "/" + std::to_string(i)},
-                                            geds::ObjectInfo{"node" + std::to_string(i), 0, 0}})
+    EXPECT_EQ(kvs.createObject(
+                     geds::Object{geds::ObjectID{bucket, "/" + std::to_string(i)},
+                                  geds::ObjectInfo{"node" + std::to_string(i), 0, 0, std::nullopt}})
                   .code(),
               absl::StatusCode::kOk);
   }

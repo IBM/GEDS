@@ -34,8 +34,10 @@ template <class T> class GEDSAbstractFileHandle : public GEDSFileHandle {
 private:
   // Constructors are private to enable `shared_from_this`.
   GEDSAbstractFileHandle(std::shared_ptr<GEDS> gedsService, std::string bucketArg,
-                         std::string keyArg, std::string pathArg)
-      : GEDSFileHandle(gedsService, std::move(bucketArg), std::move(keyArg)),
+                         std::string keyArg, std::optional<std::string> metadataArg,
+                         std::string pathArg)
+      : GEDSFileHandle(gedsService, std::move(bucketArg), std::move(keyArg),
+                       std::move(metadataArg)),
         _file(T(std::move(pathArg))), _readStatistics(geds::Statistics::createCounter(
                                           "GEDS" + _file.statisticsLabel() + "Handle: bytes read")),
         _writeStatistics(geds::Statistics::createCounter("GEDS" + _file.statisticsLabel() +
@@ -48,6 +50,7 @@ private:
 public:
   [[nodiscard]] static absl::StatusOr<std::shared_ptr<GEDSFileHandle>>
   factory(std::shared_ptr<GEDS> gedsService, std::string bucketArg, std::string keyArg,
+          std::optional<std::string> metadataArg,
           std::optional<std::string> pathArg = std::nullopt) {
     try {
       auto path = pathArg.has_value() ? pathArg.value()
@@ -57,8 +60,9 @@ public:
       if (!dirStatus.ok()) {
         return dirStatus;
       }
-      return std::shared_ptr<GEDSFileHandle>(new GEDSAbstractFileHandle<T>(
-          std::move(gedsService), std::move(bucketArg), std::move(keyArg), path));
+      return std::shared_ptr<GEDSFileHandle>(
+          new GEDSAbstractFileHandle<T>(std::move(gedsService), std::move(bucketArg),
+                                        std::move(keyArg), std::move(metadataArg), path));
     } catch (const std::runtime_error &e) {
       return absl::UnknownError(e.what());
     }
@@ -82,6 +86,15 @@ public:
   size_t localMemorySize() const override { return _file.localMemorySize(); }
 
   bool isWriteable() const override { return true; }
+
+  absl::Status setMetadata(std::optional<std::string> metadata, bool seal) override {
+    auto lock = lockFile();
+    _metadata = std::move(metadata);
+    if (seal) {
+      return this->seal();
+    }
+    return absl::OkStatus();
+  }
 
   absl::StatusOr<size_t> readBytes(uint8_t *bytes, size_t position, size_t length) override {
     auto lock = lockShared();

@@ -38,6 +38,63 @@ public class GEDSFile {
         }
     }
 
+    public String metadata() throws IOException {
+        checkClosed();
+        return metadataNative(nativePtr);
+    }
+
+    public byte[] metadataAsByteArray() throws IOException {
+        checkClosed();
+        return metadataAsByteArrayNative(nativePtr);
+    }
+
+    public void setMetadata(String metadata) throws IOException {
+        setMetadata(metadata, true);
+    }
+
+    public void setMetadata(String metadata, boolean seal) throws IOException {
+        checkClosed();
+        setMetadataNative(nativePtr, metadata, seal);
+    }
+
+    public void setMetadata(ByteBuffer buffer) throws IOException {
+        setMetadata(buffer, true);
+    }
+
+    public void setMetadata(ByteBuffer buffer, boolean seal) throws IOException {
+        checkClosed();
+        // Use nullptr to override the metadata to nonexistent.
+        if (buffer == null) {
+            setMetadataNative(nativePtr, 0, 0, 0, seal);
+            return;
+        }
+
+        int offset = buffer.position();
+        int length = buffer.remaining();
+        if (buffer.isDirect()) {
+            long addr = ((DirectBuffer) buffer).address();
+            setMetadataNative(nativePtr, addr, offset, length, seal);
+        } else {
+            setMetadata(buffer.array(), offset, length, seal);
+        }
+        return;
+    }
+
+    public void setMetadata(byte[] buffer, int offset, int length) throws IOException {
+        setMetadata(buffer, offset, length, true);
+    }
+
+    public void setMetadata(byte[] buffer, int offset, int length, boolean seal) throws IOException {
+        checkClosed();
+        // Use nullptr to override the metadata to nonexistent.
+        if (buffer == null) {
+            setMetadataNative(nativePtr, buffer, 0, 0, seal);
+            return;
+        }
+        checkBuffer(buffer, offset, length);
+        setMetadataNative(nativePtr, buffer, offset, length, seal);
+    }
+
     public long size() throws IOException {
         checkClosed();
         return sizeNative(nativePtr);
@@ -156,6 +213,18 @@ public class GEDSFile {
     private native int readNative(long nativePtr, long position, long ptr, int offset, int length) throws IOException;
 
     private native void writeNative(long nativePtr, long position, long ptr, int offset, int length) throws IOException;
+
+    private native String metadataNative(long nativePtr);
+
+    private native byte[] metadataAsByteArrayNative(long nativePtr);
+
+    private native void setMetadataNative(long nativePtr, String metadata, boolean seal);
+
+    private native void setMetadataNative(long nativePtr, long ptr, int offset, int length, boolean seal)
+            throws IOException;
+
+    private native void setMetadataNative(long nativePtr, byte[] buffer, int offset, int length, boolean seal)
+            throws IOException;
 
     private native void sealNative(long nativePtr) throws IOException;
 
