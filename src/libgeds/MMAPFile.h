@@ -53,6 +53,7 @@ public:
   [[nodiscard]] size_t size() const { return _size; }
   [[nodiscard]] size_t localStorageSize() const { return _size; }
   [[nodiscard]] size_t localMemorySize() const { return _mmapSize; }
+
   absl::StatusOr<uint8_t *> rawPtr();
 
   absl::StatusOr<int> rawFd() const;

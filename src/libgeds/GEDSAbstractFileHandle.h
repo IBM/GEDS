@@ -6,13 +6,20 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <filesystem>
+#include <fstream>
+#include <ios>
+#include <iostream>
 #include <memory>
 #include <optional>
+#include <unistd.h>
+#include <vector>
 
 #include "Filesystem.h"
 #include "GEDSFile.h"
 #include "GEDSFileHandle.h"
+#include "GEDSS3FileHandle.h"
 #include "Logging.h"
 #include "MMAPFile.h"
 #include "Statistics.h"
@@ -21,6 +28,9 @@ namespace geds::service {
 std::string getLocalPath(std::shared_ptr<GEDS> geds, const std::string &bucket,
                          const std::string &key);
 absl::Status seal(std::shared_ptr<GEDS> geds, GEDSFileHandle &fileHandle, bool update, size_t size);
+absl::StatusOr<std::shared_ptr<geds::s3::Endpoint>> getS3Endpoint(std::shared_ptr<GEDS> geds,
+                                                                  const std::string &bucket);
+
 } // namespace geds::service
 
 template <class T> class GEDSAbstractFileHandle : public GEDSFileHandle {
@@ -73,14 +83,9 @@ public:
   GEDSAbstractFileHandle(GEDSAbstractFileHandle &&) = delete;
   GEDSAbstractFileHandle &operator=(GEDSAbstractFileHandle &) = delete;
   GEDSAbstractFileHandle &operator=(GEDSAbstractFileHandle &&) = delete;
-  ~GEDSAbstractFileHandle() override {
-    if (_isValid) {
-      // TODO: Should we delete the file.
-      LOG_INFO("The file associated with", identifier, " (", _file.path(),
-               ") is still registered.");
-    }
-  }
+  ~GEDSAbstractFileHandle() override = default;
 
+  bool isRelocatable() const override { return true; }
   absl::StatusOr<size_t> size() const override { return _file.size(); }
   size_t localStorageSize() const override { return _file.localStorageSize(); }
   size_t localMemorySize() const override { return _file.localMemorySize(); }
@@ -156,5 +161,57 @@ public:
   absl::StatusOr<int> rawFd() const override {
     auto lock = lockShared();
     return _file.rawFd();
+  }
+
+  absl::StatusOr<std::shared_ptr<GEDSFileHandle>> relocate() override {
+    auto iolock = lockExclusive();
+    auto lock = lockFile();
+    if (!isValid()) {
+      return absl::UnavailableError("The file " + identifier + " is no longer valid!");
+    }
+    LOG_INFO("Relocating ", identifier);
+    if (_openCount > 0) {
+      auto message = "Unable to relocate " + identifier + " reason: The file is still in use.";
+      LOG_ERROR(message);
+      return absl::UnavailableError(message);
+    }
+    auto s3Endpoint = geds::service::getS3Endpoint(_gedsService, bucket);
+    if (!s3Endpoint.ok()) {
+      auto message =
+          "Unable to relocate " + identifier + " reason: No tier configured for " + bucket;
+      LOG_ERROR(message);
+      return absl::UnavailableError(message);
+    }
+
+    absl::Status s3Put;
+    auto rawPtr = _file.rawPtr();
+    if (rawPtr.ok()) {
+      s3Put = (*s3Endpoint)->putObject(bucket, key, *rawPtr, _file.size());
+    } else {
+      auto stream =
+          std::make_shared<std::fstream>(_file.path(), std::ios_base::binary | std::ios_base::in);
+      s3Put = (*s3Endpoint)->putObject(bucket, key, stream, std::make_optional(_file.size()));
+    }
+    if (!s3Put.ok()) {
+      auto message =
+          "Unable to relocate " + identifier + " to s3: Reason " + std::string{s3Put.message()};
+      LOG_ERROR(message);
+      return absl::UnknownError(message);
+    }
+    auto fh = GEDSS3FileHandle::factory(_gedsService, bucket, key, metadata());
+    if (!fh.ok()) {
+      LOG_ERROR("Unable to reopen the relocateed file ", identifier,
+                " on s3:", fh.status().message());
+      return fh.status();
+    }
+    auto status = (*fh)->seal();
+    if (!status.ok()) {
+      LOG_ERROR("Unable to seal relocateed file!");
+      (void)(*s3Endpoint)->deleteObject(bucket, key);
+      return status;
+    }
+    // Mark as invalid.
+    _isValid = false;
+    return fh;
   }
 };

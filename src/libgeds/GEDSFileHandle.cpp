@@ -55,6 +55,10 @@ bool GEDSFileHandle::isValid() const {
   return _isValid;
 }
 
+absl::StatusOr<std::shared_ptr<GEDSFileHandle>> GEDSFileHandle::relocate() {
+  return absl::UnavailableError("Relocating is not supported for this file handle type!");
+}
+
 void GEDSFileHandle::notifyUnused() { LOG_DEBUG("The file ", identifier, " is unused."); }
 
 std::chrono::system_clock::time_point GEDSFileHandle::lastOpened() const { return _lastOpened; }

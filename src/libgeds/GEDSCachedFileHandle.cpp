@@ -176,3 +176,24 @@ absl::Status GEDSCachedFileHandle::seal() {
   auto iolock = lockExclusive();
   return _remoteFileHandle->seal();
 }
+
+absl::StatusOr<std::shared_ptr<GEDSFileHandle>> GEDSCachedFileHandle::relocate() {
+  // Cached file handles are purged by default.
+  auto lock = lockFile();
+  auto ioLock = lockExclusive();
+  for (size_t idx = 0; idx < _blocks.size(); idx++) {
+    auto lock = std::lock_guard(_blockMutex[idx]);
+    if (_blocks[idx].get() == nullptr) {
+      continue;
+    }
+    auto file = _blocks[idx];
+    auto bucket = file->bucket();
+    auto key = file->key();
+    auto fh = file->fileHandle();
+    if (fh->localStorageSize()) {
+      (void)_gedsService->deleteObject(bucket, key);
+      _blocks[idx] = nullptr;
+    }
+  }
+  return shared_from_this();
+}
