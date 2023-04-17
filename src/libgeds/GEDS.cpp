@@ -336,14 +336,26 @@ absl::Status GEDS::lookupBucket(const std::string &bucket) {
   return absl::OkStatus();
 }
 
-absl::StatusOr<GEDSFile> GEDS::open(const std::string &bucket, const std::string &key) {
+absl::StatusOr<GEDSFile> GEDS::open(const std::string &bucket, const std::string &key, bool retry) {
   LOG_DEBUG("open ", bucket, "/", key);
   auto fh = openAsFileHandle(bucket, key);
-  if (fh.ok()) {
+  if (!fh.ok()) {
+    return fh.status();
+  }
+  auto lock = (*fh)->lockFile();
+  if ((*fh)->isValid()) {
     *_statisticsFilesOpened += 1;
     return (*fh)->open();
   }
-  return fh.status();
+  // Remove invalid filehandle.
+  const auto path = getPath(bucket, key);
+  _fileHandles.removeIf(path, [&](const std::shared_ptr<GEDSFileHandle> &check) {
+    return (*fh).get() == check.get();
+  });
+  if (retry) {
+    return open(bucket, key, false);
+  }
+  return absl::UnavailableError("The file " + path.name + " is invalid.");
 }
 
 absl::StatusOr<GEDSFile> GEDS::localOpen(const std::string &bucket, const std::string &key) {
@@ -370,11 +382,9 @@ GEDS::reopen(std::shared_ptr<GEDSFileHandle> existing) {
   auto lock = existing->lockFile();
 
   auto path = getPath(existing->bucket, existing->key);
-  auto check = _fileHandles.get(path);
-  if (check.has_value() && check->get() != existing.get()) {
-    return *check;
-  }
-  (void)_fileHandles.remove(path);
+  _fileHandles.removeIf(path, [&existing](const std::shared_ptr<GEDSFileHandle> check) {
+    return existing.get() == check.get();
+  });
   return openAsFileHandle(existing->bucket, existing->key, true /* invalidate */);
 }
 
