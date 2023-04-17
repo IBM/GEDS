@@ -35,6 +35,7 @@ message ObjectInfo {
   string location = 1;
   uint64 size = 2;
   uint64 sealedOffset = 3;
+  optional bytes metadata = 4;
 }
 
 message Object {

@@ -32,12 +32,12 @@ public:
 
 protected:
   std::atomic<int64_t> _openCount{0};
-  bool _isValid{true};
 
   /** Mutex for file-based operations. */
   mutable std::recursive_mutex _fileMutex;
 
   std::optional<std::string> _metadata = std::nullopt;
+  bool _isValid{true};
   std::chrono::system_clock::time_point _lastOpened;
   std::chrono::system_clock::time_point _lastReleased;
 
@@ -49,7 +49,8 @@ protected:
   std::shared_ptr<GEDS> _gedsService;
 
   // Constructors are private to enable `shared_from_this`.
-  GEDSFileHandle(std::shared_ptr<GEDS> gedsService, std::string bucketArg, std::string keyArg);
+  GEDSFileHandle(std::shared_ptr<GEDS> gedsService, std::string bucketArg, std::string keyArg,
+                 std::optional<std::string> metadataArg);
 
 public:
   auto lockFile() const { return std::lock_guard(_fileMutex); }
@@ -71,8 +72,11 @@ public:
   std::chrono::system_clock::time_point lastReleased() const;
 
   virtual bool isValid() const;
-  virtual bool isSpillable() const { return false; }
   virtual bool isWriteable() const { return false; }
+
+  virtual std::optional<std::string> metadata() const;
+
+  virtual absl::Status setMetadata(std::optional<std::string> metadata, bool seal = true);
 
   virtual absl::StatusOr<size_t> readBytes(uint8_t *bytes, size_t position, size_t length);
 
