@@ -869,19 +869,38 @@ void GEDS::relocate(std::shared_ptr<GEDSFileHandle> handle, bool force) {
 void GEDS::startStorageMonitoringThread() {
   _storageMonitoringThread = std::thread([&]() {
     auto statsLocalStorage = geds::Statistics::createGauge("GEDS: Local Storage used");
+    auto statsLocalStorageFree = geds::Statistics::createGauge("GEDS: Local Storage free");
+    auto statsLocalStorageAllocated =
+        geds::Statistics::createGauge("GEDS: Local Storage allocated");
+    auto statsLocalMemory = geds::Statistics::createGauge("GEDS: Local Memory used");
+    auto statsLocalMemoryFree = geds::Statistics::createGauge("GEDS: Local Memory free");
+    auto statsLocalMemoryAllocated = geds::Statistics::createGauge("GEDS: Local Memory allocated");
+
     std::vector<std::shared_ptr<GEDSFileHandle>> relocatable;
     while (_state == ServiceState::Running) {
       relocatable.clear();
+      size_t localMemory = 0;
       size_t localStorage = 0;
-      _fileHandles.forall([&relocatable, &localStorage](std::shared_ptr<GEDSFileHandle> &fh) {
-        localStorage += fh->localStorageSize();
-        if (fh->isRelocatable()) {
-          if (fh->openCount() == 0) {
-            relocatable.push_back(fh);
-          }
-        }
-      });
-      *statsLocalStorage = localStorage;
+      _fileHandles.forall(
+          [&relocatable, &localStorage, &localMemory](std::shared_ptr<GEDSFileHandle> &fh) {
+            localStorage += fh->localStorageSize();
+            localMemory += fh->localMemorySize();
+            if (fh->isRelocatable()) {
+              if (fh->openCount() == 0) {
+                relocatable.push_back(fh);
+              }
+            }
+          });
+      _localStorageUsed = localStorage;
+      _localMemoryUsed = localMemory;
+
+      *statsLocalStorage = localStorageUsed();
+      *statsLocalStorageAllocated = localStorageAllocated();
+      *statsLocalStorageFree = localStorageFree();
+
+      *statsLocalMemory = localMemoryUsed();
+      *statsLocalMemoryAllocated = localMemoryAllocated();
+      *statsLocalMemoryFree = localMemoryFree();
 
       auto targetStorage = (size_t)(0.7 * (double)_config.available_local_storage);
       if (localStorage > targetStorage) {
@@ -908,3 +927,27 @@ void GEDS::startStorageMonitoringThread() {
     }
   });
 }
+
+size_t GEDS::localStorageUsed() const { return _localStorageUsed.load(); }
+
+size_t GEDS::localStorageFree() const {
+  auto used = _localStorageUsed.load();
+  if (used > _config.available_local_storage) {
+    return 0;
+  }
+  return localMemoryAllocated() - used;
+}
+
+size_t GEDS::localStorageAllocated() const { return _config.available_local_storage; }
+
+size_t GEDS::localMemoryUsed() const { return _localMemoryUsed.load(); }
+
+size_t GEDS::localMemoryFree() const {
+  auto used = _localMemoryUsed.load();
+  if (used > _config.available_local_memory) {
+    return 0;
+  }
+  return _config.available_local_memory - used;
+}
+
+size_t GEDS::localMemoryAllocated() const { return _config.available_local_memory; }
