@@ -5,27 +5,24 @@
 
 import os
 
-from pygeds import status, GEDS
+from pygeds import status, GEDS, GEDSConfig
 
+METADATA_SERVER = os.environ.get("GEDS_METADATASERVER", "zac13:4381")
 
-def get_geds_instance():
-    METADATA_SERVER = os.environ.get("GEDS_METADATASERVER", "zac13:4381")
-    instance = GEDS(METADATA_SERVER)
-    try:
-        instance.start()
-    except status.StatusNotOk as e:
-        print(e.status)
-        exit(1)
-    return instance
+instance = GEDS(GEDSConfig(METADATA_SERVER))
+try:
+    instance.start()
+except status.StatusNotOk as e:
+    print(e.status)
+    exit(1)
 
 
 message = "Hello World!"
-geds = get_geds_instance()
-testfile = geds.open("metadata", "String")
+testfile = instance.open("metadata", "String")
 print("Metadata: "+testfile.metadata)
 assert testfile.metadata == "Hello World"
 
-testfile = geds.open("metadata", "ByteArray")
+testfile = instance.open("metadata", "ByteArray")
 message = bytearray(
     [
         0x54,

@@ -6,7 +6,7 @@
 import os
 from time import sleep
 
-from pygeds import status, GEDSConfig
+from pygeds import status, GEDS, GEDSConfig
 
 METADATA_SERVER = os.environ.get("GEDS_METADATASERVER", "zac13:4381")
 
