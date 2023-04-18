@@ -107,6 +107,9 @@ protected:
   std::thread _storageMonitoringThread;
   void startStorageMonitoringThread();
 
+  std::atomic<size_t> _localStorageUsed;
+  std::atomic<size_t> _localMemoryUsed;
+
 public:
   /**
    * @brief GEDS CTOR. Note: This CTOR needs to be wrapped in a SHARED_POINTER!
@@ -304,6 +307,13 @@ public:
   void relocate(bool force = false);
   void relocate(std::vector<std::shared_ptr<GEDSFileHandle>> &relocatable, bool force = false);
   void relocate(std::shared_ptr<GEDSFileHandle> handle, bool force = false);
+
+  size_t localStorageUsed() const;
+  size_t localStorageFree() const;
+  size_t localStorageAllocated() const;
+  size_t localMemoryUsed() const;
+  size_t localMemoryFree() const;
+  size_t localMemoryAllocated() const;
 };
 
 #endif // GEDS_GEDS_H
