@@ -6,27 +6,22 @@
 import os
 from time import sleep
 
-from pygeds import status, GEDS
+from pygeds import status, GEDS, GEDSConfig
 
+METADATA_SERVER = os.environ.get("GEDS_METADATASERVER", "zac13:4381")
 
-def get_geds_instance():
-    METADATA_SERVER = os.environ.get("GEDS_METADATASERVER", "zac13:4381")
-    instance = GEDS(METADATA_SERVER)
-    try:
-        instance.start()
-    except status.StatusNotOk as e:
-        print(e.status)
-        exit(1)
-    return instance
-
-
-geds = get_geds_instance()
+instance = GEDS(GEDSConfig(METADATA_SERVER))
+try:
+    instance.start()
+except status.StatusNotOk as e:
+    print(e.status)
+    exit(1)
 
 message = "Hello World!"
-testfile = geds.create("metadata", "String")
+testfile = instance.create("metadata", "String")
 testfile.set_metadata("Hello World", True)
 
-testfile = geds.create("metadata", "ByteArray")
+testfile = instance.create("metadata", "ByteArray")
 message = bytearray(
     [
         0x54,
