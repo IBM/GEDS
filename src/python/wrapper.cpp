@@ -72,7 +72,11 @@ PYBIND11_MODULE(pygeds, m) {
       .def("status",
            [](GEDS &self, const std::string &bucket, const std::string &key)
                -> absl::StatusOr<GEDSFileStatus> { return self.status(bucket, key); })
-      .def("open", &GEDS::open)
+      .def(
+          "open",
+          [](GEDS &self, const std::string &bucket, const std::string &key,
+             bool retry) -> absl::StatusOr<GEDSFile> { return self.open(bucket, key, retry); },
+          py::arg("bucket"), py::arg("key"), py::arg("retry") = false)
       .def("delete", &GEDS::deleteObject)
       .def("delete_prefix", &GEDS::deleteObjectPrefix)
       .def(
