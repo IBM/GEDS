@@ -66,40 +66,40 @@ func (s *Service) LookupBucket(bucket *protos.Bucket) error {
 }
 
 func (s *Service) CreateObject(object *protos.Object) error {
-	if err := s.kvStore.CreateObject(object); err != nil {
-		return err
-	}
 	if config.Config.PubSubEnabled {
 		s.pubsub.Publication <- &protos.SubscriptionStreamResponse{
 			Object:          object,
 			PublicationType: protos.PublicationType_CREATE_OBJECT,
 		}
 	}
+	if err := s.kvStore.CreateObject(object); err != nil {
+		return err
+	}
 	return nil
 }
 
 func (s *Service) UpdateObject(object *protos.Object) error {
-	if err := s.kvStore.UpdateObject(object); err != nil {
-		return err
-	}
 	if config.Config.PubSubEnabled {
 		s.pubsub.Publication <- &protos.SubscriptionStreamResponse{
 			Object:          object,
 			PublicationType: protos.PublicationType_UPDATE_OBJECT,
 		}
 	}
+	if err := s.kvStore.UpdateObject(object); err != nil {
+		return err
+	}
 	return nil
 }
 
 func (s *Service) DeleteObject(objectID *protos.ObjectID) error {
-	if err := s.kvStore.DeleteObject(objectID); err != nil {
-		return err
-	}
 	if config.Config.PubSubEnabled {
 		s.pubsub.Publication <- &protos.SubscriptionStreamResponse{
 			Object:          &protos.Object{Id: objectID},
 			PublicationType: protos.PublicationType_DELETE_OBJECT,
 		}
+	}
+	if err := s.kvStore.DeleteObject(objectID); err != nil {
+		return err
 	}
 	return nil
 }

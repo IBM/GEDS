@@ -18,20 +18,21 @@ type Service struct {
 	buckets     map[string]*Bucket
 }
 
-type Object struct {
-	path   []string
-	object *protos.Object
-}
+//type Object struct {
+//	path   []string
+//	object *protos.Object
+//}
 
-type NestedObjects struct {
-	objects          map[string]*Object
-	currentDirectory string
-	childDirectories map[string]*NestedObjects
+type NestedDirectories struct {
+	objectsInThisDirectory           map[string]*protos.Object
+	currentDirectory                 string
+	childDirectories                 map[string]*NestedDirectories
+	objectsInThisAndChildDirectories map[string]*protos.Object
 }
 
 type Bucket struct {
-	objectsLock   *sync.RWMutex
-	objects       map[string]*Object
-	nestedObjects *NestedObjects
-	bucket        *protos.Bucket
+	objectsLock *sync.RWMutex
+	//objects           map[string]*Object
+	nestedDirectories *NestedDirectories
+	bucket            *protos.Bucket
 }
