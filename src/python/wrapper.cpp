@@ -113,7 +113,10 @@ PYBIND11_MODULE(pygeds, m) {
            [](GEDS &self, GEDSFile &file) -> std::string { return self.getLocalPath(file); })
       .def("registerObjectStoreConfig", &GEDS::registerObjectStoreConfig, py::arg("bucket"),
            py::arg("endpointUrl"), py::arg("accessKey"), py::arg("secretKey"))
-      .def("syncObjectStoreConfigs", &GEDS::syncObjectStoreConfigs);
+      .def("syncObjectStoreConfigs", &GEDS::syncObjectStoreConfigs)
+      .def(
+          "relocate", [](GEDS &self, bool force) { self.relocate(force); },
+          py::arg("force") = false);
 
   py::class_<GEDSFile, std::shared_ptr<GEDSFile>>(m, "GEDSFile")
       .def_property_readonly("size", &GEDSFile::size)
