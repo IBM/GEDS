@@ -64,19 +64,8 @@ const std::shared_ptr<GEDSFileHandle> GEDSFile::fileHandle() const { return _fil
 
 bool GEDSFile::isWriteable() const { return _fileHandle->isWriteable(); }
 
-absl::StatusOr<size_t> GEDSFile::readBytes(uint8_t *bytes, size_t position, size_t length,
-                                           bool retry) {
-  auto status = _fileHandle->readBytes(bytes, position, length);
-  if (status.ok() || !retry) {
-    return status;
-  }
-  auto fh = _geds->reopen(_fileHandle);
-  // Unable to reopen: Return error.
-  if (!fh.ok()) {
-    return fh.status();
-  }
-  _fileHandle = *fh;
-  return readBytes(bytes, position, length, false);
+absl::StatusOr<size_t> GEDSFile::readBytes(uint8_t *bytes, size_t position, size_t length) {
+  return _fileHandle->readBytes(bytes, position, length);
 }
 
 absl::Status GEDSFile::writeBytes(const uint8_t *bytes, size_t position, size_t length) {
