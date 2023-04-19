@@ -194,15 +194,15 @@ func (o *Operations) GetObject(objectQuery *protos.ObjectID) (*protos.Object, er
 	return object, nil
 }
 
-func (o *Operations) GetAllObjectsPrefix(objectQuery *protos.ObjectID) (map[string]*protos.Object, error) {
-	objects := map[string]*protos.Object{}
+func (o *Operations) GetAllObjectsPrefix(objectQuery *protos.ObjectID) ([]*protos.Object, error) {
+	objects := []*protos.Object{}
 	iter := o.dbObject.NewIterator(util.BytesPrefix([]byte(o.createObjectKey(objectQuery))), nil)
 	for iter.Next() {
 		value := &protos.Object{}
 		if err := proto.Unmarshal(iter.Value(), value); err != nil {
 			return nil, err
 		}
-		objects[string(iter.Key())] = value
+		objects = append(objects, value)
 	}
 	iter.Release()
 	return objects, iter.Error()

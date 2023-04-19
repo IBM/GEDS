@@ -31,7 +31,7 @@ func (kv *Service) NewBucketIfNotExist(objectID *protos.ObjectID) (*Bucket, bool
 			bucket:      &protos.Bucket{Bucket: objectID.Bucket},
 			objectsLock: &sync.RWMutex{},
 			//objects:           map[string]*Object{},
-			nestedDirectories: makeNewNestedDirectories("root"),
+			nestedDirectories: makeNewPrefixTree("root"),
 		}
 		return kv.buckets[objectID.Bucket], false
 	} else {
@@ -164,7 +164,7 @@ func (kv *Service) CreateObject(object *protos.Object) error {
 		//bucket.objectsLock.Unlock()
 
 		bucket, _ := kv.NewBucketIfNotExist(object.Id)
-		kv.traverseCreateToObject(bucket, object)
+		kv.traverseCreateObject(bucket, object)
 	}
 	return nil
 }
@@ -183,7 +183,7 @@ func (kv *Service) UpdateObject(object *protos.Object) error {
 		//bucket.objectsLock.Unlock()
 
 		bucket, _ := kv.NewBucketIfNotExist(object.Id)
-		kv.traverseCreateToObject(bucket, object)
+		kv.traverseCreateObject(bucket, object)
 	}
 	return nil
 }
@@ -214,8 +214,8 @@ func (kv *Service) DeleteObjectPrefix(objectID *protos.ObjectID) ([]*protos.Obje
 		if allObjectsPrefix, err := kv.dbConnection.GetAllObjectsPrefix(objectID); err != nil {
 			logger.ErrorLogger.Println(err)
 		} else {
+			deletedObjects = append(deletedObjects, allObjectsPrefix...)
 			for _, object := range allObjectsPrefix {
-				deletedObjects = append(deletedObjects, object)
 				kv.dbConnection.ObjectChan <- &db.OperationParams{
 					Object: object,
 					Type:   db.DELETE,
@@ -260,7 +260,6 @@ func (kv *Service) LookupObject(objectID *protos.ObjectID) (*protos.ObjectRespon
 		//}
 
 		bucket, _ := kv.NewBucketIfNotExist(objectID)
-		kv.traverseDeleteObject(bucket, objectID)
 		if object, ok := kv.lookUpObject(bucket, objectID); !ok {
 			return nil, errors.New("object does not exist")
 		} else {
@@ -282,15 +281,12 @@ func (kv *Service) ListObjects(objectListRequest *protos.ObjectListRequest) (*pr
 		delimiter = string(*objectListRequest.Delimiter)
 	}
 	//tempCommonPrefixes := map[string]bool{}
-
 	if config.Config.PersistentStorageEnabled {
 		if len(delimiter) == 0 {
 			if allObjectsPrefix, err := kv.dbConnection.GetAllObjectsPrefix(objectListRequest.Prefix); err != nil {
 				logger.ErrorLogger.Println(err)
 			} else {
-				for _, object := range allObjectsPrefix {
-					objects.Results = append(objects.Results, object)
-				}
+				objects.Results = append(objects.Results, allObjectsPrefix...)
 			}
 		} else {
 			//if len(objectListRequest.Prefix.Key) == 0 {

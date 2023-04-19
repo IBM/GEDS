@@ -23,16 +23,16 @@ type Service struct {
 //	object *protos.Object
 //}
 
-type NestedDirectories struct {
+type PrefixTree struct {
 	objectsInThisDirectory           map[string]*protos.Object
-	currentDirectory                 string
-	childDirectories                 map[string]*NestedDirectories
+	thisDirectory                    string
+	childDirectories                 map[string]*PrefixTree
 	objectsInThisAndChildDirectories map[string]*protos.Object
 }
 
 type Bucket struct {
 	objectsLock *sync.RWMutex
 	//objects           map[string]*Object
-	nestedDirectories *NestedDirectories
+	nestedDirectories *PrefixTree
 	bucket            *protos.Bucket
 }

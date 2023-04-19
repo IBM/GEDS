@@ -150,37 +150,27 @@ func (e *Executor) CreateObject() {
 	client := protos.NewMetadataServiceClient(conn.ClientConn)
 	object := &protos.Object{
 		Id: &protos.ObjectID{
-			Key:    "file1",
+			Key:    "sample.jpg",
 			Bucket: "b2",
 		},
 		Info: &protos.ObjectInfo{
-			Location:     "here1",
-			Size:         1000,
-			SealedOffset: 1000,
+			Location:     "here3",
+			Size:         4000,
+			SealedOffset: 4000,
 		},
 	}
 	result, err := client.Create(context.Background(), object)
 	if err != nil {
 		logger.ErrorLogger.Println(err)
 	}
+	logger.InfoLogger.Println(result.Code)
+	if errCon := conn.Close(); errCon != nil {
+		logger.ErrorLogger.Println(errCon)
+	}
+
 	object = &protos.Object{
 		Id: &protos.ObjectID{
-			Key:    "file2",
-			Bucket: "b2",
-		},
-		Info: &protos.ObjectInfo{
-			Location:     "here2",
-			Size:         2000,
-			SealedOffset: 2000,
-		},
-	}
-	result, err = client.Create(context.Background(), object)
-	if err != nil {
-		logger.ErrorLogger.Println(err)
-	}
-	object = &protos.Object{
-		Id: &protos.ObjectID{
-			Key:    "file3",
+			Key:    "photos/2006/January/sample.jpg",
 			Bucket: "b2",
 		},
 		Info: &protos.ObjectInfo{
@@ -195,7 +185,66 @@ func (e *Executor) CreateObject() {
 	}
 	logger.InfoLogger.Println(result.Code)
 	if errCon := conn.Close(); errCon != nil {
-		logger.ErrorLogger.Println(errCon)
+		//logger.ErrorLogger.Println(errCon)
+	}
+
+	object = &protos.Object{
+		Id: &protos.ObjectID{
+			Key:    "photos/2006/February/sample2.jpg",
+			Bucket: "b2",
+		},
+		Info: &protos.ObjectInfo{
+			Location:     "here3",
+			Size:         4000,
+			SealedOffset: 4000,
+		},
+	}
+	result, err = client.Create(context.Background(), object)
+	if err != nil {
+		logger.ErrorLogger.Println(err)
+	}
+	logger.InfoLogger.Println(result.Code)
+	if errCon := conn.Close(); errCon != nil {
+		//logger.ErrorLogger.Println(errCon)
+	}
+
+	object = &protos.Object{
+		Id: &protos.ObjectID{
+			Key:    "photos/2006/February/sample3.jpg",
+			Bucket: "b2",
+		},
+		Info: &protos.ObjectInfo{
+			Location:     "here3",
+			Size:         4000,
+			SealedOffset: 4000,
+		},
+	}
+	result, err = client.Create(context.Background(), object)
+	if err != nil {
+		logger.ErrorLogger.Println(err)
+	}
+	logger.InfoLogger.Println(result.Code)
+	if errCon := conn.Close(); errCon != nil {
+		//logger.ErrorLogger.Println(errCon)
+	}
+	object = &protos.Object{
+		Id: &protos.ObjectID{
+			Key:    "photos/2006/February/sample4.jpg",
+			Bucket: "b2",
+		},
+		Info: &protos.ObjectInfo{
+			Location:     "here3",
+			Size:         4000,
+			SealedOffset: 4000,
+		},
+	}
+	result, err = client.Create(context.Background(), object)
+	if err != nil {
+		logger.ErrorLogger.Println(err)
+	}
+	logger.InfoLogger.Println(result.Code)
+	if errCon := conn.Close(); errCon != nil {
+		//logger.ErrorLogger.Println(errCon)
 	}
 }
 
@@ -207,7 +256,7 @@ func (e *Executor) UpdateObject() {
 	client := protos.NewMetadataServiceClient(conn.ClientConn)
 	object := &protos.Object{
 		Id: &protos.ObjectID{
-			Key:    "file2",
+			Key:    "photos/2006/February/sample4.jpg",
 			Bucket: "b2",
 		},
 		Info: &protos.ObjectInfo{
@@ -233,7 +282,7 @@ func (e *Executor) DeleteObject() {
 	}
 	client := protos.NewMetadataServiceClient(conn.ClientConn)
 	objectId := &protos.ObjectID{
-		Key:    "file1",
+		Key:    "photos/2006/February/sample3.jpg",
 		Bucket: "b2",
 	}
 	result, err := client.Delete(context.Background(), objectId)
@@ -253,7 +302,7 @@ func (e *Executor) DeletePrefix() {
 	}
 	client := protos.NewMetadataServiceClient(conn.ClientConn)
 	objectId := &protos.ObjectID{
-		Key:    "file3",
+		Key:    "photos/2006/February/",
 		Bucket: "b2",
 	}
 	result, err := client.DeletePrefix(context.Background(), objectId)
@@ -273,7 +322,7 @@ func (e *Executor) Lookup() {
 	}
 	client := protos.NewMetadataServiceClient(conn.ClientConn)
 	objectId := &protos.ObjectID{
-		Key:    "file1",
+		Key:    "sample.jpg",
 		Bucket: "b2",
 	}
 	result, err := client.Lookup(context.Background(), objectId)
@@ -283,7 +332,7 @@ func (e *Executor) Lookup() {
 	logger.InfoLogger.Println(result.Result)
 
 	objectId2 := &protos.ObjectID{
-		Key:    "file2",
+		Key:    "photos/2006/February/sample3.jpg",
 		Bucket: "b2",
 	}
 	result, err = client.Lookup(context.Background(), objectId2)
@@ -451,6 +500,55 @@ func (e *Executor) ListObjects2() {
 		Prefix: &protos.ObjectID{
 			Bucket: "b2",
 			Key:    "path1/path2/",
+		},
+		Delimiter: &del,
+	})
+	if err != nil {
+		logger.ErrorLogger.Println(err)
+	}
+	logger.InfoLogger.Println(result)
+
+	if errCon := conn.Close(); errCon != nil {
+		logger.ErrorLogger.Println(errCon)
+	}
+}
+
+func (e *Executor) ListObjects3() {
+	conn, err := e.mdsConnections["127.0.0.1"].Get(context.Background())
+	if conn == nil || err != nil {
+		logger.ErrorLogger.Println(err)
+	}
+	client := protos.NewMetadataServiceClient(conn.ClientConn)
+
+	result, err := client.List(context.Background(), &protos.ObjectListRequest{
+		Prefix: &protos.ObjectID{
+			Bucket: "b2",
+			Key:    "photos/2006/",
+		},
+	})
+	if err != nil {
+		logger.ErrorLogger.Println(err)
+	}
+	logger.InfoLogger.Println(result)
+
+	var del int32
+	del = 47
+
+	result, err = client.List(context.Background(), &protos.ObjectListRequest{
+		Prefix: &protos.ObjectID{
+			Bucket: "b2",
+		},
+		Delimiter: &del,
+	})
+	if err != nil {
+		logger.ErrorLogger.Println(err)
+	}
+	logger.InfoLogger.Println(result)
+
+	result, err = client.List(context.Background(), &protos.ObjectListRequest{
+		Prefix: &protos.ObjectID{
+			Bucket: "b2",
+			Key:    "photos/2006/",
 		},
 		Delimiter: &del,
 	})
