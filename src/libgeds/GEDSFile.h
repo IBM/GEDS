@@ -32,8 +32,7 @@ protected:
   std::shared_ptr<GEDS> _geds;
   std::shared_ptr<GEDSFileHandle> _fileHandle;
 
-  absl::StatusOr<size_t> readBytes(uint8_t *bytes, size_t position, size_t length,
-                                   bool retry = true);
+  absl::StatusOr<size_t> readBytes(uint8_t *bytes, size_t position, size_t length);
   absl::Status writeBytes(const uint8_t *bytes, size_t position, size_t length);
 
 public:
