@@ -28,9 +28,8 @@ func (kv *Service) NewBucketIfNotExist(objectID *protos.ObjectID) (*Bucket, bool
 	defer kv.bucketsLock.Unlock()
 	if bucket, ok := kv.buckets[objectID.Bucket]; !ok {
 		kv.buckets[objectID.Bucket] = &Bucket{
-			bucket:      &protos.Bucket{Bucket: objectID.Bucket},
-			objectsLock: &sync.RWMutex{},
-			//objects:           map[string]*Object{},
+			bucket:            &protos.Bucket{Bucket: objectID.Bucket},
+			objectsLock:       &sync.RWMutex{},
 			nestedDirectories: makeNewPrefixTree("root"),
 		}
 		return kv.buckets[objectID.Bucket], false
@@ -157,12 +156,6 @@ func (kv *Service) CreateObject(object *protos.Object) error {
 			Type:   db.PUT,
 		}
 	} else {
-		//newObject := &Object{object: object, path: kv.getNestedPath(object.Id)}
-		//bucket, _ := kv.NewBucketIfNotExist(object.Id)
-		//bucket.objectsLock.Lock()
-		//bucket.objects[object.Id.Key] = newObject
-		//bucket.objectsLock.Unlock()
-
 		bucket, _ := kv.NewBucketIfNotExist(object.Id)
 		kv.traverseCreateObject(bucket, object)
 	}
@@ -176,12 +169,6 @@ func (kv *Service) UpdateObject(object *protos.Object) error {
 			Type:   db.PUT,
 		}
 	} else {
-		//newObject := &Object{object: object, path: kv.getNestedPath(object.Id)}
-		//bucket, _ := kv.NewBucketIfNotExist(object.Id)
-		//bucket.objectsLock.Lock()
-		//bucket.objects[object.Id.Key] = newObject
-		//bucket.objectsLock.Unlock()
-
 		bucket, _ := kv.NewBucketIfNotExist(object.Id)
 		kv.traverseCreateObject(bucket, object)
 	}
@@ -197,11 +184,6 @@ func (kv *Service) DeleteObject(objectID *protos.ObjectID) error {
 			Type: db.DELETE,
 		}
 	} else {
-		//bucket, _ := kv.NewBucketIfNotExist(objectID)
-		//bucket.objectsLock.Lock()
-		//delete(bucket.objects, objectID.Key)
-		//bucket.objectsLock.Unlock()
-
 		bucket, _ := kv.NewBucketIfNotExist(objectID)
 		kv.traverseDeleteObject(bucket, objectID)
 	}
@@ -223,15 +205,6 @@ func (kv *Service) DeleteObjectPrefix(objectID *protos.ObjectID) ([]*protos.Obje
 			}
 		}
 	} else {
-		//bucket, _ := kv.NewBucketIfNotExist(objectID)
-		//bucket.objectsLock.Lock()
-		//for key := range bucket.objects {
-		//	if strings.HasPrefix(key, objectID.Key) {
-		//		delete(bucket.objects, objectID.Key)
-		//	}
-		//}
-		//bucket.objectsLock.Unlock()
-
 		bucket, _ := kv.NewBucketIfNotExist(objectID)
 		deletedObjects = kv.traverseDeleteObjectPrefix(bucket, objectID)
 	}
@@ -240,7 +213,7 @@ func (kv *Service) DeleteObjectPrefix(objectID *protos.ObjectID) ([]*protos.Obje
 
 func (kv *Service) LookupObject(objectID *protos.ObjectID) (*protos.ObjectResponse, error) {
 	if config.Config.PersistentStorageEnabled {
-		if object, err := kv.dbConnection.GetObject(objectID); err != nil {
+		if object, err := kv.dbConnection.GetObjectWithObjectID(objectID); err != nil {
 			return nil, errors.New("object does not exist")
 		} else {
 			return &protos.ObjectResponse{
@@ -248,17 +221,6 @@ func (kv *Service) LookupObject(objectID *protos.ObjectID) (*protos.ObjectRespon
 			}, nil
 		}
 	} else {
-		//bucket, _ := kv.NewBucketIfNotExist(objectID)
-		//bucket.objectsLock.RLock()
-		//defer bucket.objectsLock.RUnlock()
-		//if object, ok := bucket.objects[objectID.Key]; !ok {
-		//	return nil, errors.New("object does not exist")
-		//} else {
-		//	return &protos.ObjectResponse{
-		//		Result: object.object,
-		//	}, nil
-		//}
-
 		bucket, _ := kv.NewBucketIfNotExist(objectID)
 		if object, ok := kv.lookUpObject(bucket, objectID); !ok {
 			return nil, errors.New("object does not exist")
@@ -279,8 +241,11 @@ func (kv *Service) ListObjects(objectListRequest *protos.ObjectListRequest) (*pr
 	var delimiter string
 	if objectListRequest.Delimiter != nil && *objectListRequest.Delimiter != 0 {
 		delimiter = string(*objectListRequest.Delimiter)
+		if delimiter != db.CommonDelimiter {
+			logger.InfoLogger.Println("this delimiter is not supported:", delimiter)
+			return objects, nil
+		}
 	}
-	//tempCommonPrefixes := map[string]bool{}
 	if config.Config.PersistentStorageEnabled {
 		if len(delimiter) == 0 {
 			if allObjectsPrefix, err := kv.dbConnection.GetAllObjectsPrefix(objectListRequest.Prefix); err != nil {
@@ -289,70 +254,32 @@ func (kv *Service) ListObjects(objectListRequest *protos.ObjectListRequest) (*pr
 				objects.Results = append(objects.Results, allObjectsPrefix...)
 			}
 		} else {
-			//if len(objectListRequest.Prefix.Key) == 0 {
-			//	rootDir := bucket.nestedDirectories.childDirectories["root"]
-			//	for _, object := range rootDir.objectsInThisDirectory {
-			//		objects.Results = append(objects.Results, object)
-			//	}
-			//	tempCommonPrefixes := map[string]bool{}
-			//	for commonPrefix := range rootDir.childDirectories {
-			//		tempCommonPrefixes[commonPrefix] = true
-			//	}
-			//	if len(tempCommonPrefixes) > 0 {
-			//		for commonPrefix := range tempCommonPrefixes {
-			//			objects.CommonPrefixes = append(objects.CommonPrefixes, commonPrefix+commonDelimiter)
-			//		}
-			//	}
-			//} else {
-			//	objects.Results, objects.CommonPrefixes = kv.traverseListObjects(bucket, objectId, true)
-			//}
+			allObjectsPrefixIDs := []string{}
+			var err error
+			if allObjectsPrefixIDs, err = kv.dbConnection.GetAllObjectsIDsPrefix(objectListRequest.Prefix); err != nil {
+				logger.ErrorLogger.Println(err)
+			}
+			filteredIDs, filteredPrefix := kv.filterIDsAndCommonPrefix(allObjectsPrefixIDs, objectListRequest.Prefix)
+			objects.CommonPrefixes = filteredPrefix
+			if len(objectListRequest.Prefix.Key) == 0 {
+				for _, objectID := range filteredIDs {
+					if object, err := kv.dbConnection.GetObjectWithStringID(objectID); err != nil {
+						logger.ErrorLogger.Println(err)
+					} else {
+						objects.Results = append(objects.Results, object)
+					}
+				}
+			} else {
+				if allObjectsPrefix, err := kv.dbConnection.GetAllObjectsPrefix(objectListRequest.Prefix); err != nil {
+					logger.ErrorLogger.Println(err)
+				} else {
+					objects.Results = append(objects.Results, allObjectsPrefix...)
+				}
+			}
 		}
-
 	} else {
 		bucket, _ := kv.NewBucketIfNotExist(objectListRequest.Prefix)
 		objects = kv.listObjects(bucket, objectListRequest.Prefix, delimiter)
-
-		// needs to be optimized
-		//if len(delimiter) == 0 {
-		//	bucket.objectsLock.RLock()
-		//	for key, object := range bucket.objects {
-		//		if strings.HasPrefix(key, objectListRequest.Prefix.Key) {
-		//			objects.Results = append(objects.Results, object.object)
-		//		}
-		//	}
-		//	bucket.objectsLock.RUnlock()
-		//} else {
-		//	if len(objectListRequest.Prefix.Key) == 0 {
-		//		bucket.objectsLock.RLock()
-		//		for _, object := range bucket.objects {
-		//			if len(object.path) == 1 {
-		//				objects.Results = append(objects.Results, object.object)
-		//			} else if len(object.path) > 1 {
-		//				tempCommonPrefixes[object.path[0]] = true
-		//			}
-		//		}
-		//		bucket.objectsLock.RUnlock()
-		//	} else {
-		//		prefixLength := len(strings.Split(objectListRequest.Prefix.Key, delimiter)) + 1
-		//
-		//		bucket.objectsLock.RLock()
-		//		for key, object := range bucket.objects {
-		//			if strings.HasPrefix(key, objectListRequest.Prefix.Key) {
-		//				objects.Results = append(objects.Results, object.object)
-		//				if len(object.path) == prefixLength {
-		//					tempCommonPrefixes[strings.Join(object.path[:prefixLength-1], delimiter)] = true
-		//				}
-		//			}
-		//		}
-		//		bucket.objectsLock.RUnlock()
-		//	}
-		//}
-		//if len(tempCommonPrefixes) > 0 {
-		//	for commonPrefix := range tempCommonPrefixes {
-		//		objects.CommonPrefixes = append(objects.CommonPrefixes, commonPrefix+commonDelimiter)
-		//	}
-		//}
 	}
-
 	return objects, nil
 }

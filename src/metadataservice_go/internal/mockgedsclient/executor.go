@@ -281,11 +281,11 @@ func (e *Executor) DeleteObject() {
 		logger.ErrorLogger.Println(err)
 	}
 	client := protos.NewMetadataServiceClient(conn.ClientConn)
-	objectId := &protos.ObjectID{
+	objectID := &protos.ObjectID{
 		Key:    "photos/2006/February/sample3.jpg",
 		Bucket: "b2",
 	}
-	result, err := client.Delete(context.Background(), objectId)
+	result, err := client.Delete(context.Background(), objectID)
 	if err != nil {
 		logger.ErrorLogger.Println(err)
 	}
@@ -301,11 +301,11 @@ func (e *Executor) DeletePrefix() {
 		logger.ErrorLogger.Println(err)
 	}
 	client := protos.NewMetadataServiceClient(conn.ClientConn)
-	objectId := &protos.ObjectID{
+	objectID := &protos.ObjectID{
 		Key:    "photos/2006/February/",
 		Bucket: "b2",
 	}
-	result, err := client.DeletePrefix(context.Background(), objectId)
+	result, err := client.DeletePrefix(context.Background(), objectID)
 	if err != nil {
 		logger.ErrorLogger.Println(err)
 	}
@@ -321,21 +321,21 @@ func (e *Executor) Lookup() {
 		logger.ErrorLogger.Println(err)
 	}
 	client := protos.NewMetadataServiceClient(conn.ClientConn)
-	objectId := &protos.ObjectID{
+	objectID := &protos.ObjectID{
 		Key:    "sample.jpg",
 		Bucket: "b2",
 	}
-	result, err := client.Lookup(context.Background(), objectId)
+	result, err := client.Lookup(context.Background(), objectID)
 	if err != nil {
 		logger.ErrorLogger.Println(err)
 	}
 	logger.InfoLogger.Println(result.Result)
 
-	objectId2 := &protos.ObjectID{
+	objectID2 := &protos.ObjectID{
 		Key:    "photos/2006/February/sample3.jpg",
 		Bucket: "b2",
 	}
-	result, err = client.Lookup(context.Background(), objectId2)
+	result, err = client.Lookup(context.Background(), objectID2)
 	if err != nil {
 		logger.ErrorLogger.Println(err)
 	}
@@ -523,7 +523,7 @@ func (e *Executor) ListObjects3() {
 	result, err := client.List(context.Background(), &protos.ObjectListRequest{
 		Prefix: &protos.ObjectID{
 			Bucket: "b2",
-			Key:    "photos/2006/",
+			Key:    "photos/2006/February",
 		},
 	})
 	if err != nil {
@@ -533,7 +533,6 @@ func (e *Executor) ListObjects3() {
 
 	var del int32
 	del = 47
-
 	result, err = client.List(context.Background(), &protos.ObjectListRequest{
 		Prefix: &protos.ObjectID{
 			Bucket: "b2",

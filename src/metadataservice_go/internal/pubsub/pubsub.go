@@ -36,20 +36,20 @@ func (s *Service) runPubSubEventListeners() {
 }
 
 func (s *Service) Subscribe(subscription *protos.SubscriptionEvent) error {
-	subscribedItemId, err := s.createSubscriptionKey(subscription)
+	subscribedItemID, err := s.createSubscriptionKey(subscription)
 	if err != nil {
 		return err
 	}
 	if subscription.SubscriptionType == protos.SubscriptionType_BUCKET || subscription.SubscriptionType == protos.SubscriptionType_OBJECT {
 		s.subscribedItemsLock.Lock()
-		s.subscribedItems[subscribedItemId] = append(s.subscribedItems[subscribedItemId], subscription.SubscriberID)
+		s.subscribedItems[subscribedItemID] = append(s.subscribedItems[subscribedItemID], subscription.SubscriberID)
 		s.subscribedItemsLock.Unlock()
 	} else if subscription.SubscriptionType == protos.SubscriptionType_PREFIX {
 		s.subscribedPrefixLock.Lock()
 		if _, ok := s.subscribedPrefix[subscription.BucketID]; !ok {
 			s.subscribedPrefix[subscription.BucketID] = map[string][]string{}
 		}
-		s.subscribedPrefix[subscription.BucketID][subscribedItemId] = append(s.subscribedPrefix[subscription.BucketID][subscribedItemId], subscription.SubscriberID)
+		s.subscribedPrefix[subscription.BucketID][subscribedItemID] = append(s.subscribedPrefix[subscription.BucketID][subscribedItemID], subscription.SubscriberID)
 		s.subscribedPrefixLock.Unlock()
 	}
 	s.subscribersStreamLock.Lock()
@@ -168,18 +168,18 @@ func (s *Service) removeSubscriber(unsubscription *protos.SubscriptionEvent) err
 	}
 	s.subscribersStreamLock.Unlock()
 
-	subscribedItemId, err := s.createSubscriptionKey(unsubscription)
+	subscribedItemID, err := s.createSubscriptionKey(unsubscription)
 	if err != nil {
 		return err
 	}
 	s.subscribedItemsLock.Lock()
-	if currentSubscribers, ok := s.subscribedItems[subscribedItemId]; ok {
+	if currentSubscribers, ok := s.subscribedItems[subscribedItemID]; ok {
 		s.removeElementFromSlice(currentSubscribers, unsubscription.SubscriberID)
 	}
 	s.subscribedItemsLock.Unlock()
 	s.subscribedPrefixLock.Lock()
 	if subscribers, ok := s.subscribedPrefix[unsubscription.BucketID]; ok {
-		s.removeElementFromSlice(subscribers[subscribedItemId], unsubscription.SubscriberID)
+		s.removeElementFromSlice(subscribers[subscribedItemID], unsubscription.SubscriberID)
 	}
 	s.subscribedPrefixLock.Unlock()
 	return nil

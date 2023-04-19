@@ -8,7 +8,6 @@ import (
 	"github.com/syndtr/goleveldb/leveldb/util"
 )
 
-// NewOperations Possible optimization for LevelDB: https://github.com/google/leveldb/blob/master/doc/index.md
 func NewOperations() *Operations {
 	operations := &Operations{}
 	if db, err := leveldb.OpenFile(objectStoreConfigLocation, nil); err == nil {
@@ -26,7 +25,6 @@ func NewOperations() *Operations {
 	} else {
 		logger.FatalLogger.Fatalln(err)
 	}
-
 	operations.ObjectStoreConfigChan = make(chan *OperationParams, channelBufferSize)
 	operations.BucketChan = make(chan *OperationParams, channelBufferSize)
 	operations.ObjectChan = make(chan *OperationParams, channelBufferSize)
@@ -63,7 +61,6 @@ func (o *Operations) runDBOperationsListener() {
 
 func (o *Operations) PutObjectStoreConfig(storeConfig *protos.ObjectStoreConfig) {
 	dbValue, _ := proto.Marshal(storeConfig)
-	//if err := o.dbObjectStoreConfig.Put([]byte(o.createObjectStoreConfigKey(storeConfig)),
 	if err := o.dbObjectStoreConfig.Put([]byte(storeConfig.Bucket),
 		dbValue, nil); err != nil {
 		logger.ErrorLogger.Println(err)
@@ -71,7 +68,6 @@ func (o *Operations) PutObjectStoreConfig(storeConfig *protos.ObjectStoreConfig)
 }
 
 func (o *Operations) DeleteObjectStoreConfig(storeConfig *protos.ObjectStoreConfig) {
-	//if err := o.dbObjectStoreConfig.Delete([]byte(o.createObjectStoreConfigKey(storeConfig)), nil); err != nil {
 	if err := o.dbObjectStoreConfig.Delete([]byte(storeConfig.Bucket), nil); err != nil {
 		logger.ErrorLogger.Println(err)
 	}
@@ -80,7 +76,6 @@ func (o *Operations) DeleteObjectStoreConfig(storeConfig *protos.ObjectStoreConf
 func (o *Operations) GetObjectStoreConfig(storeConfigQuery *protos.ObjectStoreConfig) (
 	*protos.ObjectStoreConfig, error) {
 	objectStoreConfig := &protos.ObjectStoreConfig{}
-	//if valueBytes, err := o.dbObjectStoreConfig.Get([]byte(o.createObjectStoreConfigKey(storeConfigQuery)),
 	if valueBytes, err := o.dbObjectStoreConfig.Get([]byte(storeConfigQuery.Bucket), nil); err != nil {
 		return nil, err
 	} else {
@@ -94,7 +89,6 @@ func (o *Operations) GetObjectStoreConfig(storeConfigQuery *protos.ObjectStoreCo
 func (o *Operations) GetAllObjectStoreConfig() (
 	[]*protos.ObjectStoreConfig, error) {
 	var objectStoreConfigs []*protos.ObjectStoreConfig
-	//iter := o.dbObjectStoreConfig.NewIterator(util.BytesPrefix([]byte(o.createObjectStoreConfigKeyPrefix())), nil)
 	iter := o.dbObjectStoreConfig.NewIterator(nil, nil)
 	for iter.Next() {
 		value := &protos.ObjectStoreConfig{}
@@ -110,13 +104,11 @@ func (o *Operations) GetAllObjectStoreConfig() (
 func (o *Operations) PutBucket(bucket *protos.Bucket) {
 	dbValue, _ := proto.Marshal(bucket)
 	if err := o.dbBucket.Put([]byte(bucket.Bucket), dbValue, nil); err != nil {
-		//if err := o.dbBucket.Put([]byte(o.createBucketKey(bucket)), dbValue, nil); err != nil {
 		logger.ErrorLogger.Println(err)
 	}
 }
 
 func (o *Operations) DeleteBucket(bucket *protos.Bucket) {
-	//if err := o.dbBucket.Delete([]byte(o.createBucketKey(bucket)), nil); err != nil {
 	if err := o.dbBucket.Delete([]byte(bucket.Bucket), nil); err != nil {
 		logger.ErrorLogger.Println(err)
 	}
@@ -132,9 +124,7 @@ func (o *Operations) DeleteBucket(bucket *protos.Bucket) {
 
 func (o *Operations) GetBucket(bucketQuery *protos.Bucket) (*protos.Bucket, error) {
 	bucket := &protos.Bucket{}
-	//if valueBytes, err := o.dbBucket.Get([]byte(o.createBucketKey(bucketQuery)), nil); err != nil {
 	if valueBytes, err := o.dbBucket.Get([]byte(bucketQuery.Bucket), nil); err != nil {
-
 		return nil, err
 	} else {
 		if err = proto.Unmarshal(valueBytes, bucket); err != nil {
@@ -145,7 +135,6 @@ func (o *Operations) GetBucket(bucketQuery *protos.Bucket) (*protos.Bucket, erro
 }
 
 func (o *Operations) LookupBucket(bucketQuery *protos.Bucket) error {
-	//if _, err := o.dbBucket.Get([]byte(o.createBucketKey(bucketQuery)), nil); err != nil {
 	if _, err := o.dbBucket.Get([]byte(bucketQuery.Bucket), nil); err != nil {
 		return err
 	} else {
@@ -156,7 +145,6 @@ func (o *Operations) LookupBucket(bucketQuery *protos.Bucket) error {
 func (o *Operations) GetAllBuckets() (
 	[]*protos.Bucket, error) {
 	var buckets []*protos.Bucket
-	//iter := o.dbBucket.NewIterator(util.BytesPrefix([]byte(o.createBucketKeyPrefix())), nil)
 	iter := o.dbBucket.NewIterator(nil, nil)
 	for iter.Next() {
 		value := &protos.Bucket{}
@@ -182,9 +170,21 @@ func (o *Operations) DeleteObject(object *protos.Object) {
 	}
 }
 
-func (o *Operations) GetObject(objectQuery *protos.ObjectID) (*protos.Object, error) {
+func (o *Operations) GetObjectWithObjectID(objectQuery *protos.ObjectID) (*protos.Object, error) {
 	object := &protos.Object{}
 	if valueBytes, err := o.dbObject.Get([]byte(o.createObjectKey(objectQuery)), nil); err != nil {
+		return nil, err
+	} else {
+		if err = proto.Unmarshal(valueBytes, object); err != nil {
+			return nil, err
+		}
+	}
+	return object, nil
+}
+
+func (o *Operations) GetObjectWithStringID(objectID string) (*protos.Object, error) {
+	object := &protos.Object{}
+	if valueBytes, err := o.dbObject.Get([]byte(objectID), nil); err != nil {
 		return nil, err
 	} else {
 		if err = proto.Unmarshal(valueBytes, object); err != nil {
@@ -206,4 +206,14 @@ func (o *Operations) GetAllObjectsPrefix(objectQuery *protos.ObjectID) ([]*proto
 	}
 	iter.Release()
 	return objects, iter.Error()
+}
+
+func (o *Operations) GetAllObjectsIDsPrefix(objectQuery *protos.ObjectID) ([]string, error) {
+	objectsIDs := []string{}
+	iter := o.dbObject.NewIterator(util.BytesPrefix([]byte(o.createObjectKey(objectQuery))), nil)
+	for iter.Next() {
+		objectsIDs = append(objectsIDs, string(iter.Key()))
+	}
+	iter.Release()
+	return objectsIDs, iter.Error()
 }

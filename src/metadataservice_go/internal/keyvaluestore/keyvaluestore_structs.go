@@ -6,8 +6,6 @@ import (
 	"sync"
 )
 
-const commonDelimiter = "/"
-
 type Service struct {
 	dbConnection *db.Operations
 
@@ -18,11 +16,6 @@ type Service struct {
 	buckets     map[string]*Bucket
 }
 
-//type Object struct {
-//	path   []string
-//	object *protos.Object
-//}
-
 type PrefixTree struct {
 	objectsInThisDirectory           map[string]*protos.Object
 	thisDirectory                    string
@@ -31,8 +24,7 @@ type PrefixTree struct {
 }
 
 type Bucket struct {
-	objectsLock *sync.RWMutex
-	//objects           map[string]*Object
+	objectsLock       *sync.RWMutex
 	nestedDirectories *PrefixTree
 	bucket            *protos.Bucket
 }

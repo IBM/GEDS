@@ -1,6 +1,9 @@
 package keyvaluestore
 
-import "github.com/IBM/gedsmds/protos"
+import (
+	"github.com/IBM/gedsmds/internal/keyvaluestore/db"
+	"github.com/IBM/gedsmds/protos"
+)
 
 func makeNewPrefixTree(thisDirectory string) *PrefixTree {
 	return &PrefixTree{
@@ -30,8 +33,8 @@ func (kv *Service) traverseCreateObject(bucket *Bucket, object *protos.Object) {
 	bucket.objectsLock.Unlock()
 }
 
-func (kv *Service) lookUpObject(bucket *Bucket, objectId *protos.ObjectID) (*protos.Object, bool) {
-	nestedPath := kv.getNestedPath(objectId)
+func (kv *Service) lookUpObject(bucket *Bucket, objectID *protos.ObjectID) (*protos.Object, bool) {
+	nestedPath := kv.getNestedPath(objectID)
 	nestedDirs := len(nestedPath) - 1
 	bucket.objectsLock.RLock()
 	currentNode := bucket.nestedDirectories
@@ -42,16 +45,16 @@ func (kv *Service) lookUpObject(bucket *Bucket, objectId *protos.ObjectID) (*pro
 			break
 		}
 	}
-	object, ok := currentNode.objectsInThisDirectory[objectId.Key]
+	object, ok := currentNode.objectsInThisDirectory[objectID.Key]
 	bucket.objectsLock.RUnlock()
 	return object, ok
 }
 
-func (kv *Service) traverseListObjects(bucket *Bucket, objectId *protos.ObjectID, getCommonPrefix bool) ([]*protos.Object, []string) {
+func (kv *Service) traverseListObjects(bucket *Bucket, objectID *protos.ObjectID, getCommonPrefix bool) ([]*protos.Object, []string) {
 	objectListed := []*protos.Object{}
 	prefixes := []string{}
 	var longestPath string
-	nestedPath := kv.getNestedPath(objectId)
+	nestedPath := kv.getNestedPath(objectID)
 	nestedDirs := len(nestedPath)
 	bucket.objectsLock.RLock()
 	defer bucket.objectsLock.RUnlock()
@@ -60,7 +63,7 @@ func (kv *Service) traverseListObjects(bucket *Bucket, objectId *protos.ObjectID
 		if childNode, ok := currentNode.childDirectories[nestedPath[i]]; ok {
 			currentNode = childNode
 			if getCommonPrefix {
-				longestPath += currentNode.thisDirectory + commonDelimiter
+				longestPath += currentNode.thisDirectory + db.CommonDelimiter
 			}
 		} else {
 			return objectListed, prefixes
@@ -77,49 +80,49 @@ func (kv *Service) traverseListObjects(bucket *Bucket, objectId *protos.ObjectID
 	return objectListed, prefixes
 }
 
-func (kv *Service) listObjects(bucket *Bucket, objectId *protos.ObjectID, delimiter string) *protos.ObjectListResponse {
+func (kv *Service) listObjects(bucket *Bucket, objectID *protos.ObjectID, delimiter string) *protos.ObjectListResponse {
 	objects := &protos.ObjectListResponse{Results: []*protos.Object{}, CommonPrefixes: []string{}}
 	if len(delimiter) == 0 {
-		objects.Results, _ = kv.traverseListObjects(bucket, objectId, false)
+		objects.Results, _ = kv.traverseListObjects(bucket, objectID, false)
 	} else {
-		if len(objectId.Key) == 0 {
+		if len(objectID.Key) == 0 {
 			bucket.objectsLock.RLock()
 			rootDir := bucket.nestedDirectories
 			for _, object := range rootDir.objectsInThisDirectory {
 				objects.Results = append(objects.Results, object)
 			}
 			for commonPrefix := range rootDir.childDirectories {
-				objects.CommonPrefixes = append(objects.CommonPrefixes, commonPrefix+commonDelimiter)
+				objects.CommonPrefixes = append(objects.CommonPrefixes, commonPrefix+db.CommonDelimiter)
 			}
 			bucket.objectsLock.RUnlock()
 		} else {
-			objects.Results, objects.CommonPrefixes = kv.traverseListObjects(bucket, objectId, true)
+			objects.Results, objects.CommonPrefixes = kv.traverseListObjects(bucket, objectID, true)
 		}
 	}
 	return objects
 }
 
-func (kv *Service) traverseDeleteObject(bucket *Bucket, objectId *protos.ObjectID) {
-	nestedPath := kv.getNestedPath(objectId)
+func (kv *Service) traverseDeleteObject(bucket *Bucket, objectID *protos.ObjectID) {
+	nestedPath := kv.getNestedPath(objectID)
 	nestedDirs := len(nestedPath) - 1
 	bucket.objectsLock.Lock()
 	currentNode := bucket.nestedDirectories
-	delete(currentNode.objectsInThisAndChildDirectories, objectId.Key)
+	delete(currentNode.objectsInThisAndChildDirectories, objectID.Key)
 	for i := 0; i < nestedDirs; i++ {
 		if childNode, ok := currentNode.childDirectories[nestedPath[i]]; ok {
 			currentNode = childNode
 		} else {
 			break
 		}
-		delete(currentNode.objectsInThisAndChildDirectories, objectId.Key)
+		delete(currentNode.objectsInThisAndChildDirectories, objectID.Key)
 	}
-	delete(currentNode.objectsInThisDirectory, objectId.Key)
+	delete(currentNode.objectsInThisDirectory, objectID.Key)
 	bucket.objectsLock.Unlock()
 }
 
-func (kv *Service) traverseDeleteObjectPrefix(bucket *Bucket, objectId *protos.ObjectID) []*protos.Object {
+func (kv *Service) traverseDeleteObjectPrefix(bucket *Bucket, objectID *protos.ObjectID) []*protos.Object {
 	deletedObjects := []*protos.Object{}
-	nestedPath := kv.getNestedPath(objectId)
+	nestedPath := kv.getNestedPath(objectID)
 	nestedDirs := len(nestedPath)
 	bucket.objectsLock.Lock()
 	currentNode := bucket.nestedDirectories
