@@ -96,8 +96,8 @@ absl::Status GEDSRelocatableFileHandle::seal() {
 }
 
 void GEDSRelocatableFileHandle::notifyUnused() {
-  auto lockIo = lockExclusive();
   auto lock = lockFile();
+  auto lockIo = lockExclusive();
   return _fileHandle->notifyUnused();
 };
 
@@ -107,8 +107,8 @@ absl::StatusOr<int> GEDSRelocatableFileHandle::rawFd() const {
 }
 
 absl::StatusOr<std::shared_ptr<GEDSFileHandle>> GEDSRelocatableFileHandle::relocate() {
-  auto lockIo = lockExclusive();
   auto lock = lockFile();
+  auto lockIo = lockExclusive();
 
   auto newFh = _fileHandle->relocate();
   if (newFh.ok()) {

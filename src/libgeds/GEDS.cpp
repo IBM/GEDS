@@ -367,6 +367,7 @@ absl::StatusOr<GEDSFile> GEDS::localOpen(const std::string &bucket, const std::s
   if (fileHandle.has_value() && (*fileHandle)->rawFd().ok()) {
     // The filehandle has an FD, and is thus local.
     // TODO: FIXME.
+    auto lock = (*fileHandle)->lockFile();
     return (*fileHandle)->open();
   }
   return absl::NotFoundError(path.name + " is not available on this machine");
