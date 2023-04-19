@@ -135,8 +135,8 @@ public:
   }
 
   absl::Status seal() override {
-    auto ioLock = lockExclusive();
     auto lock = lockFile();
+    auto ioLock = lockExclusive();
     size_t currentSize = _file.size();
     absl::Status status = absl::OkStatus();
     // FIXME: Create a GEDS Service mock to skip this abonimation below here.
@@ -150,8 +150,8 @@ public:
   }
 
   void notifyUnused() override {
-    auto iolock = lockExclusive();
     auto lock = lockFile();
+    auto iolock = lockExclusive();
     if (_openCount > 0) {
       return;
     }
@@ -164,8 +164,8 @@ public:
   }
 
   absl::StatusOr<std::shared_ptr<GEDSFileHandle>> relocate() override {
-    auto iolock = lockExclusive();
     auto lock = lockFile();
+    auto iolock = lockExclusive();
     if (!isValid()) {
       return absl::UnavailableError("The file " + identifier + " is no longer valid!");
     }
