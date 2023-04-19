@@ -386,11 +386,11 @@ GEDS::reopen(std::shared_ptr<GEDSFileHandle> existing) {
   _fileHandles.removeIf(path, [&existing](const std::shared_ptr<GEDSFileHandle> check) {
     return existing.get() == check.get();
   });
-  return openAsFileHandle(existing->bucket, existing->key, true /* invalidate */);
+  return openAsFileHandle(existing->bucket, existing->key);
 }
 
-absl::StatusOr<std::shared_ptr<GEDSFileHandle>>
-GEDS::openAsFileHandle(const std::string &bucket, const std::string &key, bool invalidate) {
+absl::StatusOr<std::shared_ptr<GEDSFileHandle>> GEDS::openAsFileHandle(const std::string &bucket,
+                                                                       const std::string &key) {
   GEDS_CHECK_SERVICE_RUNNING
 
   LOG_DEBUG(bucket, "/", key);
@@ -409,7 +409,18 @@ GEDS::openAsFileHandle(const std::string &bucket, const std::string &key, bool i
     }
   }
 
-  // File is not available locally. Lookup in metadata service instead.
+  auto fileHandle = reopenFileHandle(bucket, key, false);
+  if (!fileHandle.ok()) {
+    return fileHandle.status();
+  }
+
+  // Wrap filehandle.
+  auto wrapped = GEDSRelocatableFileHandle::factory(shared_from_this(), *fileHandle);
+  return _fileHandles.insertOrExists(path, wrapped);
+}
+
+absl::StatusOr<std::shared_ptr<GEDSFileHandle>>
+GEDS::reopenFileHandle(const std::string &bucket, const std::string &key, bool invalidate) {
   auto status_file = _metadataService.lookup(bucket, key, invalidate);
   if (!status_file.ok()) {
     return status_file.status();
@@ -432,21 +443,12 @@ GEDS::openAsFileHandle(const std::string &bucket, const std::string &key, bool i
 
   if (!fileHandle.ok()) {
     if (!invalidate) {
-      return openAsFileHandle(bucket, key, true);
-    }
-    // Delete object if the file does not exist.
-    if (fileHandle.status().code() == absl::StatusCode::kNotFound) {
-      LOG_INFO("Deleting ", bucket, "/", key, " associated with ", object.info.location,
-               " since it does not exist.");
-      (void)deleteObject(bucket, key);
+      return reopenFileHandle(bucket, key, true);
     }
     LOG_ERROR("Unable to open ", bucket, "/", key, " reason: ", fileHandle.status().message());
     return fileHandle.status();
   }
-
-  // Wrap filehandle.
-  auto wrapped = GEDSRelocatableFileHandle::factory(shared_from_this(), *fileHandle);
-  return _fileHandles.insertOrExists(path, wrapped);
+  return fileHandle;
 }
 
 absl::StatusOr<std::shared_ptr<geds::s3::Endpoint>> GEDS::getS3Endpoint(const std::string &bucket) {

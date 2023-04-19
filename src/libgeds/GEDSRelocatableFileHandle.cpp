@@ -6,6 +6,8 @@
 #include "GEDSRelocatableFileHandle.h"
 
 #include "GEDS.h"
+#include "GEDSFile.h"
+#include "Logging.h"
 
 std::shared_ptr<GEDSFileHandle>
 GEDSRelocatableFileHandle::factory(std::shared_ptr<GEDS> gedsService,
@@ -49,25 +51,31 @@ absl::Status GEDSRelocatableFileHandle::setMetadata(std::optional<std::string> m
 
 absl::StatusOr<size_t> GEDSRelocatableFileHandle::readBytes(uint8_t *bytes, size_t position,
                                                             size_t length) {
-  auto lock = lockShared();
-  auto oldFh = _fileHandle.get();
-  auto success = _fileHandle->readBytes(bytes, position, length);
-  if (success.ok()) {
-    return *success;
+  GEDSFileHandle *oldFh;
+  {
+    auto lock = lockShared();
+    oldFh = _fileHandle.get();
+    auto success = _fileHandle->readBytes(bytes, position, length);
+    if (success.ok()) {
+      return *success;
+    }
   }
   // Reopen in case of read failures.
   {
     auto lock = std::unique_lock<std::mutex>(_retryMutex);
+    auto ioLock = lockExclusive();
     if (_fileHandle.get() != oldFh) {
       // The file has already been reopened.
       return _fileHandle->readBytes(bytes, position, length);
     }
-    auto newFh = _gedsService->reopen(_fileHandle);
+    LOG_INFO("Reopening file ", identifier);
+    // Force lookup in MDS.
+    auto newFh = _gedsService->reopenFileHandle(bucket, key, true);
     if (!newFh.ok()) {
-      LOG_INFO("Unable to reopen file: ", _fileHandle->identifier,
-               " reason: ", newFh.status().message());
+      LOG_INFO("Unable to reopen file: ", identifier, " reason: ", newFh.status().message());
       return newFh.status();
     }
+    // LOG_INFO("Reopened file", identifier);
     _fileHandle = *newFh;
     return _fileHandle->readBytes(bytes, position, length);
   }
