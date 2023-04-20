@@ -120,6 +120,26 @@ void TcpPeer::cleanup() {
               " received: ", tep->rx_bytes);
   }
   endpoints.clear();
+
+  if (recvQueue.size()) {
+    LOG_ERROR("Recv Queue not empty for TcpPeer: Removing tasks from recv queue");
+    auto &stats = (*sendQueue_stats);
+
+    recvQueue.remove([&stats](const uint64_t, std::shared_ptr<SocketRecvWork> &work) {
+      work->p->set_value(absl::UnavailableError("TcpPeer closed"));
+      stats--;
+      return true;
+    });
+  }
+
+  if (!sendQueue.empty()) {
+    LOG_ERROR("Send Queue not empty for TcpPeer: Removing tasks from send queue");
+    std::optional<std::shared_ptr<SocketSendWork>> task = sendQueue.pop();
+    while (task.has_value()) {
+      (*sendQueue_stats)--;
+      task = sendQueue.pop();
+    }
+  }
 }
 
 bool TcpPeer::SocketTxReady(int sock) {
@@ -546,6 +566,7 @@ bool TcpPeer::processEndpointRecv(int sock) {
                          "length: " + std::to_string(datalen) + " Ep: " + std::to_string(tep->sock);
           LOG_DEBUG(message);
           ctx->p->set_value(absl::AbortedError(message));
+          ctx->p = nullptr;
           ctx->state = PROC_IDLE;
           ctx->progress = 0;
           break;
@@ -559,7 +580,6 @@ bool TcpPeer::processEndpointRecv(int sock) {
           if (errno == EWOULDBLOCK) {
             return true;
           }
-          ctx->state = PROC_FAILED;
           int err = errno;
           int eio = EIO;
           std::string message = "Error during recv: ";
@@ -569,6 +589,8 @@ bool TcpPeer::processEndpointRecv(int sock) {
             message += "got EIO " + std::to_string(eio);
           }
           ctx->p->set_value(absl::AbortedError(message));
+          ctx->p = nullptr;
+          ctx->state = PROC_FAILED;
           return false;
         }
         ctx->progress += rv;
@@ -579,6 +601,7 @@ bool TcpPeer::processEndpointRecv(int sock) {
          */
         tep->rx_bytes += ctx->progress;
         ctx->p->set_value(datalen);
+        ctx->p = nullptr;
         ctx->state = PROC_IDLE;
       }
       break;
@@ -591,6 +614,14 @@ bool TcpPeer::processEndpointRecv(int sock) {
   if (rv >= 0 || rv == -EAGAIN)
     return true;
 
+  if (ctx->p.get()) {
+    auto message =
+        "Protocol error: Aborted with " + std::to_string(rv) + ": " + std::string{strerror(rv)};
+    LOG_ERROR(message);
+    ctx->p->set_value(absl::AbortedError(message));
+    ctx->p = nullptr;
+    ctx->state = PROC_FAILED;
+  }
   if (rv == -ENOENT)
     LOG_ERROR("Socket close on read");
   else {
@@ -917,9 +948,10 @@ TcpPeer::sendRpcRequest(uint64_t dest, std::string name, size_t off, size_t len)
   }
   if (!send_ok) {
     LOG_ERROR("RPC Req Send failed");
-    recvQueue.remove(reqId);
-    (*recvQueue_stats)--;
-    recvWork->p->set_value(absl::AbortedError("Unable to proceed: "));
+    if (recvQueue.remove(reqId)) {
+      (*recvQueue_stats)--;
+      recvWork->p->set_value(absl::AbortedError("Unable to proceed: "));
+    }
   }
   return recvWork->p;
 }

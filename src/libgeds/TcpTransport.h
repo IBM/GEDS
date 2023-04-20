@@ -98,6 +98,7 @@ struct TcpRcvState {
   uint64_t va;
   std::string objName;
   size_t progress;
+
   std::shared_ptr<std::promise<absl::StatusOr<size_t>>> p;
 };
 
