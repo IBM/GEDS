@@ -16,6 +16,8 @@ privateKey.pem
 publicKey.pem
 /logs/*
 /.idea/*
+/tests/data/*
+/tests/logs/*
 
 ###################################################
 # General gitignore for the used technologiels

@@ -4,6 +4,7 @@ import (
 	"github.com/IBM/gedsmds/internal/keyvaluestore/db"
 	"github.com/IBM/gedsmds/protos"
 	"strings"
+	"sync"
 )
 
 func (kv *Service) getNestedPath(objectID *protos.ObjectID) []string {
@@ -17,6 +18,21 @@ func (kv *Service) getNestedPathWithKey(objectID string) []string {
 		nestedPath = nestedPath[:lenNestedPath-1]
 	}
 	return nestedPath
+}
+
+func (kv *Service) newBucketIfNotExist(objectID *protos.ObjectID) (*Bucket, bool) {
+	kv.bucketsLock.Lock()
+	defer kv.bucketsLock.Unlock()
+	if bucket, ok := kv.buckets[objectID.Bucket]; !ok {
+		kv.buckets[objectID.Bucket] = &Bucket{
+			bucket:            &protos.Bucket{Bucket: objectID.Bucket},
+			objectsLock:       &sync.RWMutex{},
+			nestedDirectories: makeNewPrefixTree("root"),
+		}
+		return kv.buckets[objectID.Bucket], false
+	} else {
+		return bucket, true
+	}
 }
 
 func (kv *Service) filterIDsAndCommonPrefix(objectsIDs []string, objectQuery *protos.ObjectID) ([]string, []string) {

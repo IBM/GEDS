@@ -33,6 +33,14 @@ tidy:
 vendor:
 	@${GO_PATH} mod vendor -v
 
+.PHONY: test
+## test: running the tests
+test:
+	@echo "Running tests with persistent storage enabled"
+	@GEDS_PERSISTENT_STORAGE_MDS_ENABLED=true ${GO_PATH} test ./tests -v
+	@echo "Running tests with in-memory storage enabled"
+	@GEDS_PERSISTENT_STORAGE_MDS_ENABLED=false ${GO_PATH} test ./tests -v
+
 .PHONY: clean
 ## clean: clean build path for Darwin
 clean:
