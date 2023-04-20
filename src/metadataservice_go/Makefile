@@ -17,10 +17,6 @@ MDS_BUILD_PATH = ${MDS_BUILD_PATH_DARWIN}
 SOURCE = source
 endif
 
-ifeq ($(GO_PATH),)
-	GO_PATH = ${GO_REMOTE_PATH}
-endif
-
 .PHONY: help
 ## help: prints this help message
 help:
@@ -71,22 +67,6 @@ run-mds:
 run-mock-client:
 	@echo "Running Mock-Client ..."
 	@${GO_PATH} run ./cmd/mockclient
-
-
-## git-commit: commit all files
-git-commit:
-	@echo "Commit"
-	@git add . ; git commit -m 'auto push';
-
-## git-push: push to main
-git-push:
-	@echo "Pushing to git main"
-	@git add . ; git commit -m 'auto push'; git push origin main
-
-## git-pull: pull from main
-git-pull:
-	@echo "Pulling from git main"
-	@git pull origin main
 
 .PHONY: protos
 ## protos: generate the protos

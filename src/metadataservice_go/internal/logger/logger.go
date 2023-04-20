@@ -7,10 +7,9 @@ import (
 )
 
 var (
-	InfoLogger    *log.Logger
-	ErrorLogger   *log.Logger
-	FatalLogger   *log.Logger
-	WarningLogger *log.Logger
+	InfoLogger  *log.Logger
+	ErrorLogger *log.Logger
+	FatalLogger *log.Logger
 )
 
 const LogsPath = "./logs/"
@@ -30,5 +29,4 @@ func init() {
 	multiWriter := io.MultiWriter(os.Stdout, logFile)
 	ErrorLogger = log.New(multiWriter, "ERROR: ", log.Ldate|log.Ltime|log.Lshortfile)
 	FatalLogger = log.New(multiWriter, "FATAL: ", log.Ldate|log.Ltime|log.Lshortfile)
-	WarningLogger = log.New(multiWriter, "WARNING: ", log.Ldate|log.Ltime|log.Lshortfile)
 }

@@ -5,6 +5,7 @@ go 1.20
 require (
 	github.com/golang/protobuf v1.5.2
 	github.com/google/uuid v1.3.0
+	github.com/prometheus/client_golang v1.14.0
 	github.com/spf13/viper v1.15.0
 	github.com/syndtr/goleveldb v1.0.0
 	golang.org/x/exp v0.0.0-20230213192124-5e25df0256eb
@@ -22,7 +23,6 @@ require (
 	github.com/matttproud/golang_protobuf_extensions v1.0.1 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.6 // indirect
-	github.com/prometheus/client_golang v1.14.0 // indirect
 	github.com/prometheus/client_model v0.3.0 // indirect
 	github.com/prometheus/common v0.37.0 // indirect
 	github.com/prometheus/procfs v0.8.0 // indirect
