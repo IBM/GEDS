@@ -23,6 +23,7 @@ func (kv *Service) filterIDsAndCommonPrefix(objectsIDs []string, objectQuery *pr
 	filteredIDs := []string{}
 	filteredPrefix := []string{}
 	tempCommonPrefixes := map[string]bool{}
+	prefixLength := len(kv.getNestedPath(objectQuery)) + 2
 	for _, objectID := range objectsIDs {
 		keyParts := kv.getNestedPathWithKey(objectID)
 		if len(objectQuery.Key) == 0 {
@@ -32,7 +33,6 @@ func (kv *Service) filterIDsAndCommonPrefix(objectsIDs []string, objectQuery *pr
 				tempCommonPrefixes[keyParts[1]] = true
 			}
 		} else {
-			prefixLength := len(kv.getNestedPath(objectQuery)) + 2
 			if len(keyParts) >= prefixLength {
 				tempCommonPrefixes[strings.Join(keyParts[1:prefixLength], db.CommonDelimiter)] = true
 			}

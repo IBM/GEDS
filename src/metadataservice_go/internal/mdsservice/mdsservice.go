@@ -2,6 +2,7 @@ package mdsservice
 
 import (
 	"context"
+	"github.com/IBM/gedsmds/internal/config"
 	"github.com/IBM/gedsmds/internal/logger"
 	"github.com/IBM/gedsmds/internal/mdsprocessor"
 	"github.com/IBM/gedsmds/internal/prommetrics"
@@ -9,6 +10,16 @@ import (
 )
 
 func NewService(metrics *prommetrics.Metrics) *Service {
+	if config.Config.PubSubEnabled {
+		logger.InfoLogger.Println("publish/subscribe is enabled")
+	} else {
+		logger.InfoLogger.Println("publish/subscribe is disabled")
+	}
+	if config.Config.PersistentStorageEnabled {
+		logger.InfoLogger.Println("persistent storage enabled")
+	} else {
+		logger.InfoLogger.Println("in-memory storage enabled")
+	}
 	return &Service{
 		processor: mdsprocessor.InitService(metrics),
 		metrics:   metrics,
