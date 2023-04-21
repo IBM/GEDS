@@ -23,23 +23,11 @@ func InitKeyValueStoreService() *Service {
 	return kvStore
 }
 
-func (kv *Service) NewBucketIfNotExist(objectID *protos.ObjectID) (*Bucket, bool) {
-	kv.bucketsLock.Lock()
-	defer kv.bucketsLock.Unlock()
-	if bucket, ok := kv.buckets[objectID.Bucket]; !ok {
-		kv.buckets[objectID.Bucket] = &Bucket{
-			bucket:            &protos.Bucket{Bucket: objectID.Bucket},
-			objectsLock:       &sync.RWMutex{},
-			nestedDirectories: makeNewPrefixTree("root"),
-		}
-		return kv.buckets[objectID.Bucket], false
-	} else {
-		return bucket, true
-	}
-}
-
 func (kv *Service) RegisterObjectStore(objectStore *protos.ObjectStoreConfig) error {
 	if config.Config.PersistentStorageEnabled {
+		if existingStore, _ := kv.dbConnection.GetObjectStoreConfig(objectStore); existingStore != nil {
+			return errors.New("config already exists")
+		}
 		kv.dbConnection.ObjectStoreConfigChan <- &db.OperationParams{
 			ObjectStoreConfig: objectStore,
 			Type:              db.PUT,
@@ -75,12 +63,15 @@ func (kv *Service) ListObjectStores() (*protos.AvailableObjectStoreConfigs, erro
 
 func (kv *Service) CreateBucket(bucket *protos.Bucket) error {
 	if config.Config.PersistentStorageEnabled {
+		if existingBucket, _ := kv.dbConnection.GetBucket(bucket); existingBucket != nil {
+			return errors.New("bucket already exists")
+		}
 		kv.dbConnection.BucketChan <- &db.OperationParams{
 			Bucket: bucket,
 			Type:   db.PUT,
 		}
 	} else {
-		_, existed := kv.NewBucketIfNotExist(&protos.ObjectID{Bucket: bucket.Bucket})
+		_, existed := kv.newBucketIfNotExist(&protos.ObjectID{Bucket: bucket.Bucket})
 		if existed {
 			return errors.New("bucket already exists")
 		}
@@ -90,6 +81,9 @@ func (kv *Service) CreateBucket(bucket *protos.Bucket) error {
 
 func (kv *Service) DeleteBucket(bucket *protos.Bucket) error {
 	if config.Config.PersistentStorageEnabled {
+		if existingBucket, _ := kv.dbConnection.GetBucket(bucket); existingBucket == nil {
+			return errors.New("bucket already deleted")
+		}
 		kv.dbConnection.BucketChan <- &db.OperationParams{
 			Bucket: bucket,
 			Type:   db.DELETE,
@@ -156,7 +150,7 @@ func (kv *Service) CreateObject(object *protos.Object) error {
 			Type:   db.PUT,
 		}
 	} else {
-		bucket, _ := kv.NewBucketIfNotExist(object.Id)
+		bucket, _ := kv.newBucketIfNotExist(object.Id)
 		kv.traverseCreateObject(bucket, object)
 	}
 	return nil
@@ -169,7 +163,7 @@ func (kv *Service) UpdateObject(object *protos.Object) error {
 			Type:   db.PUT,
 		}
 	} else {
-		bucket, _ := kv.NewBucketIfNotExist(object.Id)
+		bucket, _ := kv.newBucketIfNotExist(object.Id)
 		kv.traverseCreateObject(bucket, object)
 	}
 	return nil
@@ -184,7 +178,7 @@ func (kv *Service) DeleteObject(objectID *protos.ObjectID) error {
 			Type: db.DELETE,
 		}
 	} else {
-		bucket, _ := kv.NewBucketIfNotExist(objectID)
+		bucket, _ := kv.newBucketIfNotExist(objectID)
 		kv.traverseDeleteObject(bucket, objectID)
 	}
 	return nil
@@ -205,7 +199,7 @@ func (kv *Service) DeleteObjectPrefix(objectID *protos.ObjectID) ([]*protos.Obje
 			}
 		}
 	} else {
-		bucket, _ := kv.NewBucketIfNotExist(objectID)
+		bucket, _ := kv.newBucketIfNotExist(objectID)
 		deletedObjects = kv.traverseDeleteObjectPrefix(bucket, objectID)
 	}
 	return deletedObjects, nil
@@ -221,7 +215,7 @@ func (kv *Service) LookupObject(objectID *protos.ObjectID) (*protos.ObjectRespon
 			}, nil
 		}
 	} else {
-		bucket, _ := kv.NewBucketIfNotExist(objectID)
+		bucket, _ := kv.newBucketIfNotExist(objectID)
 		if object, ok := kv.lookUpObject(bucket, objectID); !ok {
 			return nil, errors.New("object does not exist")
 		} else {
@@ -235,14 +229,14 @@ func (kv *Service) LookupObject(objectID *protos.ObjectID) (*protos.ObjectRespon
 func (kv *Service) ListObjects(objectListRequest *protos.ObjectListRequest) (*protos.ObjectListResponse, error) {
 	objects := &protos.ObjectListResponse{Results: []*protos.Object{}, CommonPrefixes: []string{}}
 	if objectListRequest.Prefix == nil || len(objectListRequest.Prefix.Bucket) == 0 {
-		logger.InfoLogger.Println("bucket not set")
+		logger.ErrorLogger.Println("bucket not set")
 		return objects, nil
 	}
 	var delimiter string
 	if objectListRequest.Delimiter != nil && *objectListRequest.Delimiter != 0 {
 		delimiter = string(*objectListRequest.Delimiter)
 		if delimiter != db.CommonDelimiter {
-			logger.InfoLogger.Println("this delimiter is not supported:", delimiter)
+			logger.ErrorLogger.Println("this delimiter is not supported:", delimiter)
 			return objects, nil
 		}
 	}
@@ -278,7 +272,7 @@ func (kv *Service) ListObjects(objectListRequest *protos.ObjectListRequest) (*pr
 			}
 		}
 	} else {
-		bucket, _ := kv.NewBucketIfNotExist(objectListRequest.Prefix)
+		bucket, _ := kv.newBucketIfNotExist(objectListRequest.Prefix)
 		objects = kv.listObjects(bucket, objectListRequest.Prefix, delimiter)
 	}
 	return objects, nil

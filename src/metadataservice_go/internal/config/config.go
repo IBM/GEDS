@@ -37,10 +37,28 @@ func LoadConfig() (*Configuration, error) {
 	appUUID := viper.GetString("UUID")
 	if len(appUUID) == 0 {
 		viper.Set("UUID", uuid.NewString())
-		err = viper.WriteConfig()
-		if err != nil {
-			return &Configuration{}, err
-		}
+	}
+	viper.AutomaticEnv()
+	viper.SetEnvPrefix("GEDS")
+	if err = viper.BindEnv("PUBSUB_MDS_ENABLED"); err != nil {
+		logger.ErrorLogger.Println(err)
+	}
+	if err = viper.BindEnv("PERSISTENT_STORAGE_MDS_ENABLED"); err != nil {
+		logger.ErrorLogger.Println(err)
+	}
+	if pubSubEnabled := viper.GetString("PUBSUB_MDS_ENABLED"); pubSubEnabled == "true" {
+		viper.Set("PUBSUB_ENABLED", true)
+	} else if pubSubEnabled == "false" {
+		viper.Set("PUBSUB_ENABLED", false)
+	}
+	if storageEnabled := viper.GetString("PERSISTENT_STORAGE_MDS_ENABLED"); storageEnabled == "true" {
+		viper.Set("PERSISTENT_STORAGE_ENABLED", true)
+	} else if storageEnabled == "false" {
+		viper.Set("PERSISTENT_STORAGE_ENABLED", false)
+	}
+	err = viper.WriteConfig()
+	if err != nil {
+		return &Configuration{}, err
 	}
 	config := &Configuration{}
 	err = viper.Unmarshal(config)

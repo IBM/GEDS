@@ -74,7 +74,7 @@ func (kv *Service) traverseListObjects(bucket *Bucket, objectID *protos.ObjectID
 	}
 	if getCommonPrefix {
 		for prefix := range currentNode.childDirectories {
-			prefixes = append(prefixes, longestPath+prefix)
+			prefixes = append(prefixes, longestPath+prefix+db.CommonDelimiter)
 		}
 	}
 	return objectListed, prefixes

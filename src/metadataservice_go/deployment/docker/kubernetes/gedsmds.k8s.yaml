@@ -13,6 +13,11 @@ spec:
     - name: gedsmdsgo
       image: zac32.zurich.ibm.com/pezhman.nasirifard/geds-mds-go:latest
       imagePullPolicy: Always
+      env:
+        - name: GEDS_PUBSUB_MDS_ENABLED
+          value: "true"
+        - name: GEDS_PERSISTENT_STORAGE_MDS_ENABLED
+          value: "false"
       resources:
         requests:
           memory: "16G"

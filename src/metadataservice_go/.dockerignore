@@ -10,3 +10,4 @@ configs
 !configs/app.env.secret
 env
 data
+tests

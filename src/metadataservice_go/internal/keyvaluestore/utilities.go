@@ -4,6 +4,7 @@ import (
 	"github.com/IBM/gedsmds/internal/keyvaluestore/db"
 	"github.com/IBM/gedsmds/protos"
 	"strings"
+	"sync"
 )
 
 func (kv *Service) getNestedPath(objectID *protos.ObjectID) []string {
@@ -19,10 +20,26 @@ func (kv *Service) getNestedPathWithKey(objectID string) []string {
 	return nestedPath
 }
 
+func (kv *Service) newBucketIfNotExist(objectID *protos.ObjectID) (*Bucket, bool) {
+	kv.bucketsLock.Lock()
+	defer kv.bucketsLock.Unlock()
+	if bucket, ok := kv.buckets[objectID.Bucket]; !ok {
+		kv.buckets[objectID.Bucket] = &Bucket{
+			bucket:            &protos.Bucket{Bucket: objectID.Bucket},
+			objectsLock:       &sync.RWMutex{},
+			nestedDirectories: makeNewPrefixTree("root"),
+		}
+		return kv.buckets[objectID.Bucket], false
+	} else {
+		return bucket, true
+	}
+}
+
 func (kv *Service) filterIDsAndCommonPrefix(objectsIDs []string, objectQuery *protos.ObjectID) ([]string, []string) {
 	filteredIDs := []string{}
 	filteredPrefix := []string{}
 	tempCommonPrefixes := map[string]bool{}
+	prefixLength := len(kv.getNestedPath(objectQuery)) + 2
 	for _, objectID := range objectsIDs {
 		keyParts := kv.getNestedPathWithKey(objectID)
 		if len(objectQuery.Key) == 0 {
@@ -32,7 +49,6 @@ func (kv *Service) filterIDsAndCommonPrefix(objectsIDs []string, objectQuery *pr
 				tempCommonPrefixes[keyParts[1]] = true
 			}
 		} else {
-			prefixLength := len(kv.getNestedPath(objectQuery)) + 2
 			if len(keyParts) >= prefixLength {
 				tempCommonPrefixes[strings.Join(keyParts[1:prefixLength], db.CommonDelimiter)] = true
 			}
