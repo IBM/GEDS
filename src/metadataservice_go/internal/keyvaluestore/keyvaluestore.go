@@ -229,14 +229,14 @@ func (kv *Service) LookupObject(objectID *protos.ObjectID) (*protos.ObjectRespon
 func (kv *Service) ListObjects(objectListRequest *protos.ObjectListRequest) (*protos.ObjectListResponse, error) {
 	objects := &protos.ObjectListResponse{Results: []*protos.Object{}, CommonPrefixes: []string{}}
 	if objectListRequest.Prefix == nil || len(objectListRequest.Prefix.Bucket) == 0 {
-		logger.InfoLogger.Println("bucket not set")
+		logger.ErrorLogger.Println("bucket not set")
 		return objects, nil
 	}
 	var delimiter string
 	if objectListRequest.Delimiter != nil && *objectListRequest.Delimiter != 0 {
 		delimiter = string(*objectListRequest.Delimiter)
 		if delimiter != db.CommonDelimiter {
-			logger.InfoLogger.Println("this delimiter is not supported:", delimiter)
+			logger.ErrorLogger.Println("this delimiter is not supported:", delimiter)
 			return objects, nil
 		}
 	}

@@ -66,8 +66,7 @@ func (s *Service) Subscribe(subscription *protos.SubscriptionEvent) error {
 
 func (s *Service) SubscribeStream(subscription *protos.SubscriptionStreamEvent,
 	stream protos.MetadataService_SubscribeStreamServer) error {
-	logger.InfoLogger.Println("got subscription: ", subscription)
-
+	logger.InfoLogger.Println("got subscriber: ", subscription)
 	finished := make(chan bool, 2)
 	s.subscribersStreamLock.Lock()
 	if streamer, ok := s.subscriberStreams[subscription.SubscriberID]; !ok {
@@ -133,7 +132,6 @@ func (s *Service) sendPublication(publication *protos.SubscriptionStreamResponse
 		logger.ErrorLogger.Println("subscriber stream not found: " + subscriberID)
 		return
 	}
-	logger.InfoLogger.Println("sending publication", publication, subscriberID)
 	if streamer.stream != nil {
 		if err := streamer.stream.Send(publication); err != nil {
 			logger.ErrorLogger.Println("could not send the publication to subscriber " + subscriberID)
@@ -178,8 +176,10 @@ func (s *Service) removeSubscriber(unsubscription *protos.SubscriptionEvent) err
 	}
 	s.subscribedItemsLock.Unlock()
 	s.subscribedPrefixLock.Lock()
-	if subscribers, ok := s.subscribedPrefix[unsubscription.BucketID]; ok {
-		s.removeElementFromSlice(subscribers[subscribedItemID], unsubscription.SubscriberID)
+	if subscriberPrefixBucket, ok := s.subscribedPrefix[unsubscription.BucketID]; ok {
+		if _, ok = subscriberPrefixBucket[subscribedItemID]; ok {
+			s.removeElementFromSlice(subscriberPrefixBucket[subscribedItemID], unsubscription.SubscriberID)
+		}
 	}
 	s.subscribedPrefixLock.Unlock()
 	return nil

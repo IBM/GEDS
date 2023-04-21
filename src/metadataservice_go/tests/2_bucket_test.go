@@ -9,7 +9,7 @@ import (
 
 func TestMDS_Bucket(t *testing.T) {
 	ctx := context.Background()
-	client, closer := mockServer(ctx)
+	client, closer := mockServerClient(ctx)
 	defer closer()
 
 	type bucketResponse struct {
@@ -21,7 +21,7 @@ func TestMDS_Bucket(t *testing.T) {
 		in       *protos.Bucket
 		expected bucketResponse
 	}{
-		"Success": {
+		"CreateLookUpDeleteBucket_1": {
 			in: &protos.Bucket{
 				Bucket: "bucket1",
 			},
@@ -71,7 +71,7 @@ func TestMDS_Bucket(t *testing.T) {
 		in       *protos.EmptyParams
 		expected listBucketsResponse
 	}{
-		"Success": {
+		"ListBucket_1": {
 			in: &protos.EmptyParams{},
 			expected: listBucketsResponse{
 				out: &protos.BucketListResponse{

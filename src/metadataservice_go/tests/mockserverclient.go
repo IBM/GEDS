@@ -15,7 +15,7 @@ import (
 	"os"
 )
 
-func mockServer(ctx context.Context) (protos.MetadataServiceClient, func()) {
+func mockServerClient(ctx context.Context) (protos.MetadataServiceClient, func()) {
 	metrics := &prommetrics.Metrics{}
 	_ = os.RemoveAll("./data")
 	buffer := 101024 * 1024

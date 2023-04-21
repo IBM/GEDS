@@ -37,9 +37,9 @@ vendor:
 ## test: running the tests
 test:
 	@echo "Running tests with persistent storage enabled"
-	@GEDS_PERSISTENT_STORAGE_MDS_ENABLED=true ${GO_PATH} test ./tests -v
+	@GEDS_PERSISTENT_STORAGE_MDS_ENABLED=true ${GO_PATH} test ./tests -v -cover
 	@echo "Running tests with in-memory storage enabled"
-	@GEDS_PERSISTENT_STORAGE_MDS_ENABLED=false ${GO_PATH} test ./tests -v
+	@GEDS_PERSISTENT_STORAGE_MDS_ENABLED=false ${GO_PATH} test ./tests -v -cover
 
 .PHONY: clean
 ## clean: clean build path for Darwin
@@ -70,11 +70,6 @@ build-mds:
 run-mds:
 	@echo "Running MDS ..."
 	@${GO_PATH} run ./cmd/mds
-
-## run-mock-client: run the MockClient
-run-mock-client:
-	@echo "Running Mock-Client ..."
-	@${GO_PATH} run ./cmd/mockclient
 
 .PHONY: protos
 ## protos: generate the protos

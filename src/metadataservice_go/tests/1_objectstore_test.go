@@ -4,11 +4,12 @@ import (
 	"context"
 	"github.com/IBM/gedsmds/protos"
 	"testing"
+	"time"
 )
 
 func TestMDS_ObjectStore(t *testing.T) {
 	ctx := context.Background()
-	client, closer := mockServer(ctx)
+	client, closer := mockServerClient(ctx)
 	defer closer()
 
 	type registerObjectStoreResponse struct {
@@ -20,7 +21,7 @@ func TestMDS_ObjectStore(t *testing.T) {
 		in       *protos.ObjectStoreConfig
 		expected registerObjectStoreResponse
 	}{
-		"Success": {
+		"CreateObjectStore_!": {
 			in: &protos.ObjectStoreConfig{
 				Bucket:      "bucket1",
 				EndpointUrl: "geds://",
@@ -49,6 +50,8 @@ func TestMDS_ObjectStore(t *testing.T) {
 		})
 	}
 
+	time.Sleep(100 * time.Millisecond)
+
 	type listObjectStoresResponse struct {
 		out *protos.AvailableObjectStoreConfigs
 		err error
@@ -58,7 +61,7 @@ func TestMDS_ObjectStore(t *testing.T) {
 		in       *protos.EmptyParams
 		expected listObjectStoresResponse
 	}{
-		"Success": {
+		"ListObjectStore_1": {
 			in: &protos.EmptyParams{},
 			expected: listObjectStoresResponse{
 				out: &protos.AvailableObjectStoreConfigs{
