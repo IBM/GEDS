@@ -164,6 +164,11 @@ bool TcpPeer::SocketTxReady(int sock) {
  */
 bool TcpPeer::processEndpointSend(std::shared_ptr<TcpEndpoint> tep) {
   struct TcpSendState *ctx = &tep->send_ctx;
+  if (ctx->state == PROC_FAILED) {
+    LOG_ERROR("TcpPeer: Context is in failed state! Aborting!");
+    return false;
+  }
+
   int sock = tep->sock;
 
   ssize_t sent = 0;
