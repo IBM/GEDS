@@ -284,7 +284,7 @@ else()
 endif()
 
 # Strip `v` from build.
-#STRING(REGEX REPLACE "^v" "" GEDS_VERSION ${GEDS_VERSION_})
+STRING(REGEX REPLACE "^v" "" GEDS_VERSION ${GEDS_VERSION_})
 
 message(STATUS "GEDS: Version ${GEDS_VERSION}")
 
