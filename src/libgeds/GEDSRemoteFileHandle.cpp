@@ -10,28 +10,16 @@
 #include "FileTransferService.h"
 #include "GEDS.h"
 #include "GEDSFile.h"
+#include "Logging.h"
 #include "Object.h"
 
 GEDSRemoteFileHandle::GEDSRemoteFileHandle(
     std::shared_ptr<GEDS> gedsService, const geds::Object &object,
     std::shared_ptr<geds::FileTransferService> fileTransferService)
-    : GEDSFileHandle(gedsService, object.id.bucket, object.id.key),
+    : GEDSFileHandle(gedsService, object.id.bucket, object.id.key, object.info.metadata),
       _fileTransferService(fileTransferService), _info(object.info) {
   static auto counter = geds::Statistics::createCounter("GEDSRemoteFileHandle: count");
   *counter += 1;
-}
-
-GEDSRemoteFileHandle::~GEDSRemoteFileHandle() {}
-
-bool GEDSRemoteFileHandle::isValid() const { return _isValid; }
-
-absl::StatusOr<size_t> GEDSRemoteFileHandle::size() const {
-  // TODO: Update size with remote request.
-  return _info.size;
-}
-
-absl::Status GEDSRemoteFileHandle::seal() {
-  return absl::FailedPreconditionError("Remote files cannot be sealed!");
 }
 
 absl::StatusOr<std::shared_ptr<GEDSFileHandle>>
@@ -58,6 +46,7 @@ absl::StatusOr<size_t> GEDSRemoteFileHandle::readBytes(uint8_t *bytes, size_t po
   if (length == 0) {
     return 0;
   }
+  auto lock = lockShared();
   auto read = _fileTransferService->read(bucket, key, bytes, position, length);
   if (!read.ok()) {
     return read;
@@ -68,4 +57,14 @@ absl::StatusOr<size_t> GEDSRemoteFileHandle::readBytes(uint8_t *bytes, size_t po
   }
   *_statistics += *read;
   return *read;
+}
+
+absl::StatusOr<size_t> GEDSRemoteFileHandle::size() const {
+  auto lock = lockShared();
+  // TODO: Update size with remote request.
+  return _info.size;
+}
+
+absl::Status GEDSRemoteFileHandle::seal() {
+  return absl::FailedPreconditionError("Remote files cannot be sealed!");
 }

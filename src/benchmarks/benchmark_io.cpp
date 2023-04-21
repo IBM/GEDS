@@ -175,8 +175,10 @@ int main(int argc, char **argv) {
   for (size_t i = 0; i <= absl::GetFlag(FLAGS_maxFactor); i++) {
     for (size_t j = 1; j < absl::GetFlag(FLAGS_maxThreads); j++) {
       // Create a new GEDS instance for each iteration to measure performance.
-      auto geds = GEDS::factory(FLAGS_address.CurrentValue(), FLAGS_gedsRoot.CurrentValue(),
-                                std::nullopt, absl::GetFlag(FLAGS_port));
+      auto config = GEDSConfig(FLAGS_address.CurrentValue());
+      config.port = absl::GetFlag(FLAGS_port);
+      config.localStoragePath = FLAGS_gedsRoot.CurrentValue();
+      auto geds = GEDS::factory(config);
       auto status = geds->start();
       if (!status.ok()) {
         std::cout << "Unable to start GEDS:" << status.message() << std::endl;

@@ -3,12 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef GEDS_MMAP_FILE_H
-#define GEDS_MMAP_FILE_H
+#pragma once
 
-#include <absl/status/status.h>
-#include <absl/status/statusor.h>
-
+#include <atomic>
 #include <cstddef>
 #include <cstdint>
 #include <istream>
@@ -18,13 +15,14 @@
 #include <string>
 #include <vector>
 
+#include <absl/status/status.h>
+#include <absl/status/statusor.h>
+
+#include "RWConcurrentObjectAdaptor.h"
+
 namespace geds::filesystem {
 
-class MMAPFile {
-  std::shared_mutex _mutex;
-  auto getReadLock() { return std::shared_lock<std::shared_mutex>(_mutex); }
-  auto getWriteLock() { return std::unique_lock<std::shared_mutex>(_mutex); }
-
+class MMAPFile : public utility::RWConcurrentObjectAdaptor {
   const std::string _path;
 
   int _fd{-1};
@@ -33,7 +31,12 @@ class MMAPFile {
   size_t _mmapSize{0};
   uint8_t *_mmapPtr{nullptr};
 
+  std::atomic<size_t> _ioProcesses;
+
   absl::Status increaseMmap(size_t requestSize);
+
+  absl::Status reopen();
+  void release();
 
 public:
   MMAPFile() = delete;
@@ -43,10 +46,15 @@ public:
   MMAPFile(std::string path, bool overwrite = true);
   ~MMAPFile();
 
+  void notifyUnused();
+
   [[nodiscard]] const std::string &path() const { return _path; }
 
   [[nodiscard]] size_t size() const { return _size; }
-  absl::StatusOr<const uint8_t *> rawPtr() const;
+  [[nodiscard]] size_t localStorageSize() const { return _size; }
+  [[nodiscard]] size_t localMemorySize() const { return _mmapSize; }
+
+  absl::StatusOr<uint8_t *> rawPtr();
 
   absl::StatusOr<int> rawFd() const;
 
@@ -62,5 +70,3 @@ public:
 };
 
 } // namespace geds::filesystem
-
-#endif

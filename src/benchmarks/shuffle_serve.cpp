@@ -59,8 +59,10 @@ void createFile(std::shared_ptr<GEDS> &geds, const std::string &bucket, size_t f
 
 int main(int argc, char **argv) {
   absl::ParseCommandLine(argc, argv);
-  auto geds = GEDS::factory(FLAGS_address.CurrentValue(), FLAGS_gedsRoot.CurrentValue(),
-                            std::nullopt, absl::GetFlag(FLAGS_localPort));
+  auto config = GEDSConfig(FLAGS_address.CurrentValue());
+  config.port = absl::GetFlag(FLAGS_localPort);
+  config.localStoragePath = FLAGS_gedsRoot.CurrentValue();
+  auto geds = GEDS::factory(config);
   auto status = geds->start();
   if (!status.ok()) {
     std::cout << "Unable to start GEDS:" << status.message() << std::endl;

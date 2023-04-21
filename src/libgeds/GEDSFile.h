@@ -8,6 +8,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -16,6 +17,7 @@
 
 #include "GEDSInternal.h"
 
+class GEDS;
 class GEDSFileHandle;
 
 /**
@@ -27,14 +29,15 @@ class GEDSFileHandle;
  */
 class GEDSFile {
 protected:
+  std::shared_ptr<GEDS> _geds;
   std::shared_ptr<GEDSFileHandle> _fileHandle;
 
-  virtual absl::StatusOr<size_t> readBytes(uint8_t *bytes, size_t position, size_t length);
-  virtual absl::Status writeBytes(const uint8_t *bytes, size_t position, size_t length);
+  absl::StatusOr<size_t> readBytes(uint8_t *bytes, size_t position, size_t length);
+  absl::Status writeBytes(const uint8_t *bytes, size_t position, size_t length);
 
 public:
   GEDSFile() = delete;
-  GEDSFile(std::shared_ptr<GEDSFileHandle> fileHandle);
+  GEDSFile(std::shared_ptr<GEDS> geds, std::shared_ptr<GEDSFileHandle> fileHandle);
   GEDSFile(const GEDSFile &other);
   GEDSFile(GEDSFile &&other);
   GEDSFile &operator=(const GEDSFile &other);
@@ -49,6 +52,20 @@ public:
   [[nodiscard]] const std::string &identifier() const;
   [[nodiscard]] const std::shared_ptr<GEDSFileHandle> fileHandle() const;
   [[nodiscard]] bool isWriteable() const;
+
+  [[nodiscard]] std::optional<std::string> metadata() const;
+  [[nodiscard]] absl::Status setMetadata(std::optional<std::string> metadata, bool seal = true);
+  template <typename T, typename = std::enable_if_t<std::is_trivially_copyable<T>::value>>
+  absl::Status setMetadata(std::vector<T> &buffer, bool seal = true) {
+    return setMetadata(buffer.data(), buffer.size(), seal);
+  }
+  template <typename T, typename = std::enable_if_t<std::is_trivially_copyable<T>::value>>
+  absl::Status setMetadata(const T *buffer, size_t length, bool seal = true) {
+    auto b = reinterpret_cast<const char *>(buffer);
+    auto l = length * sizeof(T);
+    std::string m(b, l);
+    return setMetadata(std::move(m), seal);
+  }
 
   template <typename T, typename = std::enable_if_t<std::is_trivially_copyable<T>::value>>
   absl::StatusOr<size_t> read(T *buffer, size_t position, size_t length) {

@@ -7,5 +7,7 @@
 
 #include "GEDSAbstractFileHandle.h"
 #include "LocalFile.h"
+#include "MMAPFile.h"
 
 using GEDSLocalFileHandle = GEDSAbstractFileHandle<geds::filesystem::LocalFile>;
+// using GEDSLocalFileHandle = GEDSAbstractFileHandle<geds::filesystem::MMAPFile>;

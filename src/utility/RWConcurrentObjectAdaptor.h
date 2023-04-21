@@ -16,7 +16,7 @@ namespace utility {
 class RWConcurrentObjectAdaptor {
   mutable std::shared_mutex __mutex;
 
-protected:
+public:
   auto getReadLock() const { return std::shared_lock<std::shared_mutex>(__mutex); }
   auto getWriteLock() const { return std::unique_lock<std::shared_mutex>(__mutex); }
 };

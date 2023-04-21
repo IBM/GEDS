@@ -15,9 +15,12 @@ option(HAVE_PYTHON_BINDINGS "Enable python bindings" ON)
 option(HAVE_JAVA_BINDINGS "Enable Java bindings (SET JAVA_HOME env variable accordingly)." ON)
 option(HAVE_RDMA_SUPPORT "Supports RDMA" OFF)
 option(HAVE_DEFAULT_BUCKET "Creates a default (default) bucket." ON)
+option(HAVE_PROMETHEUS_HISTOGRAM_BUCKETS "Enable Prometheus Histogram Buckets." OFF)
+
+option(ENABLE_PROFILING "Compile with -pg to enable gprof." OFF)
+
 set(DEFAULT_BUCKET_NAME "default" CACHE STRING "Name of the default bucket.")
 set(BOOST_VERSION "1.80.0" CACHE STRING "Boost version")
-
 
 message(STATUS "HAVE_TESTS:           ${HAVE_TESTS}")
 message(STATUS "HAVE_PYTHON_BINDINGS: ${HAVE_PYTHON_BINDINGS}")
@@ -25,15 +28,16 @@ message(STATUS "HAVE_PYTHON_BINDINGS: ${HAVE_PYTHON_BINDINGS}")
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
-#     set(CMAKE_CXX_EXTENSIONS OFF)
-#     find_package(Doxygen)
-#     if(Doxygen_FOUND)
-#         add_subdirectory(docs)
-#     else()
-#         message(STATUS "Doxygen not found, not building docs")
-#     endif()
-# endif()
+if(HAVE_PROMETHEUS_HISTOGRAM_BUCKETS)
+    add_compile_definitions(HAVE_PROMETHEUS_HISTOGRAM_BUCKETS=1)
+endif()
+
+if (ENABLE_PROFILING)
+    message(STATUS "ENABLE_PROFILING:     ${ENABLE_PROFILING}")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pg")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pg")
+    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -pg")
+endif()
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
@@ -41,7 +45,7 @@ set(compilerIsGNU $<CMAKE_CXX_COMPILER_ID:GNU>)
 set(compilerIsClang $<CMAKE_CXX_COMPILER_ID:GNU>)
 
 set(GEDS_EXTRA_COMPILER_FLAGS -Wall -Wextra -Werror) # -Wpedantic # error: ISO C++ does not support ‘__int128’ for ‘type name’ [-Werror=pedantic]
-
+set(GEDS_EXTRA_LINKER_FLAGS  )
 if(${compilerIsClang})
     set(GEDS_EXTRA_COMPILER_FLAGS ${GEDS_EXTRA_COMPILER_FLAGS} -Wpedantic)
 endif()

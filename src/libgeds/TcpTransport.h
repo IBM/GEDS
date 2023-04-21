@@ -29,6 +29,7 @@
 #include "ConcurrentMap.h"
 #include "ConcurrentQueue.h"
 #include "FileTransferProtocol.h"
+#include "RWConcurrentObjectAdaptor.h"
 #include "Statistics.h"
 #include "StatisticsGauge.h"
 
@@ -97,6 +98,7 @@ struct TcpRcvState {
   uint64_t va;
   std::string objName;
   size_t progress;
+
   std::shared_ptr<std::promise<absl::StatusOr<size_t>>> p;
 };
 
@@ -142,7 +144,7 @@ using epoll_epid_t = union EpollEpId {
 };
 
 class TcpTransport;
-class TcpPeer : public std::enable_shared_from_this<TcpPeer> {
+class TcpPeer : public std::enable_shared_from_this<TcpPeer>, utility::RWConcurrentObjectAdaptor {
 
 private:
   friend class TcpTransport;
@@ -161,7 +163,6 @@ private:
       Statistics::createGauge("GEDS: TcpTransport recvQueue length");
 
   std::map<int, std::shared_ptr<TcpEndpoint>> endpoints;
-  mutable std::shared_mutex epMux;
 
   bool processEndpointSend(std::shared_ptr<TcpEndpoint> tep);
   bool processEndpointRecv(int sock);
@@ -181,9 +182,8 @@ public:
   sendRpcRequest(uint64_t dest, std::string name, size_t src_off, size_t len);
   int sendRpcReply(uint64_t reqId, int in_fd, uint64_t start, size_t len, int status);
   void addEndpoint(std::shared_ptr<TcpEndpoint> tep) {
-    epMux.lock();
+    auto lock = getWriteLock();
     endpoints.emplace(tep->sock, tep);
-    epMux.unlock();
   };
   TcpPeer(std::string name, std::shared_ptr<GEDS> geds, TcpTransport &tcpTransport)
       : Id(SStringHash(name)), _geds(std::move(geds)), _tcpTransport(tcpTransport),

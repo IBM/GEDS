@@ -11,6 +11,7 @@
 #include <cstdint>
 #include <cstring>
 #include <exception>
+#include <memory>
 #include <netinet/in.h>
 #include <ostream>
 #include <string>
@@ -46,7 +47,7 @@ using std::string;
 FileTransferService::FileTransferService(std::string nodeAddress, std::shared_ptr<GEDS> geds,
                                          std::shared_ptr<TcpTransport> tcpTrans)
     : _connectionState(ConnectionState::Disconnected), _channel(nullptr), _geds(geds),
-      _tcp(tcpTrans), tcpPeer(nullptr), nodeAddress(std::move(nodeAddress)) {}
+      _tcp(tcpTrans), nodeAddress(std::move(nodeAddress)) {}
 
 FileTransferService::~FileTransferService() {
   if (_connectionState == ConnectionState::Connected) {
@@ -58,6 +59,7 @@ absl::Status FileTransferService::connect() {
   if (_connectionState != ConnectionState::Disconnected) {
     return absl::FailedPreconditionError("Cannot reinitialize service.");
   }
+  auto lock = getWriteLock();
   try {
     assert(_channel.get() == nullptr);
     _channel = grpc::CreateChannel(nodeAddress, grpc::InsecureChannelCredentials());
@@ -76,10 +78,10 @@ absl::Status FileTransferService::connect() {
   for (auto &addr : *endpoints) {
     if (std::get<1>(addr) == FileTransferProtocol::Socket) {
       struct sockaddr saddr = std::get<0>(addr);
-      std::shared_ptr<TcpPeer> peer = _tcp->getPeer(&saddr);
+      auto peer = _tcp->getPeer(&saddr);
 
       if (peer) {
-        tcpPeer = peer;
+        _tcpPeer = peer;
         // for now, make just one connection
         break;
       }
@@ -93,7 +95,8 @@ absl::Status FileTransferService::disconnect() {
   if (_connectionState != ConnectionState::Connected) {
     return absl::UnknownError("The service is in the wrong state!");
   }
-  tcpPeer = nullptr;
+  auto lock = getWriteLock();
+  _tcpPeer.reset();
   _channel = nullptr;
   return absl::OkStatus();
 }
@@ -136,16 +139,28 @@ absl::StatusOr<size_t> FileTransferService::readBytes(const std::string &bucket,
                                                       size_t position, size_t length) {
   CHECK_CONNECTED
 
-  if (!tcpPeer) {
-    return absl::UnavailableError("No TCP for " + nodeAddress);
-  }
+  std::future<absl::StatusOr<size_t>> fut;
+  // Create a scope for the std::shared_ptr<TcpPeer> so that the peer is automatically cleaned up.
+  {
+    auto lock = getReadLock();
+    if (_tcpPeer.expired()) {
+      return absl::UnavailableError("No TCP for " + nodeAddress);
+    }
 
-  LOG_DEBUG("Found TCP peer for ", nodeAddress);
-  auto prom = tcpPeer->sendRpcRequest((uint64_t)buffer, bucket + "/" + key, position, length);
-  auto fut = prom->get_future();
+    LOG_DEBUG("Found TCP peer for ", nodeAddress);
+    auto peer = _tcpPeer.lock();
+    lock.unlock();
+    auto prom = peer->sendRpcRequest((uint64_t)buffer, bucket + "/" + key, position, length);
+    fut = prom->get_future();
+  }
   auto status = fut.get();
   if (status.ok()) {
     return *status;
+  }
+  // Close the FileTransferService on error.
+  if (status.status().code() == absl::StatusCode::kAborted) {
+    auto lock = getWriteLock();
+    _tcpPeer.reset();
   }
   return status.status();
 }

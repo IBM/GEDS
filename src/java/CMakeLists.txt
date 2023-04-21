@@ -7,11 +7,14 @@
 include(UseJava)
 
 SET(JAVA_SOURCES
-        com/ibm/geds/GEDSFile.java
         com/ibm/geds/GEDS.java
+        com/ibm/geds/GEDSConfig.java
+        com/ibm/geds/GEDSFile.java
+        com/ibm/geds/GEDSFileStatus.java
 )
 SET(SOURCES
         com_ibm_geds_GEDS.cpp
+        com_ibm_geds_GEDSConfig.cpp
         com_ibm_geds_GEDSFile.cpp
 
         JavaError.cpp
@@ -19,7 +22,7 @@ SET(SOURCES
         Platform.cpp
 )
 
-set(GEDS_JAVA_VERSION 1.0)
+set(GEDS_JAVA_VERSION 1.1)
 
 set(GEDS_JAR_GROUPID "com.ibm.geds")
 set(CMAKE_JAR_ARTIFACT_NAME "geds")
@@ -37,7 +40,8 @@ target_link_libraries(
         geds_java
         PRIVATE
         geds_jar-native
-        libgeds)
+        libgeds
+        ${GEDS_EXTRA_LINKER_FLAGS})
 target_include_directories(geds_java
         PRIVATE
         "${JAVA_INCLUDE_PATH2}"

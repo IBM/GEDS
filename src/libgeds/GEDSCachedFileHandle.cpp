@@ -21,9 +21,10 @@ const std::string GEDSCachedFileHandle::CacheBlockMarker = {"_$cachedblock$/"};
 
 GEDSCachedFileHandle::GEDSCachedFileHandle(std::shared_ptr<GEDS> gedsService, std::string bucketArg,
                                            std::string keyArg,
+                                           std::optional<std::string> metadataArg,
                                            std::shared_ptr<GEDSFileHandle> remoteFileHandle)
-    : GEDSFileHandle(gedsService, std::move(bucketArg), std::move(keyArg)),
-      _remoteFileHandle(remoteFileHandle), _blockSize(gedsService->blockSize) {
+    : GEDSFileHandle(gedsService, std::move(bucketArg), std::move(keyArg), std::move(metadataArg)),
+      _remoteFileHandle(remoteFileHandle), _blockSize(gedsService->config().cacheBlockSize) {
   static auto counter = geds::Statistics::createCounter("GEDSCachedFileHandle: count");
   *counter += 1;
 
@@ -41,14 +42,44 @@ GEDSCachedFileHandle::GEDSCachedFileHandle(std::shared_ptr<GEDS> gedsService, st
   _blockMutex = std::vector<std::mutex>(_remoteSize / _blockSize + 1);
 }
 
-absl::StatusOr<size_t> GEDSCachedFileHandle::size() const { return _remoteSize; }
+absl::StatusOr<size_t> GEDSCachedFileHandle::size() const {
+  auto lock = lockShared();
+  return _remoteSize;
+}
 
+size_t GEDSCachedFileHandle::localStorageSize() const {
+  auto lock = lockShared();
+  size_t result = 0;
+  for (size_t idx = 0; idx < _blocks.size(); idx++) {
+    auto lock = std::lock_guard(_blockMutex[idx]);
+    if (_blocks[idx].get() == nullptr) {
+      continue;
+    }
+    auto fh = _blocks[idx]->fileHandle();
+    result += fh->localStorageSize();
+  }
+  return result;
+}
+
+size_t GEDSCachedFileHandle::localMemorySize() const {
+  auto lock = lockShared();
+  size_t result = 0;
+  for (size_t idx = 0; idx < _blocks.size(); idx++) {
+    auto lock = std::lock_guard(_blockMutex[idx]);
+    if (_blocks[idx].get() == nullptr) {
+      continue;
+    }
+    auto fh = _blocks[idx]->fileHandle();
+    result += fh->localMemorySize();
+  }
+  return result;
+}
 absl::StatusOr<size_t> GEDSCachedFileHandle::readBytes(uint8_t *bytes, size_t position,
                                                        size_t length) {
-
   if (position >= _remoteSize || length == 0) {
     return 0;
   }
+  auto lock = lockShared();
   length = std::min(length, _remoteSize - position);
 
   auto computeBlock = [&](size_t pos) { return pos / _blockSize; };
@@ -140,6 +171,29 @@ absl::StatusOr<size_t> GEDSCachedFileHandle::readBytes(uint8_t *bytes, size_t po
   return count;
 }
 
-absl::Status GEDSCachedFileHandle::seal() { return _remoteFileHandle->seal(); }
+absl::Status GEDSCachedFileHandle::seal() {
+  auto lock = lockFile();
+  auto iolock = lockExclusive();
+  return _remoteFileHandle->seal();
+}
 
-bool GEDSCachedFileHandle::isValid() const { return _isValid; };
+absl::StatusOr<std::shared_ptr<GEDSFileHandle>> GEDSCachedFileHandle::relocate() {
+  // Cached file handles are purged by default.
+  auto lock = lockFile();
+  auto ioLock = lockExclusive();
+  for (size_t idx = 0; idx < _blocks.size(); idx++) {
+    auto lock = std::lock_guard(_blockMutex[idx]);
+    if (_blocks[idx].get() == nullptr) {
+      continue;
+    }
+    auto file = _blocks[idx];
+    auto bucket = file->bucket();
+    auto key = file->key();
+    auto fh = file->fileHandle();
+    if (fh->localStorageSize()) {
+      (void)_gedsService->deleteObject(bucket, key);
+      _blocks[idx] = nullptr;
+    }
+  }
+  return shared_from_this();
+}

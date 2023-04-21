@@ -1,4 +1,5 @@
 .cache
+.metals
 cmake-build-*
 travis_*
 __pycache__

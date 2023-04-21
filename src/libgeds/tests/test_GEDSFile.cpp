@@ -22,7 +22,8 @@
 TEST(GEDSFile, ReadWrite) {
   auto path = geds::filesystem::tempFile("test_GEDSFile");
   auto service_mock = std::shared_ptr<GEDS>(nullptr);
-  auto handleStatus = GEDSLocalFileHandle::factory(service_mock, "test", "test", path);
+  auto handleStatus =
+      GEDSLocalFileHandle::factory(service_mock, "test", "test", std::nullopt, path);
   ASSERT_TRUE(handleStatus.ok());
   auto handle = handleStatus.value();
   ASSERT_TRUE(handle->seal().ok());
@@ -47,7 +48,8 @@ template <typename T, typename = std::enable_if_t<std::is_trivially_copyable<T>:
 void readWriteTest() {
   auto path = geds::filesystem::tempFile("test_GEDSFile");
   auto service_mock = std::shared_ptr<GEDS>(nullptr);
-  auto handleStatus = GEDSLocalFileHandle::factory(service_mock, "test", "test", path);
+  auto handleStatus =
+      GEDSLocalFileHandle::factory(service_mock, "test", "test", std::nullopt, path);
   ASSERT_TRUE(handleStatus.ok());
   auto handle = handleStatus.value();
   ASSERT_TRUE(handle->seal().ok());

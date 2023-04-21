@@ -18,8 +18,6 @@
 #include "GEDS.h"
 
 class GEDSCachedFileHandle : public GEDSFileHandle {
-  mutable bool _isValid{true};
-
   std::shared_ptr<GEDSFileHandle> _remoteFileHandle;
   std::shared_ptr<GEDSFile> _remoteFile;
 
@@ -27,7 +25,7 @@ class GEDSCachedFileHandle : public GEDSFileHandle {
   size_t _blockSize;
 
   std::vector<std::shared_ptr<GEDSFile>> _blocks;
-  std::vector<std::mutex> _blockMutex;
+  mutable std::vector<std::mutex> _blockMutex;
 
   std::shared_ptr<geds::StatisticsCounter> _readStatistics =
       geds::Statistics::createCounter("GEDSCachedFileHandle: bytes read");
@@ -40,6 +38,7 @@ class GEDSCachedFileHandle : public GEDSFileHandle {
   // private:
 public:
   GEDSCachedFileHandle(std::shared_ptr<GEDS> gedsService, std::string bucketArg, std::string keyArg,
+                       std::optional<std::string> metadataArg,
                        std::shared_ptr<GEDSFileHandle> remoteFile);
 
 public:
@@ -47,13 +46,14 @@ public:
 
   template <class TRemote>
   [[nodiscard]] static absl::StatusOr<std::shared_ptr<GEDSFileHandle>>
-  factory(std::shared_ptr<GEDS> gedsService, const std::string &bucket, const std::string &key) {
-    auto remoteFH = TRemote::factory(gedsService, bucket, key);
+  factory(std::shared_ptr<GEDS> gedsService, const std::string &bucket, const std::string &key,
+          std::optional<std::string> metadataArg) {
+    auto remoteFH = TRemote::factory(gedsService, bucket, key, metadataArg);
     if (!remoteFH.ok()) {
       return remoteFH.status();
     }
     return std::shared_ptr<GEDSFileHandle>(
-        new GEDSCachedFileHandle(gedsService, bucket, key, *remoteFH));
+        new GEDSCachedFileHandle(gedsService, bucket, key, std::move(metadataArg), *remoteFH));
   }
 
   template <class TRemote>
@@ -63,8 +63,8 @@ public:
     if (!remoteFH.ok()) {
       return remoteFH.status();
     }
-    return std::shared_ptr<GEDSFileHandle>(
-        new GEDSCachedFileHandle(gedsService, object.id.bucket, object.id.key, *remoteFH));
+    return std::shared_ptr<GEDSFileHandle>(new GEDSCachedFileHandle(
+        gedsService, object.id.bucket, object.id.key, object.info.metadata, *remoteFH));
   }
 
   GEDSCachedFileHandle() = delete;
@@ -74,13 +74,16 @@ public:
   GEDSCachedFileHandle &operator=(const GEDSCachedFileHandle &) = delete;
   GEDSCachedFileHandle &operator=(GEDSCachedFileHandle &&) = delete;
 
+  bool isRelocatable() const override { return true; }
   absl::StatusOr<size_t> size() const override;
+  size_t localStorageSize() const override;
+  size_t localMemorySize() const override;
 
   absl::StatusOr<size_t> readBytes(uint8_t *bytes, size_t position, size_t length) override;
 
   absl::Status seal() override;
 
-  bool isValid() const override;
+  absl::StatusOr<std::shared_ptr<GEDSFileHandle>> relocate() override;
 };
 
 #endif

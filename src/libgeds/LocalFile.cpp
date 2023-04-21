@@ -10,6 +10,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
+#include <cstring>
 #include <fcntl.h>
 #include <ios>
 #include <stdexcept>
@@ -17,6 +18,7 @@
 #include <unistd.h>
 #include <vector>
 
+#include "Filesystem.h"
 #include "Logging.h"
 
 #define CHECK_FILE_OPEN                                                                            \
@@ -40,48 +42,59 @@ LocalFile::LocalFile(std::string pathArg, bool overwrite) : _path(std::move(path
     throw std::runtime_error{message};
   }
 
-  auto size = fileSize();
-  if (!size.ok()) {
-    throw std::runtime_error{"Unable to determine size on " + _path +
-                             ". Reason: " + std::string{size.status().message()}};
-  }
-  _size = *size;
-}
-
-LocalFile::~LocalFile() {
-  if (_fd >= 0) {
-    if (fsync(_fd) != 0) {
-      int error = errno;
-      auto message = "Fsync on " + _path + " reported: " + strerror(error);
-      LOG_ERROR(message);
-    }
-    (void)::close(_fd);
-  }
-  _fd = -1;
-}
-
-absl::StatusOr<size_t> LocalFile::fileSize() const {
-  CHECK_FILE_OPEN
-  if (fsync(_fd) != 0) {
-    int error = errno;
-    auto message = "Fsync on " + _path + " reported: " + strerror(error);
-    LOG_ERROR(message);
-    return absl::UnknownError(message);
-  }
-
   struct stat statBuf {};
   if (fstat(_fd, &statBuf) != 0) {
     int error = errno;
     auto message = "Fstat on " + _path + " reported: " + strerror(error);
     LOG_ERROR(message);
-    return absl::UnknownError(message);
+    throw std::runtime_error{message};
   }
-  return statBuf.st_size;
+  _size = statBuf.st_size;
+}
+
+LocalFile::~LocalFile() {
+  if (_fd >= 0) {
+    (void)::close(_fd);
+    _fd = -1;
+
+    auto removeStatus = removeFile(_path);
+    if (!removeStatus.ok()) {
+      LOG_ERROR("Unable to delete ", _path, " reason: ", removeStatus.message());
+    }
+  }
+}
+
+void LocalFile::notifyUnused() {
+  // NOOP.
+}
+
+absl::Status LocalFile::fsync() {
+  CHECK_FILE_OPEN
+
+  int e = 0;
+  do {
+    e = ::fsync(_fd);
+  } while (e != 0 && errno == EINTR);
+  if (e != 0) {
+    int err = errno;
+    return absl::UnknownError("Unable to fsync " + _path + ": " + strerror(err));
+  }
+  return absl::OkStatus();
+}
+
+absl::StatusOr<size_t> LocalFile::fileSize() const {
+  CHECK_FILE_OPEN
+
+  return _size;
 }
 
 absl::StatusOr<int> LocalFile::rawFd() const {
   CHECK_FILE_OPEN
   return _fd;
+}
+
+absl::StatusOr<uint8_t *> LocalFile::rawPtr() {
+  return absl::UnavailableError("RawPtr is not supported for LocalFile.");
 }
 
 absl::StatusOr<size_t> LocalFile::readBytes(uint8_t *bytes, size_t position, size_t length) {
@@ -188,10 +201,11 @@ absl::Status LocalFile::writeBytes(const uint8_t *bytes, size_t position, size_t
   }
 
   // See: https://stackoverflow.com/a/16190791/592024
-  size_t oldSize = _size;
+  size_t oldSize;
   size_t newSize = position + offset;
-  while (oldSize < newSize && !_size.compare_exchange_weak(oldSize, newSize)) {
-  }
+  do {
+    oldSize = _size;
+  } while (oldSize < newSize && !_size.compare_exchange_weak(oldSize, newSize));
   return absl::OkStatus();
 }
 

@@ -263,18 +263,32 @@ absl::Status Endpoint::putObject(const std::string &bucket, const std::string &k
 }
 
 absl::Status Endpoint::putObject(const std::string &bucket, const std::string &key,
-                                 std::shared_ptr<std::iostream> stream) {
+                                 std::shared_ptr<std::iostream> stream,
+                                 std::optional<size_t> length) const {
   Aws::S3::Model::PutObjectRequest request;
   request.SetBucket(bucket);
   request.SetKey(key);
   request.SetBody(stream);
+  if (length.has_value()) {
+    request.SetContentLength(*length);
+  }
   request.SetContentType("application/octet-stream");
 
   *totalRequestsSent += 1;
-  auto outcome = _s3Client->PutObject(request);
-  if (!outcome.IsSuccess()) {
-    auto &error = outcome.GetError();
-    return convertS3Error(error, "put", key);
+  try {
+    auto outcome = _s3Client->PutObject(request);
+    if (!outcome.IsSuccess()) {
+      auto &error = outcome.GetError();
+      return convertS3Error(error, "put", key);
+    }
+  } catch (const std::exception &e) {
+    auto message = "Caught exception using put: " + bucket + "/" + key + ": " + e.what();
+    LOG_ERROR(message);
+    return absl::UnknownError(message);
+  } catch (...) {
+    auto message = "Caught exception using an unknown error for put: " + bucket + "/" + key;
+    LOG_ERROR(message);
+    return absl::UnknownError(message);
   }
   return absl::OkStatus();
 }
@@ -294,9 +308,13 @@ absl::StatusOr<size_t> Endpoint::read(const std::string &bucket, const std::stri
   request.SetKey(key);
   request.SetResponseContentType("application/octet-stream");
   if (position.has_value() || length.has_value()) {
-    request.SetRange(
-        "bytes=" + (position.has_value() ? std::to_string(position.value()) : "") + "-" +
-        (length.has_value() ? std::to_string(position.value_or(0) + length.value()) : ""));
+    if (length.has_value() && length.value() == 0) {
+      return 0;
+    }
+    size_t startPos = position.value_or(0);
+    size_t endPos = startPos + length.value_or(0) - 1;
+    request.SetRange("bytes=" + (position.has_value() ? std::to_string(startPos) : "") + "-" +
+                     (length.has_value() ? std::to_string(endPos) : ""));
   }
 
   *totalRequestsSent += 1;

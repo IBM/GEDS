@@ -21,10 +21,12 @@
 
 #include <absl/status/status.h>
 #include <absl/status/statusor.h>
+#include <boost/asio/thread_pool.hpp>
 
 #include "ConcurrentMap.h"
 #include "ConcurrentSet.h"
 #include "FileTransferService.h"
+#include "GEDSConfig.h"
 #include "GEDSFileHandle.h"
 #include "GEDSFileStatus.h"
 #include "GEDSInternal.h"
@@ -42,12 +44,16 @@
 #include "TcpTransport.h"
 
 const char Default_GEDSFolderDelimiter = '/';
-// Hadoop S3A uses 32MB - thus we set the same value.
-const size_t Default_BlockSize = 32 * 1024 * 1024;
 
 class GEDSFile;
 
 class GEDS : public std::enable_shared_from_this<GEDS>, utility::RWConcurrentObjectAdaptor {
+  GEDSConfig _config;
+
+public:
+  const GEDSConfig &config() const { return _config; }
+
+protected:
   /**
    * @brief GEDS Server instance that allows file transfers.
    */
@@ -97,26 +103,25 @@ class GEDS : public std::enable_shared_from_this<GEDS>, utility::RWConcurrentObj
 
   geds::HttpServer _httpServer;
 
+  boost::asio::thread_pool _ioThreadPool;
+  std::thread _storageMonitoringThread;
+  void startStorageMonitoringThread();
+
+  std::atomic<size_t> _localStorageUsed;
+  std::atomic<size_t> _localMemoryUsed;
+
 public:
   /**
    * @brief GEDS CTOR. Note: This CTOR needs to be wrapped in a SHARED_POINTER!
    */
-  GEDS(std::string metadataServiceAddress, std::optional<std::string> pathPrefix,
-       std::optional<std::string> hostname, std::optional<uint16_t> port,
-       std::optional<size_t> blockSizeArg);
+  GEDS(GEDSConfig &&argConfig);
 
   /**
    * @brief Constructor wrapper which forces a shared_ptr.
    */
-  [[nodiscard]] static std::shared_ptr<GEDS>
-  factory(std::string metadataServiceAddress, std::optional<std::string> pathPrefix,
-          std::optional<std::string> hostname = std::nullopt,
-          std::optional<uint16_t> port = std::nullopt,
-          std::optional<size_t> blockSize = std::nullopt);
+  [[nodiscard]] static std::shared_ptr<GEDS> factory(GEDSConfig config);
 
   virtual ~GEDS();
-
-  const size_t blockSize;
 
   /**
    * @brief Start GEDS.
@@ -176,9 +181,22 @@ public:
   /**
    * @brief Open object located at bucket/key.
    */
-  absl::StatusOr<GEDSFile> open(const std::string &bucket, const std::string &key);
-  absl::StatusOr<std::shared_ptr<GEDSFileHandle>> openAsFileHandle(const std::string &bucket,
-                                                                   const std::string &key);
+  absl::StatusOr<GEDSFile> open(const std::string &bucket, const std::string &key,
+                                bool retry = true);
+  absl::StatusOr<std::shared_ptr<GEDSFileHandle>>
+  openAsFileHandle(const std::string &bucket, const std::string &key);
+  absl::StatusOr<std::shared_ptr<GEDSFileHandle>>
+  reopenFileHandle(const std::string &bucket, const std::string &key, bool invalidate);
+
+  /**
+   * @brief Reopen a file after a unsuccessful read.
+   */
+  absl::StatusOr<std::shared_ptr<GEDSFileHandle>> reopen(std::shared_ptr<GEDSFileHandle> existing);
+
+  /**
+   * @brief Only open local filehandles.
+   */
+  absl::StatusOr<GEDSFile> localOpen(const std::string &bucket, const std::string &key);
 
   /**
    * @brief Mark the file associated with fileHandle as sealed.
@@ -287,6 +305,17 @@ public:
   absl::StatusOr<std::shared_ptr<geds::s3::Endpoint>> getS3Endpoint(const std::string &s3Bucket);
   absl::StatusOr<std::shared_ptr<geds::FileTransferService>>
   getFileTransferService(const std::string &hostname);
+
+  void relocate(bool force = false);
+  void relocate(std::vector<std::shared_ptr<GEDSFileHandle>> &relocatable, bool force = false);
+  void relocate(std::shared_ptr<GEDSFileHandle> handle, bool force = false);
+
+  size_t localStorageUsed() const;
+  size_t localStorageFree() const;
+  size_t localStorageAllocated() const;
+  size_t localMemoryUsed() const;
+  size_t localMemoryFree() const;
+  size_t localMemoryAllocated() const;
 };
 
 #endif // GEDS_GEDS_H

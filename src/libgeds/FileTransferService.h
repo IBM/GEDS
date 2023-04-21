@@ -26,6 +26,7 @@
 #include "FileTransferProtocol.h"
 #include "GEDSInternal.h"
 #include "Object.h"
+#include "RWConcurrentObjectAdaptor.h"
 #include "TcpTransport.h"
 #include "geds.grpc.pb.h"
 
@@ -38,13 +39,13 @@ struct RemoteFileInfo {
   const size_t length;
 };
 
-class FileTransferService {
+class FileTransferService: public utility::RWConcurrentObjectAdaptor {
   ConnectionState _connectionState;
   std::shared_ptr<grpc::Channel> _channel;
   std::unique_ptr<geds::rpc::GEDSService::Stub> _stub;
   std::shared_ptr<GEDS> _geds;
   std::shared_ptr<TcpTransport> _tcp;
-  std::shared_ptr<TcpPeer> tcpPeer;
+  std::weak_ptr<TcpPeer> _tcpPeer;
 
   absl::StatusOr<std::vector<std::tuple<sockaddr, geds::FileTransferProtocol>>>
   availTransportEndpoints();

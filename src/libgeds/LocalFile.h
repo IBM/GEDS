@@ -47,9 +47,17 @@ public:
 
   [[nodiscard]] const std::string &path() const { return _path; }
 
+  void notifyUnused();
+
+  absl::Status fsync();
+
   [[nodiscard]] size_t size() const { return _size; }
+  [[nodiscard]] size_t localStorageSize() const { return _size; }
+  [[nodiscard]] size_t localMemorySize() const { return 0; }
 
   absl::StatusOr<int> rawFd() const;
+
+  absl::StatusOr<uint8_t *> rawPtr();
 
   absl::StatusOr<size_t> readBytes(uint8_t *bytes, size_t position, size_t length);
 

@@ -17,6 +17,11 @@ void StatisticsGauge::printForConsole(std::stringstream &stream) const {
   stream << label << ", " << _value << std::endl;
 }
 
+StatisticsGauge &StatisticsGauge::operator=(size_t v) {
+  _value = v;
+  return *this;
+}
+
 StatisticsGauge &StatisticsGauge::operator+=(size_t v) {
   _value += v;
   return *this;

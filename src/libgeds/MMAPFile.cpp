@@ -5,9 +5,6 @@
 
 #include "MMAPFile.h"
 
-#include "Filesystem.h"
-#include "Logging.h"
-
 #include <algorithm>
 #include <cstddef>
 #include <exception>
@@ -17,6 +14,9 @@
 #include <string>
 #include <sys/mman.h>
 #include <unistd.h>
+
+#include "Filesystem.h"
+#include "Logging.h"
 
 namespace geds::filesystem {
 
@@ -35,6 +35,20 @@ MMAPFile::MMAPFile(std::string pathArg, bool overwrite) : _path(std::move(pathAr
     auto message = "Unable to open " + _path + ". Reason: " + strerror(error);
     LOG_ERROR(message);
     throw std::runtime_error{message};
+  }
+}
+
+MMAPFile::~MMAPFile() {
+  auto lock = getWriteLock();
+  release();
+  if (_fd >= 0) {
+    (void)::close(_fd);
+    _fd = -1;
+
+    auto removeStatus = removeFile(_path);
+    if (!removeStatus.ok()) {
+      LOG_ERROR("Unable to delete ", _path, " reason: ", removeStatus.message());
+    }
   }
 }
 
@@ -90,8 +104,18 @@ absl::StatusOr<size_t> MMAPFile::readBytes(uint8_t *bytes, size_t position, size
     return 0;
   }
 
+  // Reopen the file if it has been unmapped.
+  auto status = reopen();
+  if (!status.ok()) {
+    return status;
+  }
+
   auto lock = getReadLock();
   if (position >= _size) {
+    return 0;
+  }
+  length = std::min(length, _size - position);
+  if (length == 0) {
     return 0;
   }
   auto n = std::min(_size, position + length) - position;
@@ -99,9 +123,10 @@ absl::StatusOr<size_t> MMAPFile::readBytes(uint8_t *bytes, size_t position, size
   return n;
 }
 
-absl::StatusOr<const uint8_t *> MMAPFile::rawPtr() const {
-  if (_mmapPtr == nullptr) {
-    return absl::UnknownError("Memory Mapped file is null.");
+absl::StatusOr<uint8_t *> MMAPFile::rawPtr() {
+  auto status = reopen();
+  if (!status.ok()) {
+    return status;
   }
   return _mmapPtr;
 }
@@ -134,7 +159,7 @@ absl::Status MMAPFile::writeBytes(const uint8_t *bytes, size_t position, size_t 
   auto newSize = position + length;
 
   // Check if the new file size is bigger, if yes, increase the file size.
-  if (newSize > size()) {
+  if (newSize > _size) {
     auto status = increaseMmap(newSize);
     if (!status.ok()) {
       return status;
@@ -188,8 +213,7 @@ absl::StatusOr<size_t> MMAPFile::write(std::istream &stream, size_t position,
   return length;
 }
 
-MMAPFile::~MMAPFile() {
-  auto lock = getWriteLock();
+void MMAPFile::release() {
   if (_mmapPtr != 0) {
     int err = munmap(_mmapPtr, _mmapSize);
     if (err != 0) {
@@ -199,15 +223,31 @@ MMAPFile::~MMAPFile() {
     _mmapPtr = nullptr;
     _mmapSize = 0;
   }
-  if (_fd >= 0) {
-    (void)::close(_fd);
-    _fd = -1;
+}
 
-    auto removeStatus = removeFile(_path);
-    if (!removeStatus.ok()) {
-      LOG_ERROR("Unable to delete ", _path, " reason: ", removeStatus.message());
+absl::Status MMAPFile::reopen() {
+  if (_mmapPtr == nullptr) {
+    auto lock = getWriteLock();
+    if (_mmapPtr != nullptr) {
+      return absl::OkStatus();
     }
+    size_t nPages = _size / MMAP_pageSize + (_size % MMAP_pageSize > 0 ? 1 : 0);
+    size_t mmapSize = nPages * MMAP_pageSize;
+    // fallocate, int mode, __off_t offset, __off_t len)
+    auto m = mmap(nullptr, mmapSize, PROT_READ | PROT_WRITE, MAP_SHARED, _fd, 0);
+    if (m == MAP_FAILED) { // NOLINT
+      return absl::UnknownError("Failed to map file " + _path + " with requested size " +
+                                std::to_string(_size) + ".");
+    }
+    _mmapPtr = static_cast<uint8_t *>(m);
+    _mmapSize = mmapSize;
   }
+  return absl::OkStatus();
+}
+
+void MMAPFile::notifyUnused() {
+  auto lock = getWriteLock();
+  release();
 }
 
 } // namespace geds::filesystem

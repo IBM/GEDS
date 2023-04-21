@@ -7,14 +7,14 @@ import os
 import numpy as np
 from time import sleep
 
-from pygeds import status, GEDS
+from pygeds import status, GEDS, GEDSConfig
 
 METADATA_SERVER = os.environ.get("GEDS_METADATASERVER", "zac13:4381")
 BUCKET_NAME = os.environ.get("BUCKET_NAME", "benchmark")
 MAX_THREADS = int(os.environ.get("MAX_THREADS", "16"))
 MAX_SIZE = int(os.environ.get("MAX_SIZE", "18"))
 
-instance = GEDS(METADATA_SERVER)
+instance = GEDS(GEDSConfig(METADATA_SERVER))
 try:
     instance.start()
 except status.StatusNotOk as e:

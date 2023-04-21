@@ -95,6 +95,20 @@ public:
     }
   }
 
+  bool removeIf(const K &key, std::function<bool(const V &)> selector) {
+    auto lock = getWriteLock();
+    auto it = _map.find(key);
+    if (it == _map.end()) {
+      return false;
+    }
+    auto result = it->second;
+    if (selector(result)) {
+      _map.erase(it);
+      return true;
+    }
+    return false;
+  }
+
   void forall(std::function<void(V &)> action) const {
     auto lock = getReadLock();
     for (auto it : _map) {
