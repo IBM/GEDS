@@ -18,7 +18,7 @@ SOURCE = source
 endif
 
 .PHONY: help
-## help: prints this help message
+## help: prints the help messages
 help:
 	@echo "Usage: \n"
 	@sed -n 's/^##//p' ${MAKEFILE_LIST} | column -t -s ':' |  sed -e 's/^/ /'
@@ -42,7 +42,7 @@ test:
 	@GEDS_PERSISTENT_STORAGE_MDS_ENABLED=false ${GO_PATH} test ./tests -v -cover
 
 .PHONY: clean
-## clean: clean build path for Darwin
+## clean: clean build path
 clean:
 	@echo "Cleaning"
 	@${GO_PATH} clean
@@ -57,24 +57,24 @@ clean-all:
 	@rm -rf ${MDS_BUILD_PATH_DARWIN}
 
 .PHONY: build
-## build: build the MDS
+## build: build
 build: clean build-mds
 
 .PHONY: build-mds
-## build-mds: build the MDS component (OS-dependent)
+## build-mds: build MDS component (OS-dependent)
 build-mds:
 	@echo "Building MDS ..."
 	@${GO_PATH} build -o ${MDS_BUILD_PATH}${MDS_BINARY} ./cmd/mds/*.go
 
-## run-mds: run the MDS component
+## run-mds: run MDS
 run-mds:
 	@echo "Running MDS ..."
 	@${GO_PATH} run ./cmd/mds
 
 .PHONY: protos
-## protos: generate the protos
+## protos: generate protos
 protos:
-	@echo "Generating the Protos ..."
+	@echo "Generating Protos ..."
 	@rm -rf ./protos;
 	@mkdir ./protos
 	@protoc --experimental_allow_proto3_optional -I ../protos ../protos/*.proto  --go_out=./protos
