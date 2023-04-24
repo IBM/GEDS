@@ -157,9 +157,15 @@ public:
   static absl::Status isValid(const std::string &bucket, const std::string &key);
 
   /**
+   * @brief Parse the object name and split it into bucket and key.
+   */
+  static absl::StatusOr<std::pair<std::string, std::string>> parseObjectName(const std::string& objectName);
+
+  /**
    * @brief Create object located at bucket/key.
    * The object is registered with the metadata service once the file is sealed.
    */
+  absl::StatusOr<GEDSFile> create(const std::string &objectName, bool overwrite = false);
   absl::StatusOr<GEDSFile> create(const std::string &bucket, const std::string &key,
                                   bool overwrite = false);
   absl::StatusOr<std::shared_ptr<GEDSFileHandle>>
@@ -181,10 +187,11 @@ public:
   /**
    * @brief Open object located at bucket/key.
    */
+  absl::StatusOr<GEDSFile> open(const std::string &objectName);
   absl::StatusOr<GEDSFile> open(const std::string &bucket, const std::string &key,
                                 bool retry = true);
-  absl::StatusOr<std::shared_ptr<GEDSFileHandle>>
-  openAsFileHandle(const std::string &bucket, const std::string &key);
+  absl::StatusOr<std::shared_ptr<GEDSFileHandle>> openAsFileHandle(const std::string &bucket,
+                                                                   const std::string &key);
   absl::StatusOr<std::shared_ptr<GEDSFileHandle>>
   reopenFileHandle(const std::string &bucket, const std::string &key, bool invalidate);
 
@@ -196,6 +203,7 @@ public:
   /**
    * @brief Only open local filehandles.
    */
+  absl::StatusOr<GEDSFile> localOpen(const std::string &objectName);
   absl::StatusOr<GEDSFile> localOpen(const std::string &bucket, const std::string &key);
 
   /**
