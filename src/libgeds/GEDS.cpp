@@ -230,6 +230,29 @@ absl::Status GEDS::isValid(const std::string &bucket, const std::string &key) {
   return absl::OkStatus();
 }
 
+absl::StatusOr<std::pair<std::string, std::string>>
+GEDS::parseObjectName(const std::string &objectName) {
+  auto separator = objectName.find('/');
+  if (separator == std::string::npos) {
+    auto message = "cannot create file: " + objectName + " invalid format!";
+    LOG_ERROR(message);
+    return absl::InvalidArgumentError(message);
+  }
+
+  auto bucket = objectName.substr(0, separator);
+  auto key = objectName.substr(separator + 1);
+  return {{bucket, key}};
+}
+
+absl::StatusOr<GEDSFile> GEDS::create(const std::string &objectName, bool overwrite) {
+  auto s = parseObjectName(objectName);
+  if (!s.ok()) {
+    return s.status();
+  }
+  auto [bucket, key] = *s;
+  return create(bucket, key, overwrite);
+}
+
 absl::StatusOr<GEDSFile> GEDS::create(const std::string &bucket, const std::string &key,
                                       bool overwrite) {
   LOG_DEBUG("create ", bucket, "/", key);
@@ -336,6 +359,15 @@ absl::Status GEDS::lookupBucket(const std::string &bucket) {
   return absl::OkStatus();
 }
 
+absl::StatusOr<GEDSFile> GEDS::open(const std::string &objectName) {
+  auto s = parseObjectName(objectName);
+  if (!s.ok()) {
+    return s.status();
+  }
+  auto [bucket, key] = *s;
+  return open(bucket, key);
+}
+
 absl::StatusOr<GEDSFile> GEDS::open(const std::string &bucket, const std::string &key, bool retry) {
   LOG_DEBUG("open ", bucket, "/", key);
   auto fh = openAsFileHandle(bucket, key);
@@ -356,6 +388,15 @@ absl::StatusOr<GEDSFile> GEDS::open(const std::string &bucket, const std::string
     return open(bucket, key, false);
   }
   return absl::UnavailableError("The file " + path.name + " is invalid.");
+}
+
+absl::StatusOr<GEDSFile> GEDS::localOpen(const std::string &objectName) {
+  auto s = parseObjectName(objectName);
+  if (!s.ok()) {
+    return s.status();
+  }
+  auto [bucket, key] = *s;
+  return localOpen(bucket, key);
 }
 
 absl::StatusOr<GEDSFile> GEDS::localOpen(const std::string &bucket, const std::string &key) {
