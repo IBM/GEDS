@@ -536,4 +536,19 @@ JNIEXPORT jboolean JNICALL Java_com_ibm_geds_GEDS_nativeUnsubscribe(JNIEnv *env,
   return JNI_TRUE;
 }
 
+/*
+ * Class:     com_ibm_geds_GEDS
+ * Method:    nativeRelocate
+ * Signature: (JZ)V
+ */
+JNIEXPORT void JNICALL Java_com_ibm_geds_GEDS_nativeRelocate(JNIEnv *env, jobject, jlong nativePtr,
+                                                             jboolean force) {
+  if (nativePtr == 0) {
+    throwNullPointerException(env, "Invalid nativePtr.");
+    return;
+  }
+  auto container = reinterpret_cast<GEDSContainer *>(nativePtr); // NOLINT
+  container->element->relocate(force);
+}
+
 // NOLINTEND(modernize-use-trailing-return-type)

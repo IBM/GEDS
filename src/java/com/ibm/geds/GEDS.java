@@ -288,6 +288,17 @@ public class GEDS {
 
     private native void nativeSyncObjectStoreConfigs(long ptr);
 
+    public void relocate() {
+        relocate(false);
+    }
+
+    public void relocate(boolean force) {
+        checkGEDS();
+        nativeRelocate(nativePtr, force);
+    }
+
+    private native void nativeRelocate(long nativePtr, boolean force);
+
     /**
          * Create a subscription streaming connection to MDS for the GEDS client. The streaming connection runs from within a Thread.
     */

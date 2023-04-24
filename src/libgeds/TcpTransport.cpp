@@ -18,6 +18,7 @@
 #include <memory>
 #include <mutex>
 #include <pthread.h>
+#include <shared_mutex>
 #include <string>
 #include <sys/epoll.h>
 #include <sys/sendfile.h>
@@ -111,27 +112,46 @@ TcpPeer::~TcpPeer() {
 }
 
 void TcpPeer::cleanup() {
-  epMux.lock();
+  auto lock = getWriteLock();
   for (auto &endpoint : endpoints) {
     auto tep = endpoint.second;
     shutdown(tep->sock, SHUT_RDWR);
     LOG_DEBUG("Endpoint shutdown: socket: ", tep->sock, " sent: ", tep->tx_bytes,
               " received: ", tep->rx_bytes);
   }
-  epMux.unlock();
+  endpoints.clear();
+
+  if (recvQueue.size()) {
+    LOG_ERROR("Recv Queue not empty for TcpPeer: Removing tasks from recv queue");
+    auto &stats = (*sendQueue_stats);
+
+    recvQueue.remove([&stats](const uint64_t, std::shared_ptr<SocketRecvWork> &work) {
+      work->p->set_value(absl::UnavailableError("TcpPeer closed"));
+      stats--;
+      return true;
+    });
+  }
+
+  if (!sendQueue.empty()) {
+    LOG_ERROR("Send Queue not empty for TcpPeer: Removing tasks from send queue");
+    std::optional<std::shared_ptr<SocketSendWork>> task = sendQueue.pop();
+    while (task.has_value()) {
+      (*sendQueue_stats)--;
+      task = sendQueue.pop();
+    }
+  }
 }
 
 bool TcpPeer::SocketTxReady(int sock) {
   bool rv = false;
-  epMux.lock_shared();
+  auto lock = getReadLock();
   auto it = endpoints.find(sock);
-  if (it->second) {
+  if (it != endpoints.end()) {
     auto tep = it->second;
     tep->send_ctx.stateMux.lock();
     rv = processEndpointSend(tep);
     tep->send_ctx.stateMux.unlock();
   }
-  epMux.unlock_shared();
   return rv;
 }
 
@@ -144,6 +164,11 @@ bool TcpPeer::SocketTxReady(int sock) {
  */
 bool TcpPeer::processEndpointSend(std::shared_ptr<TcpEndpoint> tep) {
   struct TcpSendState *ctx = &tep->send_ctx;
+  if (ctx->state == PROC_FAILED) {
+    LOG_ERROR("TcpPeer: Context is in failed state! Aborting!");
+    return false;
+  }
+
   int sock = tep->sock;
 
   ssize_t sent = 0;
@@ -179,6 +204,7 @@ bool TcpPeer::processEndpointSend(std::shared_ptr<TcpEndpoint> tep) {
       ctx->hdr.datalen = work->len;
       ctx->hdr.offset = work->off;
       ctx->hdr.type = work->type;
+      ctx->hdr.error = work->error;
       ctx->va = work->va;
       ctx->in_fd = work->in_fd;
       ctx->progress = 0;
@@ -333,10 +359,9 @@ void TcpTransport::tcpTxThread(unsigned int id) {
 }
 
 bool TcpPeer::SocketStateChange(int sock, uint32_t change) {
-  epMux.lock();
+  auto lock = getWriteLock();
   auto it = endpoints.find(sock);
-  if (!it->second) {
-    epMux.unlock();
+  if (it == endpoints.end()) {
     return true;
   }
   auto tep = it->second;
@@ -356,8 +381,6 @@ bool TcpPeer::SocketStateChange(int sock, uint32_t change) {
   }
   if (endpoints.size() != 0)
     dead = false;
-  epMux.unlock();
-
   return dead;
 }
 
@@ -371,9 +394,9 @@ void TcpPeer::TcpProcessRpcGet(uint64_t reqId, const std::string objName, size_t
 
   auto bucket = objName.substr(0, separator);
   auto key = objName.substr(separator + 1);
-  auto file = _geds->open(bucket, key);
+  auto file = _geds->localOpen(bucket, key);
   if (!file.ok()) {
-    LOG_ERROR("cannot open file: ", objName);
+    LOG_DEBUG("cannot open file: ", objName, " reason: ", file.status().message());
     sendRpcReply(reqId, -1, 0, 0, EINVAL);
     return;
   }
@@ -421,16 +444,16 @@ void TcpPeer::TcpProcessRpcGet(uint64_t reqId, const std::string objName, size_t
  */
 bool TcpPeer::processEndpointRecv(int sock) {
   std::shared_ptr<TcpEndpoint> tep;
-  epMux.lock_shared();
-  auto it = endpoints.find(sock);
-  if (it->second) {
+  {
+    auto lock = getReadLock();
+    auto it = endpoints.find(sock);
+    if (it == endpoints.end()) {
+      LOG_ERROR("No peer for this endpoint: ", sock);
+      return false;
+    }
     tep = it->second;
-    epMux.unlock_shared();
-  } else {
-    epMux.unlock_shared();
-    LOG_ERROR("No peer for this endpoint: ", sock);
-    return false;
   }
+
   TcpRcvState *ctx = &tep->recv_ctx;
   int op = -1;
   ssize_t rv = 0;
@@ -544,9 +567,13 @@ bool TcpPeer::processEndpointRecv(int sock) {
                       " Ep: ", tep->sock);
             ctx->hdr.datalen = 0;
           }
-          auto message = "Error during GET_REPLY: " + std::to_string(ctx->hdr.error) +
+          auto message = "Error from GET_REPLY: " + std::to_string(ctx->hdr.error) +
                          "length: " + std::to_string(datalen) + " Ep: " + std::to_string(tep->sock);
+          LOG_DEBUG(message);
           ctx->p->set_value(absl::AbortedError(message));
+          ctx->p = nullptr;
+          ctx->state = PROC_IDLE;
+          ctx->progress = 0;
           break;
         }
       }
@@ -558,7 +585,6 @@ bool TcpPeer::processEndpointRecv(int sock) {
           if (errno == EWOULDBLOCK) {
             return true;
           }
-          ctx->state = PROC_FAILED;
           int err = errno;
           int eio = EIO;
           std::string message = "Error during recv: ";
@@ -568,6 +594,8 @@ bool TcpPeer::processEndpointRecv(int sock) {
             message += "got EIO " + std::to_string(eio);
           }
           ctx->p->set_value(absl::AbortedError(message));
+          ctx->p = nullptr;
+          ctx->state = PROC_FAILED;
           return false;
         }
         ctx->progress += rv;
@@ -578,6 +606,7 @@ bool TcpPeer::processEndpointRecv(int sock) {
          */
         tep->rx_bytes += ctx->progress;
         ctx->p->set_value(datalen);
+        ctx->p = nullptr;
         ctx->state = PROC_IDLE;
       }
       break;
@@ -590,6 +619,14 @@ bool TcpPeer::processEndpointRecv(int sock) {
   if (rv >= 0 || rv == -EAGAIN)
     return true;
 
+  if (ctx->p.get()) {
+    auto message =
+        "Protocol error: Aborted with " + std::to_string(rv) + ": " + std::string{strerror(rv)};
+    LOG_ERROR(message);
+    ctx->p->set_value(absl::AbortedError(message));
+    ctx->p = nullptr;
+    ctx->state = PROC_FAILED;
+  }
   if (rv == -ENOENT)
     LOG_ERROR("Socket close on read");
   else {
@@ -816,7 +853,7 @@ std::shared_ptr<TcpPeer> TcpTransport::getPeer(sockaddr *peer) {
 }
 
 void TcpPeer::updateIoStats() {
-  epMux.lock_shared();
+  auto lock = getReadLock();
   for (auto &endpoint : endpoints) {
     auto tep = endpoint.second;
     /*
@@ -825,14 +862,13 @@ void TcpPeer::updateIoStats() {
     tep->tx_bytes /= 2;
     tep->rx_bytes /= 2;
   }
-  epMux.unlock_shared();
 }
 
 std::shared_ptr<TcpEndpoint> TcpPeer::getLeastUsedTx(size_t to_send) {
   std::shared_ptr<TcpEndpoint> send_tep = nullptr, tep = nullptr;
   size_t min_sent = UINT_LEAST32_MAX;
 
-  epMux.lock_shared();
+  auto lock = getReadLock();
   for (auto &endpoint : endpoints) {
     tep = endpoint.second;
     if (tep->state != ALL_OPEN) {
@@ -848,7 +884,6 @@ std::shared_ptr<TcpEndpoint> TcpPeer::getLeastUsedTx(size_t to_send) {
       send_tep = tep;
     }
   }
-  epMux.unlock_shared();
   if (send_tep)
     return send_tep;
 
@@ -918,9 +953,10 @@ TcpPeer::sendRpcRequest(uint64_t dest, std::string name, size_t off, size_t len)
   }
   if (!send_ok) {
     LOG_ERROR("RPC Req Send failed");
-    recvQueue.remove(reqId);
-    (*recvQueue_stats)--;
-    recvWork->p->set_value(absl::AbortedError("Unable to proceed: "));
+    if (recvQueue.remove(reqId)) {
+      (*recvQueue_stats)--;
+      recvWork->p->set_value(absl::AbortedError("Unable to proceed: "));
+    }
   }
   return recvWork->p;
 }

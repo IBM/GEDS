@@ -22,12 +22,14 @@ target_link_libraries(geds_s3
     geds_statistics
     ${AWSSDK_LINK_LIBRARIES}
     ${AWSSDK_PLATFORM_DEPS}
+    ${GEDS_EXTRA_LINKER_FLAGS}
 )
 
 target_include_directories(geds_s3
     PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${AWSSDK_INCLUDE_DIRS}
+    ${Boost_INCLUDE_DIRS}
 )
 set_target_properties(geds_s3
     PROPERTIES

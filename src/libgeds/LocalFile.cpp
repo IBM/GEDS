@@ -10,6 +10,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
+#include <cstring>
 #include <fcntl.h>
 #include <ios>
 #include <stdexcept>
@@ -17,6 +18,7 @@
 #include <unistd.h>
 #include <vector>
 
+#include "Filesystem.h"
 #include "Logging.h"
 
 #define CHECK_FILE_OPEN                                                                            \
@@ -52,18 +54,32 @@ LocalFile::LocalFile(std::string pathArg, bool overwrite) : _path(std::move(path
 
 LocalFile::~LocalFile() {
   if (_fd >= 0) {
-    if (fsync(_fd) != 0) {
-      int error = errno;
-      auto message = "Fsync on " + _path + " reported: " + strerror(error);
-      LOG_ERROR(message);
-    }
     (void)::close(_fd);
+    _fd = -1;
+
+    auto removeStatus = removeFile(_path);
+    if (!removeStatus.ok()) {
+      LOG_ERROR("Unable to delete ", _path, " reason: ", removeStatus.message());
+    }
   }
-  _fd = -1;
 }
 
 void LocalFile::notifyUnused() {
   // NOOP.
+}
+
+absl::Status LocalFile::fsync() {
+  CHECK_FILE_OPEN
+
+  int e = 0;
+  do {
+    e = ::fsync(_fd);
+  } while (e != 0 && errno == EINTR);
+  if (e != 0) {
+    int err = errno;
+    return absl::UnknownError("Unable to fsync " + _path + ": " + strerror(err));
+  }
+  return absl::OkStatus();
 }
 
 absl::StatusOr<size_t> LocalFile::fileSize() const {

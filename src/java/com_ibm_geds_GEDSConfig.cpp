@@ -75,7 +75,6 @@ JNIEXPORT void JNICALL Java_com_ibm_geds_GEDSConfig_nativeSetInt(JNIEnv *env, jc
   env->ReleaseStringUTFChars(jKey, key);
 }
 
-
 /*
  * Class:     com_ibm_geds_GEDSConfig
  * Method:    nativeSetLong

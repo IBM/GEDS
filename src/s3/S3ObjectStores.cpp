@@ -4,12 +4,14 @@
  */
 
 #include "S3ObjectStores.h"
+#include "Logging.h"
 #include "S3Endpoint.h"
 
 namespace geds::s3 {
 
 absl::Status ObjectStores::registerStore(const std::string &label, std::string endpointUrl,
                                          std::string accessKey, std::string secretKey) {
+  LOG_INFO("Registering object store: ", label, " with ", endpointUrl);
   auto lock = getWriteLock();
   auto exists = _map.find(label);
   if (exists != _map.end()) {
@@ -17,7 +19,7 @@ absl::Status ObjectStores::registerStore(const std::string &label, std::string e
     if (endpoint->_accessKey == accessKey && endpoint->_endpointUrl == endpointUrl) {
       return absl::OkStatus();
     }
-    return absl::AlreadyExistsError(label + " already exists!");
+    return absl::AlreadyExistsError(label + " already exists with different values!");
   }
   auto obj = std::make_shared<Endpoint>(std::move(endpointUrl), std::move(accessKey),
                                         std::move(secretKey));

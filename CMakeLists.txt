@@ -45,7 +45,7 @@ set(compilerIsGNU $<CMAKE_CXX_COMPILER_ID:GNU>)
 set(compilerIsClang $<CMAKE_CXX_COMPILER_ID:GNU>)
 
 set(GEDS_EXTRA_COMPILER_FLAGS -Wall -Wextra -Werror) # -Wpedantic # error: ISO C++ does not support ‘__int128’ for ‘type name’ [-Werror=pedantic]
-
+set(GEDS_EXTRA_LINKER_FLAGS  )
 if(${compilerIsClang})
     set(GEDS_EXTRA_COMPILER_FLAGS ${GEDS_EXTRA_COMPILER_FLAGS} -Wpedantic)
 endif()
