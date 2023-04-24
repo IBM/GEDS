@@ -585,6 +585,13 @@ absl::StatusOr<std::vector<GEDSFileStatus>> GEDS::list(const std::string &bucket
 
 absl::StatusOr<std::vector<GEDSFileStatus>> GEDS::list(const std::string &bucket,
                                                        const std::string &prefix, char delimiter) {
+  return listFromCache(bucket, prefix, delimiter, false);
+}
+
+absl::StatusOr<std::vector<GEDSFileStatus>> GEDS::listFromCache(const std::string &bucket,
+                                                                const std::string &prefix,
+                                                                char delimiter,
+                                                                const bool useCache) {
   LOG_DEBUG(bucket, "/", prefix);
 
   bool prefixExists = false;

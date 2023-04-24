@@ -5,10 +5,6 @@
 
 #include "MetadataService.h"
 
-#include <boost/lexical_cast.hpp>
-#include <boost/uuid/uuid.hpp>
-#include <boost/uuid/uuid_generators.hpp>
-#include <boost/uuid/uuid_io.hpp>
 #include <grpcpp/client_context.h>
 #include <grpcpp/support/status.h>
 #include <grpcpp/support/status_code_enum.h>
@@ -17,7 +13,6 @@
 #include "GEDS.h"
 #include "Logging.h"
 #include "ObjectStoreConfig.h"
-#include "PubSub.h"
 #include "Status.h"
 #include "geds.grpc.pb.h"
 #include "geds.pb.h"
@@ -39,10 +34,7 @@ static std::string printGRPCError(const grpc::Status &status) {
 
 MetadataService::MetadataService(std::string serverAddress)
     : _connectionState(ConnectionState::Disconnected), _channel(nullptr),
-      serverAddress(std::move(serverAddress)) {
-  boost::uuids::uuid uuid_generated = boost::uuids::random_generator()();
-  uuid = boost::lexical_cast<std::string>(uuid_generated);
-}
+      serverAddress(std::move(serverAddress)) {}
 
 MetadataService::~MetadataService() {
   if (_connectionState == ConnectionState::Connected) {
@@ -90,6 +82,7 @@ absl::Status MetadataService::disconnect() {
 
 absl::Status MetadataService::registerObjectStoreConfig(const ObjectStoreConfig &mapping) {
   METADATASERVICE_CHECK_CONNECTED;
+
   geds::rpc::ObjectStoreConfig request;
   geds::rpc::StatusResponse response;
   grpc::ClientContext context;
@@ -110,6 +103,7 @@ absl::Status MetadataService::registerObjectStoreConfig(const ObjectStoreConfig 
 absl::StatusOr<std::vector<std::shared_ptr<ObjectStoreConfig>>>
 MetadataService::listObjectStoreConfigs() {
   METADATASERVICE_CHECK_CONNECTED;
+
   geds::rpc::EmptyParams request;
   geds::rpc::AvailableObjectStoreConfigs response;
   grpc::ClientContext context;
@@ -454,7 +448,10 @@ absl::Status MetadataService::subscribeStream(const geds::SubscriptionEvent &eve
     auto obj_id = geds::ObjectID{objectPublication.id().bucket(), objectPublication.id().key()};
     auto obj_info =
         geds::ObjectInfo{objectPublication.info().location(), objectPublication.info().size(),
-                         objectPublication.info().sealedoffset()};
+                         objectPublication.info().sealedoffset(),
+                         objectPublication.info().has_metadata()
+                             ? std::make_optional(objectPublication.info().metadata())
+                             : std::nullopt};
     auto obj = geds::Object{obj_id, obj_info};
 
     if (subscription_response.publicationtype() == geds::rpc::CREATE_OBJECT) {
