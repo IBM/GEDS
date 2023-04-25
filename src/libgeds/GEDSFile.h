@@ -132,6 +132,8 @@ public:
 
   absl::StatusOr<int> rawFd() const;
 
+  absl::StatusOr<uint8_t *> rawPtr();
+
   absl::Status copyTo(GEDSFile &destination) const;
 
   absl::Status seal();

@@ -57,7 +57,7 @@ public:
 
   absl::StatusOr<int> rawFd() const;
 
-  absl::StatusOr<uint8_t *> rawPtr();
+  absl::StatusOr<uint8_t *> rawPtr() const;
 
   absl::StatusOr<size_t> readBytes(uint8_t *bytes, size_t position, size_t length);
 

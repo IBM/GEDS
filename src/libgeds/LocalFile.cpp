@@ -93,7 +93,7 @@ absl::StatusOr<int> LocalFile::rawFd() const {
   return _fd;
 }
 
-absl::StatusOr<uint8_t *> LocalFile::rawPtr() {
+absl::StatusOr<uint8_t *> LocalFile::rawPtr() const {
   return absl::UnavailableError("RawPtr is not supported for LocalFile.");
 }
 

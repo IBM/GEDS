@@ -74,6 +74,8 @@ absl::Status GEDSFile::writeBytes(const uint8_t *bytes, size_t position, size_t 
 
 absl::StatusOr<int> GEDSFile::rawFd() const { return _fileHandle->rawFd(); }
 
+absl::StatusOr<uint8_t *> GEDSFile::rawPtr() { return _fileHandle->rawPtr(); }
+
 absl::Status GEDSFile::copyTo(GEDSFile &destination) const {
   auto status = _fileHandle->download(destination._fileHandle);
   if (!status.ok()) {
