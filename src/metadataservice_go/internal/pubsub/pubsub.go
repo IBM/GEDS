@@ -64,13 +64,13 @@ func (s *Service) Subscribe(subscription *protos.SubscriptionEvent) error {
 	return nil
 }
 
-func (s *Service) SubscribeStream(subscription *protos.SubscriptionStreamEvent,
+func (s *Service) SubscribeStream(subscriber *protos.SubscriptionStreamEvent,
 	stream protos.MetadataService_SubscribeStreamServer) error {
-	logger.InfoLogger.Println("got subscriber: ", subscription)
+	logger.InfoLogger.Println("got subscriber: ", subscriber.SubscriberID)
 	finished := make(chan bool, 2)
 	s.subscribersStreamLock.Lock()
-	if streamer, ok := s.subscriberStreams[subscription.SubscriberID]; !ok {
-		s.subscriberStreams[subscription.SubscriberID] = &SubscriberStream{
+	if streamer, ok := s.subscriberStreams[subscriber.SubscriberID]; !ok {
+		s.subscriberStreams[subscriber.SubscriberID] = &SubscriberStream{
 			stream:   stream,
 			finished: finished,
 		}
@@ -127,7 +127,6 @@ func (s *Service) sendPublication(publication *protos.SubscriptionStreamResponse
 	s.subscribersStreamLock.RLock()
 	streamer, ok := s.subscriberStreams[subscriberID]
 	s.subscribersStreamLock.RUnlock()
-
 	if !ok || streamer.stream == nil {
 		logger.ErrorLogger.Println("subscriber stream not found: " + subscriberID)
 		return
