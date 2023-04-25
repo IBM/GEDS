@@ -40,7 +40,8 @@ target_link_libraries(
         geds_java
         PRIVATE
         geds_jar-native
-        libgeds)
+        libgeds
+        ${GEDS_EXTRA_LINKER_FLAGS})
 target_include_directories(geds_java
         PRIVATE
         "${JAVA_INCLUDE_PATH2}"

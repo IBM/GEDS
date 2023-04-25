@@ -5,9 +5,6 @@
 
 #include "MMAPFile.h"
 
-#include "Filesystem.h"
-#include "Logging.h"
-
 #include <algorithm>
 #include <cstddef>
 #include <exception>
@@ -17,6 +14,9 @@
 #include <string>
 #include <sys/mman.h>
 #include <unistd.h>
+
+#include "Filesystem.h"
+#include "Logging.h"
 
 namespace geds::filesystem {
 
@@ -42,14 +42,6 @@ MMAPFile::~MMAPFile() {
   auto lock = getWriteLock();
   release();
   if (_fd >= 0) {
-    // Truncate file to size.
-    int e = ftruncate64(_fd, _size);
-    if (e < 0) {
-      int err = errno;
-      std::string errorMessage = "Unable to ftruncate file " + _path + ": " + strerror(err);
-      LOG_ERROR(errorMessage);
-    }
-
     (void)::close(_fd);
     _fd = -1;
 

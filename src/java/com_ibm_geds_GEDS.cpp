@@ -345,8 +345,7 @@ JNIEXPORT jboolean JNICALL Java_com_ibm_geds_GEDS_nativeDeletePrefix(JNIEnv *env
 // NOLINTNEXTLINE
 JNIEXPORT jobjectArray JNICALL Java_com_ibm_geds_GEDS_nativeList(JNIEnv *env, jclass,
                                                                  jlong nativePtr, jstring jBucket,
-                                                                 jstring jKey, jchar delimiter,
-                                                                 jboolean useCache) {
+                                                                 jstring jKey, jchar delimiter){
   static auto counter = geds::Statistics::createCounter("Java GEDS: list");
 
   if (nativePtr == 0) {
@@ -357,7 +356,7 @@ JNIEXPORT jobjectArray JNICALL Java_com_ibm_geds_GEDS_nativeList(JNIEnv *env, jc
 
   auto bucket = env->GetStringUTFChars(jBucket, nullptr);
   auto key = env->GetStringUTFChars(jKey, nullptr);
-  auto listStatus = container->element->listFromCache(bucket, key, delimiter, useCache);
+  auto listStatus = container->element->list(bucket, key, delimiter);
   env->ReleaseStringUTFChars(jBucket, bucket);
   env->ReleaseStringUTFChars(jKey, key);
   *counter += 1;
@@ -460,36 +459,6 @@ JNIEXPORT void JNICALL Java_com_ibm_geds_GEDS_nativeSyncObjectStoreConfigs(JNIEn
 }
 
 // NOLINTNEXTLINE(modernize-use-trailing-return-type)
-JNIEXPORT jboolean JNICALL Java_com_ibm_geds_GEDS_nativeSubscribeStreamWithThread(JNIEnv *env,
-                                                                                  jclass,
-                                                                                  jlong nativePtr) {
-  if (nativePtr == 0) {
-    return throwNullPointerException(env, "Invalid nativePtr.");
-  }
-  auto container = reinterpret_cast<GEDSContainer *>(nativePtr); // NOLINT
-  auto status = container->element->subscribeStreamWithThread(geds::SubscriptionEvent{});
-  if (!status.ok()) {
-    throwIOException(env, status.message());
-  }
-  return JNI_TRUE;
-}
-
-// NOLINTNEXTLINE(modernize-use-trailing-return-type)
-JNIEXPORT jboolean JNICALL Java_com_ibm_geds_GEDS_nativeStopSubscribeStreamWithThread(JNIEnv *env,
-                                                                                  jclass,
-                                                                                  jlong nativePtr) {
-  if (nativePtr == 0) {
-    return throwNullPointerException(env, "Invalid nativePtr.");
-  }
-  auto container = reinterpret_cast<GEDSContainer *>(nativePtr); // NOLINT
-  auto status = container->element->stopSubscribeStreamWithThread();
-  if (!status.ok()) {
-    throwIOException(env, status.message());
-  }
-  return JNI_TRUE;
-}
-
-// NOLINTNEXTLINE(modernize-use-trailing-return-type)
 JNIEXPORT jboolean JNICALL Java_com_ibm_geds_GEDS_nativeSubscribe(JNIEnv *env, jclass,
                                                                   jlong nativePtr, jstring jBucket,
                                                                   jstring jKey,
@@ -501,8 +470,8 @@ JNIEXPORT jboolean JNICALL Java_com_ibm_geds_GEDS_nativeSubscribe(JNIEnv *env, j
 
   auto bucket = env->GetStringUTFChars(jBucket, nullptr);
   auto key = env->GetStringUTFChars(jKey, nullptr);
-  auto status = container->element->subscribe(geds::SubscriptionEvent{
-      "", bucket, key, static_cast<geds::rpc::SubscriptionType>(jSubscriptionType)});
+  auto status = container->element->subscribe(geds::SubscriptionEvent{bucket, key,
+                                                                      static_cast<geds::rpc::SubscriptionType>(jSubscriptionType)});
   env->ReleaseStringUTFChars(jBucket, bucket);
   env->ReleaseStringUTFChars(jKey, key);
 
@@ -524,8 +493,8 @@ JNIEXPORT jboolean JNICALL Java_com_ibm_geds_GEDS_nativeUnsubscribe(JNIEnv *env,
 
   auto bucket = env->GetStringUTFChars(jBucket, nullptr);
   auto key = env->GetStringUTFChars(jKey, nullptr);
-  auto status = container->element->unsubscribe(geds::SubscriptionEvent{
-      "", bucket, key, static_cast<geds::rpc::SubscriptionType>(jSubscriptionType)});
+  auto status = container->element->unsubscribe(geds::SubscriptionEvent{bucket, key,
+                                                                        static_cast<geds::rpc::SubscriptionType>(jSubscriptionType)});
 
   env->ReleaseStringUTFChars(jBucket, bucket);
   env->ReleaseStringUTFChars(jKey, key);
@@ -534,6 +503,21 @@ JNIEXPORT jboolean JNICALL Java_com_ibm_geds_GEDS_nativeUnsubscribe(JNIEnv *env,
     throwIOException(env, status.message());
   }
   return JNI_TRUE;
+}
+
+/*
+ * Class:     com_ibm_geds_GEDS
+ * Method:    nativeRelocate
+ * Signature: (JZ)V
+ */
+JNIEXPORT void JNICALL Java_com_ibm_geds_GEDS_nativeRelocate(JNIEnv *env, jobject, jlong nativePtr,
+                                                             jboolean force) {
+  if (nativePtr == 0) {
+    throwNullPointerException(env, "Invalid nativePtr.");
+    return;
+  }
+  auto container = reinterpret_cast<GEDSContainer *>(nativePtr); // NOLINT
+  container->element->relocate(force);
 }
 
 // NOLINTEND(modernize-use-trailing-return-type)

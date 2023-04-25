@@ -17,4 +17,10 @@ absl::Status seal(std::shared_ptr<GEDS> geds, GEDSFileHandle &fileHandle, bool u
                   size_t size) {
   return geds->seal(fileHandle, update, size);
 }
+
+absl::StatusOr<std::shared_ptr<geds::s3::Endpoint>> getS3Endpoint(std::shared_ptr<GEDS> geds,
+                                                                  const std::string &bucket) {
+  return geds->getS3Endpoint(bucket);
+}
+
 } // namespace geds::service

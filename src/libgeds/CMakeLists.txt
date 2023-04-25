@@ -28,6 +28,8 @@ SET(SOURCES
         GEDSFileHandle.cpp
         GEDSProtocol.h
         GEDSProtocol.cpp
+        GEDSRelocatableFileHandle.cpp
+        GEDSRelocatableFileHandle.h
         GEDSService.cpp
         GEDSService.h
         HttpServer.cpp
@@ -73,6 +75,7 @@ target_compile_definitions(geds_objlib
 target_include_directories(geds_objlib
         PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}
+        ${Boost_INCLUDE_DIRS}
 )
 target_link_libraries(geds_objlib
         PUBLIC
@@ -82,6 +85,7 @@ target_link_libraries(geds_objlib
         geds_utility
         geds_statistics
         geds_s3
+        ${GEDS_EXTRA_LINKER_FLAGS}
 )
  
 # Static library

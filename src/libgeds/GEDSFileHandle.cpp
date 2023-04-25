@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <stdexcept>
+#include <string>
 #include <vector>
 
 #include "GEDS.h"
@@ -17,9 +18,12 @@
 #include "Statistics.h"
 
 GEDSFileHandle::GEDSFileHandle(std::shared_ptr<GEDS> gedsService, std::string bucketArg,
-                               std::string keyArg)
+                               std::string keyArg, std::optional<std::string> metadataArg)
     : enable_shared_from_this(), bucket(std::move(bucketArg)), key(std::move(keyArg)),
-      identifier(bucket + "/" + key), _gedsService(gedsService) {}
+      identifier(bucket + "/" + key), _metadata(std::move(metadataArg)), _gedsService(gedsService) {
+  LOG_DEBUG("Created filehandle ", identifier, " with metadata ",
+            _metadata.has_value() ? std::to_string(_metadata.value().size()) + "bytes" : "<none>");
+}
 
 GEDSFileHandle::~GEDSFileHandle() {
   if (_openCount.load() != 0) {
@@ -32,10 +36,13 @@ GEDSFileHandle::~GEDSFileHandle() {
 
 int64_t GEDSFileHandle::openCount() const { return _openCount; }
 void GEDSFileHandle::increaseOpenCount() {
+  auto lock = lockFile();
   _openCount++;
   _lastOpened = std::chrono::system_clock::now();
 }
 void GEDSFileHandle::decreaseOpenCount() {
+  auto lock = lockFile();
+
   _openCount--;
   _lastReleased = std::chrono::system_clock::now();
   if (_openCount == 0) {
@@ -43,15 +50,32 @@ void GEDSFileHandle::decreaseOpenCount() {
   }
 }
 
-void GEDSFileHandle::notifyUnused() {
-  LOG_DEBUG("The file ", identifier, " is unused.");
+bool GEDSFileHandle::isValid() const {
+  auto lock = lockFile();
+  return _isValid;
 }
+
+absl::StatusOr<std::shared_ptr<GEDSFileHandle>> GEDSFileHandle::relocate() {
+  return absl::UnavailableError("Relocating is not supported for this file handle type!");
+}
+
+void GEDSFileHandle::notifyUnused() { LOG_DEBUG("The file ", identifier, " is unused."); }
 
 std::chrono::system_clock::time_point GEDSFileHandle::lastOpened() const { return _lastOpened; }
 std::chrono::system_clock::time_point GEDSFileHandle::lastReleased() const { return _lastReleased; }
 
 size_t GEDSFileHandle::roundToNearestMultiple(size_t number, size_t factor) const {
   return ((number + factor - 1) / factor) * factor;
+}
+
+std::optional<std::string> GEDSFileHandle::metadata() const {
+  auto lock = lockFile();
+  return _metadata;
+}
+
+absl::Status GEDSFileHandle::setMetadata(std::optional<std::string> /* unused metadata */,
+                                         bool /* unused seal */) {
+  return absl::UnavailableError("Cannot set metadata on read-only file.");
 }
 
 absl::StatusOr<size_t> GEDSFileHandle::readBytes(uint8_t * /* unused bytes */,
@@ -132,5 +156,5 @@ absl::Status GEDSFileHandle::seal() {
 absl::StatusOr<GEDSFile> GEDSFileHandle::open() {
   // Avoid race-conditions when marking files as unused.
   auto lock = lockFile();
-  return GEDSFile(shared_from_this());
+  return GEDSFile(_gedsService, shared_from_this());
 }

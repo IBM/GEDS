@@ -81,7 +81,8 @@ public:
                          size_t length);
 
   absl::Status putObject(const std::string &bucket, const std::string &key,
-                         std::shared_ptr<std::iostream> stream);
+                         std::shared_ptr<std::iostream> stream,
+                         std::optional<size_t> length = std::nullopt) const;
 
   absl::StatusOr<size_t> readBytes(const std::string &bucket, const std::string &key,
                                    uint8_t *bytes, size_t position, size_t length) const;

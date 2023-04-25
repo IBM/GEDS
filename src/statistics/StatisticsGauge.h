@@ -25,6 +25,7 @@ public:
   void printForPrometheus(std::stringstream &stream) const override;
   void printForConsole(std::stringstream &stream) const override;
 
+  StatisticsGauge &operator=(size_t v);
   StatisticsGauge &operator+=(size_t v) override;
   StatisticsGauge &operator-=(size_t v) override;
 

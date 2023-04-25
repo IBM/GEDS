@@ -12,12 +12,11 @@
 #include <grpcpp/client_context.h>
 #include <grpcpp/support/status.h>
 #include <grpcpp/support/status_code_enum.h>
-#include <string>
+#include <optional>
 
 #include "GEDS.h"
 #include "Logging.h"
 #include "ObjectStoreConfig.h"
-#include "PubSub.h"
 #include "Status.h"
 #include "geds.grpc.pb.h"
 #include "geds.pb.h"
@@ -90,6 +89,7 @@ absl::Status MetadataService::disconnect() {
 
 absl::Status MetadataService::registerObjectStoreConfig(const ObjectStoreConfig &mapping) {
   METADATASERVICE_CHECK_CONNECTED;
+
   geds::rpc::ObjectStoreConfig request;
   geds::rpc::StatusResponse response;
   grpc::ClientContext context;
@@ -110,6 +110,7 @@ absl::Status MetadataService::registerObjectStoreConfig(const ObjectStoreConfig 
 absl::StatusOr<std::vector<std::shared_ptr<ObjectStoreConfig>>>
 MetadataService::listObjectStoreConfigs() {
   METADATASERVICE_CHECK_CONNECTED;
+
   geds::rpc::EmptyParams request;
   geds::rpc::AvailableObjectStoreConfigs response;
   grpc::ClientContext context;
@@ -231,6 +232,9 @@ absl::Status MetadataService::createObject(const geds::Object &obj) {
   info->set_location(obj.info.location);
   info->set_size(obj.info.size);
   info->set_sealedoffset(obj.info.sealedOffset);
+  if (obj.info.metadata.has_value()) {
+    info->set_metadata(obj.info.metadata.value());
+  }
 
   geds::rpc::StatusResponse response;
   grpc::ClientContext context;
@@ -245,7 +249,6 @@ absl::Status MetadataService::createObject(const geds::Object &obj) {
 absl::Status MetadataService::updateObject(const geds::Object &obj) {
   METADATASERVICE_CHECK_CONNECTED;
 
-  LOG_DEBUG("test update");
   geds::rpc::Object request;
   auto id = request.mutable_id();
   id->set_bucket(obj.id.bucket);
@@ -254,6 +257,9 @@ absl::Status MetadataService::updateObject(const geds::Object &obj) {
   info->set_location(obj.info.location);
   info->set_size(obj.info.size);
   info->set_sealedoffset(obj.info.sealedOffset);
+  if (obj.info.metadata.has_value()) {
+    info->set_metadata(obj.info.metadata.value());
+  }
   geds::rpc::StatusResponse response;
   grpc::ClientContext context;
 
@@ -317,7 +323,9 @@ absl::StatusOr<geds::Object> MetadataService::lookup(const geds::ObjectID &id, b
 absl::StatusOr<geds::Object> MetadataService::lookup(const std::string &bucket,
                                                      const std::string &key, bool invalidate) {
   METADATASERVICE_CHECK_CONNECTED;
+
   if (!invalidate) {
+    LOG_DEBUG("Lookup cache", bucket, "/", key);
     auto c = _mdsCache.lookup(bucket, key);
     if (c.ok()) {
       return c;
@@ -331,6 +339,8 @@ absl::StatusOr<geds::Object> MetadataService::lookup(const std::string &bucket,
   geds::rpc::ObjectResponse response;
   grpc::ClientContext context;
 
+  LOG_DEBUG("Lookup remote", bucket, "/", key);
+
   auto status = _stub->Lookup(&context, request, &response);
   if (!status.ok()) {
     return absl::UnavailableError("Unable to execute Lookup command: " + printGRPCError(status));
@@ -340,8 +350,9 @@ absl::StatusOr<geds::Object> MetadataService::lookup(const std::string &bucket,
   }
   const auto &r = response.result();
   auto obj_id = geds::ObjectID{r.id().bucket(), r.id().key()};
-  auto obj_info = geds::ObjectInfo{r.info().location(), r.info().size(), r.info().sealedoffset()};
-//  return geds::Object{obj_id, obj_info};
+  auto obj_info = geds::ObjectInfo{
+      r.info().location(), r.info().size(), r.info().sealedoffset(),
+      (r.info().has_metadata() ? std::make_optional(r.info().metadata()) : std::nullopt)};
 
   auto result = geds::Object{obj_id, obj_info};
   (void)_mdsCache.createObject(result, true);
@@ -390,7 +401,9 @@ MetadataService::listPrefix(const std::string &bucket, const std::string &keyPre
   objects.reserve(rpc_results.size());
   for (auto i : rpc_results) {
     auto obj_id = geds::ObjectID{i.id().bucket(), i.id().key()};
-    auto obj_info = geds::ObjectInfo{i.info().location(), i.info().size(), i.info().sealedoffset()};
+    auto obj_info = geds::ObjectInfo{
+        i.info().location(), i.info().size(), i.info().sealedoffset(),
+        i.info().has_metadata() ? std::make_optional(i.info().metadata()) : std::nullopt};
     auto obj = geds::Object{obj_id, obj_info};
     (void)_mdsCache.createObject(obj, true);
     objects.emplace_back(std::move(obj));
@@ -415,34 +428,27 @@ MetadataService::listFolder(const std::string &bucket, const std::string &keyPre
   return listPrefix(bucket, keyPrefix, Default_GEDSFolderDelimiter);
 }
 
-absl::Status MetadataService::subscribeStream(const geds::SubscriptionEvent &event) {
+absl::Status MetadataService::subscribeStream() {
   METADATASERVICE_CHECK_CONNECTED;
-
-  if (subscribeStreamSingletonThreadFlag) {
-    return absl::OkStatus();
-  }
-  subscribeStreamSingletonThreadFlag = true;
 
   geds::rpc::SubscriptionStreamEvent subscription_stream_event;
   geds::rpc::SubscriptionStreamResponse subscription_response;
   grpc::ClientContext context;
-
-  if (event.subscriber_id.empty()) {
-    subscription_stream_event.set_subscriberid(uuid);
-  } else {
-    subscription_stream_event.set_subscriberid(event.subscriber_id);
-  }
+  subscription_stream_event.set_subscriberid(uuid);
 
   std::unique_ptr<grpc::ClientReader<geds::rpc::SubscriptionStreamResponse>> reader(
       _stub->SubscribeStream(&context, subscription_stream_event));
 
-  while (reader->Read(&subscription_response) && subscribeStreamContinueThreadFlag) {
+  while (reader->Read(&subscription_response)) {
 
     const auto &objectPublication = subscription_response.object();
     auto obj_id = geds::ObjectID{objectPublication.id().bucket(), objectPublication.id().key()};
     auto obj_info =
         geds::ObjectInfo{objectPublication.info().location(), objectPublication.info().size(),
-                         objectPublication.info().sealedoffset()};
+                         objectPublication.info().sealedoffset(),
+                         objectPublication.info().has_metadata()
+                             ? std::make_optional(objectPublication.info().metadata())
+                             : std::nullopt};
     auto obj = geds::Object{obj_id, obj_info};
 
     if (subscription_response.publicationtype() == geds::rpc::CREATE_OBJECT) {
@@ -456,20 +462,11 @@ absl::Status MetadataService::subscribeStream(const geds::SubscriptionEvent &eve
     LOG_DEBUG("Received subscription and added to cache (bucket, key): ", obj.id.bucket, " , ",
               obj.id.key);
   }
-  subscribeStreamSingletonThreadFlag = false;
   auto status = reader->Finish();
   if (!status.ok()) {
     return absl::InternalError(status.error_message());
   }
-  if (subscribeStreamContinueThreadFlag) {
-    return subscribeStream(event);
-  }
-  return absl::OkStatus();
-}
-
-absl::Status MetadataService::setSubscribeStreamContinueAbortThreadFlag(bool threadFlag) {
-  subscribeStreamContinueThreadFlag = threadFlag;
-  return absl::OkStatus();
+  return subscribeStream();
 }
 
 absl::Status MetadataService::subscribe(const geds::SubscriptionEvent &event) {
@@ -479,11 +476,7 @@ absl::Status MetadataService::subscribe(const geds::SubscriptionEvent &event) {
   geds::rpc::StatusResponse response;
   grpc::ClientContext context;
 
-  if (event.subscriber_id.empty()) {
-    subscription_event.set_subscriberid(uuid);
-  } else {
-    subscription_event.set_subscriberid(event.subscriber_id);
-  }
+  subscription_event.set_subscriberid(uuid);
   subscription_event.set_bucketid(std::string{event.bucket});
   subscription_event.set_key(std::string{event.key});
   subscription_event.set_subscriptiontype(event.subscriptionType);
@@ -503,11 +496,7 @@ absl::Status MetadataService::unsubscribe(const geds::SubscriptionEvent &event) 
   geds::rpc::StatusResponse response;
   grpc::ClientContext context;
 
-  if (event.subscriber_id.empty()) {
-    subscription_event.set_subscriberid(uuid);
-  } else {
-    subscription_event.set_subscriberid(event.subscriber_id);
-  }
+  subscription_event.set_subscriberid(uuid);
   subscription_event.set_bucketid(std::string{event.bucket});
   subscription_event.set_key(std::string{event.key});
   subscription_event.set_subscriptiontype(event.subscriptionType);

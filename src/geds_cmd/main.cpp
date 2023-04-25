@@ -143,8 +143,8 @@ int main(int argc, char **argv) {
     }
     uint64_t size = absl::GetFlag(FLAGS_size);
     uint64_t sealedOffset = absl::GetFlag(FLAGS_sealedOffset);
-    auto obj =
-        geds::Object{geds::ObjectID{bucket, key}, geds::ObjectInfo{location, size, sealedOffset}};
+    auto obj = geds::Object{geds::ObjectID{bucket, key},
+                            geds::ObjectInfo{location, size, sealedOffset, std::nullopt}};
     operationResult = metadataService.createObject(obj);
 
   } break;
@@ -163,8 +163,8 @@ int main(int argc, char **argv) {
     }
     uint64_t size = absl::GetFlag(FLAGS_size);
     uint64_t sealedOffset = absl::GetFlag(FLAGS_sealedOffset);
-    auto obj =
-        geds::Object{geds::ObjectID{bucket, key}, geds::ObjectInfo{location, size, sealedOffset}};
+    auto obj = geds::Object{geds::ObjectID{bucket, key},
+                            geds::ObjectInfo{location, size, sealedOffset, "Hello world"}};
     operationResult = metadataService.updateObject(obj);
   } break;
   case Operation::Delete: {

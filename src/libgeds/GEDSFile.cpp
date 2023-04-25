@@ -9,15 +9,22 @@
 #include "GEDSFileHandle.h"
 #include "Logging.h"
 
-GEDSFile::GEDSFile(std::shared_ptr<GEDSFileHandle> fileHandle) : _fileHandle(fileHandle) {
+GEDSFile::GEDSFile(std::shared_ptr<GEDS> geds, std::shared_ptr<GEDSFileHandle> fileHandle)
+    : _geds(geds), _fileHandle(fileHandle) {
   _fileHandle->increaseOpenCount();
 }
 
-GEDSFile::GEDSFile(const GEDSFile &other) : GEDSFile(other._fileHandle) {}
+GEDSFile::GEDSFile(const GEDSFile &other) : GEDSFile(other._geds, other._fileHandle) {}
 
 GEDSFile::GEDSFile(GEDSFile &&other) {
+  _geds = std::move(other._geds);
   _fileHandle = std::move(other._fileHandle);
   other._fileHandle = nullptr;
+}
+
+std::optional<std::string> GEDSFile::metadata() const { return _fileHandle->metadata(); }
+absl::Status GEDSFile::setMetadata(std::optional<std::string> metadata, bool seal) {
+  return _fileHandle->setMetadata(metadata, seal);
 }
 
 GEDSFile &GEDSFile::operator=(const GEDSFile &other) {
@@ -30,6 +37,7 @@ GEDSFile &GEDSFile::operator=(const GEDSFile &other) {
 
 GEDSFile &GEDSFile::operator=(GEDSFile &&other) {
   if (this != &other) {
+    _geds = std::move(other._geds);
     _fileHandle = std::move(other._fileHandle);
     other._fileHandle = nullptr;
   }
@@ -37,7 +45,8 @@ GEDSFile &GEDSFile::operator=(GEDSFile &&other) {
 }
 
 bool GEDSFile::operator==(const GEDSFile &other) const {
-  return _fileHandle.get() == other._fileHandle.get();
+  return _fileHandle->bucket == other._fileHandle->bucket &&
+         _fileHandle->key == other._fileHandle->key;
 }
 
 GEDSFile::~GEDSFile() {
@@ -58,6 +67,7 @@ bool GEDSFile::isWriteable() const { return _fileHandle->isWriteable(); }
 absl::StatusOr<size_t> GEDSFile::readBytes(uint8_t *bytes, size_t position, size_t length) {
   return _fileHandle->readBytes(bytes, position, length);
 }
+
 absl::Status GEDSFile::writeBytes(const uint8_t *bytes, size_t position, size_t length) {
   return _fileHandle->writeBytes(bytes, position, length);
 }

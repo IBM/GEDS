@@ -6,10 +6,14 @@
 
 #include <chrono>
 #include <iostream>
+#include <mutex>
 
 namespace geds::logging {
 
+static std::mutex __mutex;
+
 template <typename T, typename... Msg> inline void LogLine(T &dest, const Msg &...msg) {
+  auto lock = std::unique_lock<std::mutex>(__mutex);
   (dest << ... << msg) << std::endl;
 }
 
@@ -19,6 +23,7 @@ inline void NoLog(__attribute__((unused)) T &dest, __attribute__((unused)) const
 }
 
 template <typename T, typename... Msg> inline void LogTimestamp(T &dest, const Msg &...msg) {
+  auto lock = std::unique_lock<std::mutex>(__mutex);
   dest << std::chrono::system_clock::now() << " - ";
   (dest << ... << msg) << std::endl;
 }

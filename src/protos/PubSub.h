@@ -19,12 +19,9 @@ struct SubscriptionEvent {
   std::string key;
   geds::rpc::SubscriptionType subscriptionType;
 
-  SubscriptionEvent(std::string subscriber_id, std::string bucket, std::string key,
+  SubscriptionEvent(std::string bucket, std::string key,
                     geds::rpc::SubscriptionType subscriptionType)
-      : subscriber_id(std::move(subscriber_id)), bucket(std::move(bucket)), key(std::move(key)),
-        subscriptionType(subscriptionType) {}
-
-  SubscriptionEvent(std::string subscriber_id) : subscriber_id(std::move(subscriber_id)) {}
+      : bucket(std::move(bucket)), key(std::move(key)), subscriptionType(subscriptionType) {}
 
   SubscriptionEvent() {}
 

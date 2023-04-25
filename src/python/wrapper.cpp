@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <memory>
 #include <optional>
 #include <string>
@@ -71,7 +72,11 @@ PYBIND11_MODULE(pygeds, m) {
       .def("status",
            [](GEDS &self, const std::string &bucket, const std::string &key)
                -> absl::StatusOr<GEDSFileStatus> { return self.status(bucket, key); })
-      .def("open", &GEDS::open)
+      .def(
+          "open",
+          [](GEDS &self, const std::string &bucket, const std::string &key,
+             bool retry) -> absl::StatusOr<GEDSFile> { return self.open(bucket, key, retry); },
+          py::arg("bucket"), py::arg("key"), py::arg("retry") = false)
       .def("delete", &GEDS::deleteObject)
       .def("delete_prefix", &GEDS::deleteObjectPrefix)
       .def(
@@ -108,14 +113,55 @@ PYBIND11_MODULE(pygeds, m) {
            [](GEDS &self, GEDSFile &file) -> std::string { return self.getLocalPath(file); })
       .def("registerObjectStoreConfig", &GEDS::registerObjectStoreConfig, py::arg("bucket"),
            py::arg("endpointUrl"), py::arg("accessKey"), py::arg("secretKey"))
-      .def("syncObjectStoreConfigs", &GEDS::syncObjectStoreConfigs);
+      .def("syncObjectStoreConfigs", &GEDS::syncObjectStoreConfigs)
+      .def(
+          "relocate", [](GEDS &self, bool force) { self.relocate(force); },
+          py::arg("force") = false);
 
   py::class_<GEDSFile, std::shared_ptr<GEDSFile>>(m, "GEDSFile")
       .def_property_readonly("size", &GEDSFile::size)
       .def_property_readonly("writeable", &GEDSFile::isWriteable)
       .def_property_readonly("identifier", &GEDSFile::identifier)
+      .def_property_readonly("metadata", &GEDSFile::metadata)
+      .def_property_readonly("metadata_bytes",
+                             [](GEDSFile &file) -> std::optional<py::bytes> {
+                               auto s = file.metadata();
+                               if (s->empty()) {
+                                 return std::nullopt;
+                               }
+                               return std::make_optional(py::bytes(s.value()));
+                             })
       .def("truncate", &GEDSFile::truncate)
       .def("seal", &GEDSFile::seal)
+      .def(
+          "set_metadata",
+          [](GEDSFile &self, std::optional<std::string> metadata, bool seal) -> absl::Status {
+            return self.setMetadata(metadata, seal);
+          },
+          py::arg("metadata"), py::arg("seal") = true)
+      .def(
+          "set_metadata",
+          [](GEDSFile &self, const py::array_t<uint8_t> &buffer, std::optional<size_t> lengthArg,
+             bool seal) -> absl::Status {
+            py::buffer_info info = buffer.request(false);
+            if (info.ndim != 1) {
+              return absl::FailedPreconditionError("Buffer has wrong dimensions!");
+            }
+            size_t length = info.size;
+            if (lengthArg.has_value()) {
+              length = std::min(length, lengthArg.value());
+            }
+            return self.setMetadata(static_cast<const uint8_t *>(info.ptr), length, seal);
+          },
+          py::arg("buffer"), py::arg("length") = std::nullopt, py::arg("seal") = true)
+      .def(
+          "set_metadata",
+          [](GEDSFile &self, const char *buffer, std::optional<size_t> lengthArg,
+             bool seal) -> absl::Status {
+            size_t length = lengthArg.value_or(strlen(buffer));
+            return self.setMetadata(reinterpret_cast<const uint8_t *>(buffer), length, seal);
+          },
+          py::arg("buffer"), py::arg("length") = std::nullopt, py::arg("seal") = true)
       .def("read",
            [](GEDSFile &self, py::array_t<uint8_t> &buffer, size_t position,
               size_t length) -> absl::StatusOr<size_t> {

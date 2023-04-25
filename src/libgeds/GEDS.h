@@ -21,6 +21,7 @@
 
 #include <absl/status/status.h>
 #include <absl/status/statusor.h>
+#include <boost/asio/thread_pool.hpp>
 
 #include "ConcurrentMap.h"
 #include "ConcurrentSet.h"
@@ -102,6 +103,16 @@ protected:
 
   geds::HttpServer _httpServer;
 
+  boost::asio::thread_pool _ioThreadPool;
+  std::thread _storageMonitoringThread;
+  void startStorageMonitoringThread();
+
+  std::atomic<size_t> _localStorageUsed;
+  std::atomic<size_t> _localMemoryUsed;
+
+  std::thread _pubSubStreamThread;
+  void startPubSubStreamThread();
+
 public:
   /**
    * @brief GEDS CTOR. Note: This CTOR needs to be wrapped in a SHARED_POINTER!
@@ -149,9 +160,16 @@ public:
   static absl::Status isValid(const std::string &bucket, const std::string &key);
 
   /**
+   * @brief Parse the object name and split it into bucket and key.
+   */
+  static absl::StatusOr<std::pair<std::string, std::string>>
+  parseObjectName(const std::string &objectName);
+
+  /**
    * @brief Create object located at bucket/key.
    * The object is registered with the metadata service once the file is sealed.
    */
+  absl::StatusOr<GEDSFile> create(const std::string &objectName, bool overwrite = false);
   absl::StatusOr<GEDSFile> create(const std::string &bucket, const std::string &key,
                                   bool overwrite = false);
   absl::StatusOr<std::shared_ptr<GEDSFileHandle>>
@@ -173,9 +191,24 @@ public:
   /**
    * @brief Open object located at bucket/key.
    */
-  absl::StatusOr<GEDSFile> open(const std::string &bucket, const std::string &key);
+  absl::StatusOr<GEDSFile> open(const std::string &objectName);
+  absl::StatusOr<GEDSFile> open(const std::string &bucket, const std::string &key,
+                                bool retry = true);
+  absl::StatusOr<std::shared_ptr<GEDSFileHandle>> openAsFileHandle(const std::string &bucket,
+                                                                   const std::string &key);
   absl::StatusOr<std::shared_ptr<GEDSFileHandle>>
-  openAsFileHandle(const std::string &bucket, const std::string &key, bool invalidate = false);
+  reopenFileHandle(const std::string &bucket, const std::string &key, bool invalidate);
+
+  /**
+   * @brief Reopen a file after a unsuccessful read.
+   */
+  absl::StatusOr<std::shared_ptr<GEDSFileHandle>> reopen(std::shared_ptr<GEDSFileHandle> existing);
+
+  /**
+   * @brief Only open local filehandles.
+   */
+  absl::StatusOr<GEDSFile> localOpen(const std::string &objectName);
+  absl::StatusOr<GEDSFile> localOpen(const std::string &bucket, const std::string &key);
 
   /**
    * @brief Mark the file associated with fileHandle as sealed.
@@ -199,13 +232,6 @@ public:
    */
   absl::StatusOr<std::vector<GEDSFileStatus>> list(const std::string &bucket,
                                                    const std::string &prefix, char delimiter);
-
-  /**
-   * @brief List objects from cache in `bucket` where the key starts with `prefix` and the postfix does not
-   * contain `delimiter`.
-   */
-  absl::StatusOr<std::vector<GEDSFileStatus>> listFromCache(const std::string &bucket,
-                                                   const std::string &prefix, char delimiter, const bool useCache);
 
   /**
    * @brief List objects in `bucket` with `/` acting as delimiter.
@@ -292,9 +318,17 @@ public:
   absl::StatusOr<std::shared_ptr<geds::FileTransferService>>
   getFileTransferService(const std::string &hostname);
 
-  absl::Status subscribeStreamWithThread(const geds::SubscriptionEvent &event);
-  absl::Status stopSubscribeStreamWithThread();
-  absl::Status subscribeStream(const geds::SubscriptionEvent &event);
+  void relocate(bool force = false);
+  void relocate(std::vector<std::shared_ptr<GEDSFileHandle>> &relocatable, bool force = false);
+  void relocate(std::shared_ptr<GEDSFileHandle> handle, bool force = false);
+
+  size_t localStorageUsed() const;
+  size_t localStorageFree() const;
+  size_t localStorageAllocated() const;
+  size_t localMemoryUsed() const;
+  size_t localMemoryFree() const;
+  size_t localMemoryAllocated() const;
+
   absl::Status subscribe(const geds::SubscriptionEvent &event);
   absl::Status unsubscribe(const geds::SubscriptionEvent &event);
 };

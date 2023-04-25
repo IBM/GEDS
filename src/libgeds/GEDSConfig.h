@@ -12,6 +12,7 @@
 
 #include <absl/status/status.h>
 #include <absl/status/statusor.h>
+#include <thread>
 
 #include "Ports.h"
 
@@ -61,8 +62,30 @@ struct GEDSConfig {
    */
   size_t cacheBlockSize = 32 * 1024 * 1024;
 
+  /**
+   * @brief Relocate files on GEDS::close.
+   */
+  bool relocate_on_close = false;
+
+  /**
+   * @brief Size of I/O thread pool.
+   */
+  size_t io_thread_pool_size = std::max(std::thread::hardware_concurrency() / 2, (uint32_t)8);
+
+  /**
+   * @brief Available local storage.
+   */
+  size_t available_local_storage = 100 * 1024 * 1024 * (size_t)1024;
+
+  size_t available_local_memory = 16 * 1024 * 1024 * (size_t)1024;
+
+  /**
+   * @brief Publish/Subscribe is enabled.
+   */
+  bool pubSubEnabled = false;
+
   GEDSConfig(std::string metadataServiceAddressArg)
-      : metadataServiceAddress(metadataServiceAddressArg) {}
+      : metadataServiceAddress(std::move(metadataServiceAddressArg)) {}
 
   absl::Status set(const std::string &key, const std::string &value);
   absl::Status set(const std::string &key, size_t value);
