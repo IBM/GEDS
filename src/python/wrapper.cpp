@@ -132,6 +132,7 @@ PYBIND11_MODULE(pygeds, m) {
                                return std::make_optional(py::bytes(s.value()));
                              })
       .def("truncate", &GEDSFile::truncate)
+      .def("raw_ptr", &GEDSFile::rawPtr)
       .def("seal", &GEDSFile::seal)
       .def(
           "set_metadata",

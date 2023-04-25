@@ -163,6 +163,11 @@ public:
     return _file.rawFd();
   }
 
+  absl::StatusOr<uint8_t *> rawPtr() override {
+    auto lock = lockShared();
+    return _file.rawPtr();
+  }
+
   absl::StatusOr<std::shared_ptr<GEDSFileHandle>> relocate() override {
     auto lock = lockFile();
     auto iolock = lockExclusive();

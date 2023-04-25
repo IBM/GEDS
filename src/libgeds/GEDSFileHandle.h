@@ -95,6 +95,8 @@ public:
 
   virtual absl::StatusOr<int> rawFd() const;
 
+  virtual absl::StatusOr<uint8_t *> rawPtr();
+
   size_t roundToNearestMultiple(size_t number, size_t factor) const;
 
   absl::Status download(std::shared_ptr<GEDSFileHandle> destination);
