@@ -145,6 +145,7 @@ absl::Status GEDS::start() {
   _state = ServiceState::Running;
 
   startStorageMonitoringThread();
+  startPubSubStreamThread();
 
   auto st = syncObjectStoreConfigs();
   if (!syncObjectStoreConfigs().ok()) {
@@ -154,32 +155,32 @@ absl::Status GEDS::start() {
   return absl::OkStatus();
 }
 
-absl::Status GEDS::subscribeStreamWithThread(const geds::SubscriptionEvent &event) {
-  GEDS_CHECK_SERVICE_RUNNING
-
-  auto status = _metadataService.setSubscribeStreamContinueAbortThreadFlag(true);
-  std::thread subscriberTread(&GEDS::subscribeStream, this, event);
-  subscriberTread.detach();
-
-  return absl::OkStatus();
-}
-
-absl::Status GEDS::stopSubscribeStreamWithThread() {
-  return _metadataService.setSubscribeStreamContinueAbortThreadFlag(false);
-}
-
-absl::Status GEDS::subscribeStream(const geds::SubscriptionEvent &event) {
-  GEDS_CHECK_SERVICE_RUNNING
-  return _metadataService.subscribeStream(event);
+void GEDS::startPubSubStreamThread() {
+  if (!_config.pubSubEnabled) {
+    LOG_DEBUG("PubSub streaming thread not enabled.");
+    return;
+  }
+  if (_state == ServiceState::Running) {
+    _pubSubStreamThread = std::thread([&]() { auto status = _metadataService.subscribeStream(); });
+  } else {
+    LOG_ERROR("Unable to start pub/sub streaming thread.");
+  }
+  LOG_DEBUG("PubSub streaming thread enabled.");
 }
 
 absl::Status GEDS::subscribe(const geds::SubscriptionEvent &event) {
   GEDS_CHECK_SERVICE_RUNNING
+  if (!_config.pubSubEnabled) {
+    return absl::FailedPreconditionError("publish/subscribe is not enabled.");
+  }
   return _metadataService.subscribe(event);
 }
 
 absl::Status GEDS::unsubscribe(const geds::SubscriptionEvent &event) {
   GEDS_CHECK_SERVICE_RUNNING
+  if (!_config.pubSubEnabled) {
+    return absl::FailedPreconditionError("publish/subscribe is not enabled.");
+  }
   return _metadataService.unsubscribe(event);
 }
 
@@ -212,6 +213,10 @@ absl::Status GEDS::stop() {
   _state = ServiceState::Stopped;
 
   _storageMonitoringThread.join();
+
+  if (_pubSubStreamThread.joinable()) {
+    _pubSubStreamThread.join();
+  }
 
   return result;
 }
@@ -585,18 +590,11 @@ absl::StatusOr<std::vector<GEDSFileStatus>> GEDS::list(const std::string &bucket
 
 absl::StatusOr<std::vector<GEDSFileStatus>> GEDS::list(const std::string &bucket,
                                                        const std::string &prefix, char delimiter) {
-  return listFromCache(bucket, prefix, delimiter, false);
-}
-
-absl::StatusOr<std::vector<GEDSFileStatus>> GEDS::listFromCache(const std::string &bucket,
-                                                                const std::string &prefix,
-                                                                char delimiter,
-                                                                const bool useCache) {
   LOG_DEBUG(bucket, "/", prefix);
 
   bool prefixExists = false;
   absl::StatusOr<std::pair<std::vector<geds::Object>, std::vector<std::string>>> list;
-  if (useCache) {
+  if (_config.pubSubEnabled) {
     list = _metadataService.listPrefixFromCache(bucket, prefix, delimiter);
   } else {
     list = _metadataService.listPrefix(bucket, prefix, delimiter);

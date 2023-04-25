@@ -14,6 +14,8 @@ absl::Status GEDSConfig::set(const std::string &key, const std::string &value) {
     hostname = value == "" ? std::nullopt : std::make_optional(value);
   } else if (key == "local_storage_path") {
     localStoragePath = value;
+  } else if (key == "pub_sub_enabled" && value == "true") {
+    pubSubEnabled = true;
   } else {
     LOG_ERROR("Configuration " + key + " not supported (type: string).");
     return absl::NotFoundError("Key " + key + " not found.");

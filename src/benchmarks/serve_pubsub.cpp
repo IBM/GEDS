@@ -30,6 +30,7 @@ ABSL_FLAG(std::string, bucket, "benchmark", "Bucket used for benchmarking.");
 ABSL_FLAG(size_t, numFiles, 1000, "The number of shuffle files to be created.");
 ABSL_FLAG(size_t, fileSizeMB, 1, "The file size for each shuffle file (MegaBytes).");
 ABSL_FLAG(size_t, numExecutors, 10, "The number of executors.");
+ABSL_FLAG(std::string, pubSubEnabled, "true", "Enable PubSub.");
 
 void createFile(std::shared_ptr<GEDS> &geds, const std::string &bucket, size_t fileNum,
                 size_t sizeMB) {
@@ -70,6 +71,7 @@ int main(int argc, char **argv) {
   auto config = GEDSConfig(FLAGS_address.CurrentValue());
   config.port = absl::GetFlag(FLAGS_localPort);
   config.localStoragePath = FLAGS_gedsRoot.CurrentValue();
+  auto status_enabled = config.set("pub_sub_enabled", FLAGS_pubSubEnabled.CurrentValue());
   auto geds = GEDS::factory(config);
   auto status = geds->start();
   if (!status.ok()) {

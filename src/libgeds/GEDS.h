@@ -110,6 +110,9 @@ protected:
   std::atomic<size_t> _localStorageUsed;
   std::atomic<size_t> _localMemoryUsed;
 
+  std::thread _pubSubStreamThread;
+  void startPubSubStreamThread();
+
 public:
   /**
    * @brief GEDS CTOR. Note: This CTOR needs to be wrapped in a SHARED_POINTER!
@@ -159,7 +162,8 @@ public:
   /**
    * @brief Parse the object name and split it into bucket and key.
    */
-  static absl::StatusOr<std::pair<std::string, std::string>> parseObjectName(const std::string& objectName);
+  static absl::StatusOr<std::pair<std::string, std::string>>
+  parseObjectName(const std::string &objectName);
 
   /**
    * @brief Create object located at bucket/key.
@@ -228,13 +232,6 @@ public:
    */
   absl::StatusOr<std::vector<GEDSFileStatus>> list(const std::string &bucket,
                                                    const std::string &prefix, char delimiter);
-
-  /**
-   * @brief List objects from cache in `bucket` where the key starts with `prefix` and the postfix does not
-   * contain `delimiter`.
-   */
-  absl::StatusOr<std::vector<GEDSFileStatus>> listFromCache(const std::string &bucket,
-                                                   const std::string &prefix, char delimiter, const bool useCache);
 
   /**
    * @brief List objects in `bucket` with `/` acting as delimiter.
@@ -332,9 +329,6 @@ public:
   size_t localMemoryFree() const;
   size_t localMemoryAllocated() const;
 
-  absl::Status subscribeStreamWithThread(const geds::SubscriptionEvent &event);
-  absl::Status stopSubscribeStreamWithThread();
-  absl::Status subscribeStream(const geds::SubscriptionEvent &event);
   absl::Status subscribe(const geds::SubscriptionEvent &event);
   absl::Status unsubscribe(const geds::SubscriptionEvent &event);
 };

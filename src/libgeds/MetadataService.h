@@ -32,8 +32,6 @@ class MetadataService {
   std::shared_ptr<grpc::Channel> _channel;
   std::unique_ptr<geds::rpc::MetadataService::Stub> _stub;
   std::string uuid;
-  std::atomic<bool> subscribeStreamSingletonThreadFlag;
-  std::atomic<bool> subscribeStreamContinueThreadFlag;
 
 public:
   const std::string serverAddress;
@@ -103,18 +101,18 @@ public:
   listFolder(const std::string &bucket, const std::string &keyPrefix);
 
   /**
-   * @brief Create subscription stream for the subscriber. This has to be called in a thread.
-   * The thread will be running for ever until it is stopped by
-   * setSubscribeStreamContinueAbortThreadFlag (false). The subscribeStreamContinueThreadFlag must
-   * be set first to true by setSubscribeStreamContinueAbortThreadFlag(true), before calling the
-   * method.
+   * @brief Create subscription stream for the subscriber.
    */
-  absl::Status subscribeStream(const geds::SubscriptionEvent &event);
-  absl::Status setSubscribeStreamContinueAbortThreadFlag(bool threadFlag);
+  absl::Status subscribeStream();
+
   /**
    * @brief Create subscription for bucket, objects and prefixes.
    */
   absl::Status subscribe(const geds::SubscriptionEvent &event);
+
+  /**
+   * @brief Unsubscribe for bucket, objects and prefixes.
+   */
   absl::Status unsubscribe(const geds::SubscriptionEvent &event);
 };
 

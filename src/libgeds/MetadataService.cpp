@@ -5,6 +5,10 @@
 
 #include "MetadataService.h"
 
+#include <boost/lexical_cast.hpp>
+#include <boost/uuid/uuid.hpp>
+#include <boost/uuid/uuid_generators.hpp>
+#include <boost/uuid/uuid_io.hpp>
 #include <grpcpp/client_context.h>
 #include <grpcpp/support/status.h>
 #include <grpcpp/support/status_code_enum.h>
@@ -34,7 +38,10 @@ static std::string printGRPCError(const grpc::Status &status) {
 
 MetadataService::MetadataService(std::string serverAddress)
     : _connectionState(ConnectionState::Disconnected), _channel(nullptr),
-      serverAddress(std::move(serverAddress)) {}
+      serverAddress(std::move(serverAddress)) {
+  boost::uuids::uuid uuid_generated = boost::uuids::random_generator()();
+  uuid = boost::lexical_cast<std::string>(uuid_generated);
+}
 
 MetadataService::~MetadataService() {
   if (_connectionState == ConnectionState::Connected) {
@@ -421,28 +428,18 @@ MetadataService::listFolder(const std::string &bucket, const std::string &keyPre
   return listPrefix(bucket, keyPrefix, Default_GEDSFolderDelimiter);
 }
 
-absl::Status MetadataService::subscribeStream(const geds::SubscriptionEvent &event) {
+absl::Status MetadataService::subscribeStream() {
   METADATASERVICE_CHECK_CONNECTED;
-
-  if (subscribeStreamSingletonThreadFlag) {
-    return absl::OkStatus();
-  }
-  subscribeStreamSingletonThreadFlag = true;
 
   geds::rpc::SubscriptionStreamEvent subscription_stream_event;
   geds::rpc::SubscriptionStreamResponse subscription_response;
   grpc::ClientContext context;
-
-  if (event.subscriber_id.empty()) {
-    subscription_stream_event.set_subscriberid(uuid);
-  } else {
-    subscription_stream_event.set_subscriberid(event.subscriber_id);
-  }
+  subscription_stream_event.set_subscriberid(uuid);
 
   std::unique_ptr<grpc::ClientReader<geds::rpc::SubscriptionStreamResponse>> reader(
       _stub->SubscribeStream(&context, subscription_stream_event));
 
-  while (reader->Read(&subscription_response) && subscribeStreamContinueThreadFlag) {
+  while (reader->Read(&subscription_response)) {
 
     const auto &objectPublication = subscription_response.object();
     auto obj_id = geds::ObjectID{objectPublication.id().bucket(), objectPublication.id().key()};
@@ -465,20 +462,11 @@ absl::Status MetadataService::subscribeStream(const geds::SubscriptionEvent &eve
     LOG_DEBUG("Received subscription and added to cache (bucket, key): ", obj.id.bucket, " , ",
               obj.id.key);
   }
-  subscribeStreamSingletonThreadFlag = false;
   auto status = reader->Finish();
   if (!status.ok()) {
     return absl::InternalError(status.error_message());
   }
-  if (subscribeStreamContinueThreadFlag) {
-    return subscribeStream(event);
-  }
-  return absl::OkStatus();
-}
-
-absl::Status MetadataService::setSubscribeStreamContinueAbortThreadFlag(bool threadFlag) {
-  subscribeStreamContinueThreadFlag = threadFlag;
-  return absl::OkStatus();
+  return subscribeStream();
 }
 
 absl::Status MetadataService::subscribe(const geds::SubscriptionEvent &event) {
@@ -488,11 +476,7 @@ absl::Status MetadataService::subscribe(const geds::SubscriptionEvent &event) {
   geds::rpc::StatusResponse response;
   grpc::ClientContext context;
 
-  if (event.subscriber_id.empty()) {
-    subscription_event.set_subscriberid(uuid);
-  } else {
-    subscription_event.set_subscriberid(event.subscriber_id);
-  }
+  subscription_event.set_subscriberid(uuid);
   subscription_event.set_bucketid(std::string{event.bucket});
   subscription_event.set_key(std::string{event.key});
   subscription_event.set_subscriptiontype(event.subscriptionType);
@@ -512,11 +496,7 @@ absl::Status MetadataService::unsubscribe(const geds::SubscriptionEvent &event) 
   geds::rpc::StatusResponse response;
   grpc::ClientContext context;
 
-  if (event.subscriber_id.empty()) {
-    subscription_event.set_subscriberid(uuid);
-  } else {
-    subscription_event.set_subscriberid(event.subscriber_id);
-  }
+  subscription_event.set_subscriberid(uuid);
   subscription_event.set_bucketid(std::string{event.bucket});
   subscription_event.set_key(std::string{event.key});
   subscription_event.set_subscriptiontype(event.subscriptionType);
