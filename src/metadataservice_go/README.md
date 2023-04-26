@@ -1,6 +1,9 @@
-# GEDS Metadata Server Go
+# GEDS Metadataserver
 
-Features:
-1. Implementation of APIs: [Link](https://github.com/IBM/GEDS/issues/14)
-2. Publish/Subscribe for subscribing to Buckets/Objects and streaming subscriptions.
-3. Persisting Metadata Server's state to LevelDB.
+This project is the go implemantion of
+
+- [Building](docs/BUILDING.md)
+
+## Acknowledgement
+**This project has received funding through CloudStars.**
+**CloudStars has received funding from the European Union's Horizon research and innovation programme under grant agreement No 101086248.**
