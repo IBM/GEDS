@@ -1,3 +1,8 @@
+/**
+ * Copyright 2023- Technical University of Munich. All rights reserved
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package logger
 
 import (
