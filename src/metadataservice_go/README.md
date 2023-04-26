@@ -1,6 +1,6 @@
 # GEDS Metadataserver
 
-This project is the go implemantion of
+This project is the implementation of Metadataserver of GEDS in the GO programming language.
 
 - [Building](docs/BUILDING.md)
 
