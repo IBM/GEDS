@@ -155,35 +155,6 @@ absl::Status GEDS::start() {
   return absl::OkStatus();
 }
 
-void GEDS::startPubSubStreamThread() {
-  if (!_config.pubSubEnabled) {
-    LOG_DEBUG("PubSub streaming thread not enabled.");
-    return;
-  }
-  if (_state == ServiceState::Running) {
-    _pubSubStreamThread = std::thread([&]() { auto status = _metadataService.subscribeStream(); });
-  } else {
-    LOG_ERROR("Unable to start pub/sub streaming thread.");
-  }
-  LOG_DEBUG("PubSub streaming thread enabled.");
-}
-
-absl::Status GEDS::subscribe(const geds::SubscriptionEvent &event) {
-  GEDS_CHECK_SERVICE_RUNNING
-  if (!_config.pubSubEnabled) {
-    return absl::FailedPreconditionError("publish/subscribe is not enabled.");
-  }
-  return _metadataService.subscribe(event);
-}
-
-absl::Status GEDS::unsubscribe(const geds::SubscriptionEvent &event) {
-  GEDS_CHECK_SERVICE_RUNNING
-  if (!_config.pubSubEnabled) {
-    return absl::FailedPreconditionError("publish/subscribe is not enabled.");
-  }
-  return _metadataService.unsubscribe(event);
-}
-
 absl::Status GEDS::stop() {
   GEDS_CHECK_SERVICE_RUNNING
   LOG_INFO("Stopping");
@@ -1034,3 +1005,32 @@ size_t GEDS::localMemoryFree() const {
 }
 
 size_t GEDS::localMemoryAllocated() const { return _config.available_local_memory; }
+
+void GEDS::startPubSubStreamThread() {
+  if (!_config.pubSubEnabled) {
+    LOG_DEBUG("PubSub streaming thread not enabled.");
+    return;
+  }
+  if (_state == ServiceState::Running) {
+    _pubSubStreamThread = std::thread([&]() { auto status = _metadataService.subscribeStream(); });
+  } else {
+    LOG_ERROR("Unable to start pub/sub streaming thread.");
+  }
+  LOG_DEBUG("PubSub streaming thread enabled.");
+}
+
+absl::Status GEDS::subscribe(const geds::SubscriptionEvent &event) {
+  GEDS_CHECK_SERVICE_RUNNING
+  if (!_config.pubSubEnabled) {
+    return absl::FailedPreconditionError("publish/subscribe is not enabled.");
+  }
+  return _metadataService.subscribe(event);
+}
+
+absl::Status GEDS::unsubscribe(const geds::SubscriptionEvent &event) {
+  GEDS_CHECK_SERVICE_RUNNING
+  if (!_config.pubSubEnabled) {
+    return absl::FailedPreconditionError("publish/subscribe is not enabled.");
+  }
+  return _metadataService.unsubscribe(event);
+}
