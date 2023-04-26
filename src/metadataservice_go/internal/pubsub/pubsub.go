@@ -80,12 +80,12 @@ func (s *Service) SubscribeStream(subscriber *protos.SubscriptionStreamEvent,
 		streamer.finished = finished
 	}
 	s.subscribersStreamLock.Unlock()
-	cntx := stream.Context()
+	context := stream.Context()
 	for {
 		select {
 		case <-finished:
 			return nil
-		case <-cntx.Done():
+		case <-context.Done():
 			return nil
 		}
 	}

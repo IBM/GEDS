@@ -68,11 +68,11 @@ func TestMDS_PubSub(t *testing.T) {
 			out, err := client.Subscribe(ctx, test.in)
 			if err != nil {
 				if test.expected.err.Error() != err.Error() {
-					t.Errorf("Err -> \nWant: %q\nGot: %q\n", test.expected.err, err)
+					t.Errorf("Error -> \nExpected: %q\nReceived: %q\n", test.expected.err, err)
 				}
 			} else {
 				if test.expected.out.Code != out.Code {
-					t.Errorf("Out -> \nWant: %q\nGot : %q", test.expected.out, out)
+					t.Errorf("Not Matching -> \nExpected: %q\nReceived : %q", test.expected.out, out)
 				}
 			}
 		})
@@ -183,11 +183,11 @@ func TestMDS_PubSub(t *testing.T) {
 
 			if err != nil {
 				if tt.expected.err.Error() != err.Error() {
-					t.Errorf("Err -> \nWant: %q\nGot: %q\n", tt.expected.err, err)
+					t.Errorf("Error -> \nExpected: %q\nReceived: %q\n", tt.expected.err, err)
 				}
 			} else {
 				if len(responses) != len(tt.expected.out) {
-					t.Errorf("Out -> \nWant: %q\nGot : %q", tt.expected.out, responses)
+					t.Errorf("Not Matching -> \nExpected: %q\nReceived : %q", tt.expected.out, responses)
 				}
 			}
 		})
@@ -198,11 +198,11 @@ func TestMDS_PubSub(t *testing.T) {
 			out, err := client.Unsubscribe(ctx, test.in)
 			if err != nil {
 				if test.expected.err.Error() != err.Error() {
-					t.Errorf("Err -> \nWant: %q\nGot: %q\n", test.expected.err, err)
+					t.Errorf("Error -> \nExpected: %q\nReceived: %q\n", test.expected.err, err)
 				}
 			} else {
 				if test.expected.out.Code != out.Code {
-					t.Errorf("Out -> \nWant: %q\nGot : %q", test.expected.out, out)
+					t.Errorf("Not Matching -> \nExpected: %q\nReceived : %q", test.expected.out, out)
 				}
 			}
 		})

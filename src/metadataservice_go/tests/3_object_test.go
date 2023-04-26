@@ -113,11 +113,11 @@ func TestMDS_Objects(t *testing.T) {
 			out, err := client.Create(ctx, test.in)
 			if err != nil {
 				if test.expected.err.Error() != err.Error() {
-					t.Errorf("Err -> \nWant: %q\nGot: %q\n", test.expected.err, err)
+					t.Errorf("Error -> \nExpected: %q\nReceived: %q\n", test.expected.err, err)
 				}
 			} else {
 				if test.expected.out.Code != out.Code {
-					t.Errorf("Out -> \nWant: %q\nGot : %q", test.expected.out, out)
+					t.Errorf("Not Matching -> \nExpected: %q\nReceived : %q", test.expected.out, out)
 				}
 			}
 		})
@@ -279,12 +279,12 @@ func TestMDS_Objects(t *testing.T) {
 			out, err := client.List(ctx, test.in)
 			if err != nil {
 				if test.expected.err.Error() != err.Error() {
-					t.Errorf("Err -> \nWant: %q\nGot: %q\n", test.expected.err, err)
+					t.Errorf("Error -> \nExpected: %q\nReceived: %q\n", test.expected.err, err)
 				}
 			} else {
 				if len(test.expected.out.Results) != len(out.Results) ||
 					len(test.expected.out.CommonPrefixes) != len(out.CommonPrefixes) {
-					t.Errorf("Out -> \nWant: %q\nGot : %q", test.expected.out, out)
+					t.Errorf("Not Matching -> \nExpected: %q\nReceived : %q", test.expected.out, out)
 				}
 			}
 		})
@@ -326,11 +326,11 @@ func TestMDS_Objects(t *testing.T) {
 			out, err := client.Lookup(ctx, test.in)
 			if err != nil {
 				if test.expected.err.Error() != err.Error() {
-					t.Errorf("Err -> \nWant: %q\nGot: %q\n", test.expected.err, err)
+					t.Errorf("Error -> \nExpected: %q\nReceived: %q\n", test.expected.err, err)
 				}
 			} else {
 				if len(test.expected.out.Info.Location) != len(out.Result.Info.Location) {
-					t.Errorf("Out -> \nWant: %q\nGot : %q", test.expected.out, out)
+					t.Errorf("Not Matching -> \nExpected: %q\nReceived : %q", test.expected.out, out)
 				}
 			}
 		})
@@ -357,11 +357,11 @@ func TestMDS_Objects(t *testing.T) {
 			out, err := client.Delete(ctx, test.in)
 			if err != nil {
 				if test.expected.err.Error() != err.Error() {
-					t.Errorf("Err -> \nWant: %q\nGot: %q\n", test.expected.err, err)
+					t.Errorf("Error -> \nExpected: %q\nReceived: %q\n", test.expected.err, err)
 				}
 			} else {
 				if test.expected.out.Code != out.Code {
-					t.Errorf("Out -> \nWant: %q\nGot : %q", test.expected.out, out)
+					t.Errorf("Not Matching -> \nExpected: %q\nReceived : %q", test.expected.out, out)
 				}
 			}
 		})
@@ -388,11 +388,11 @@ func TestMDS_Objects(t *testing.T) {
 			out, err := client.DeletePrefix(ctx, test.in)
 			if err != nil {
 				if test.expected.err.Error() != err.Error() {
-					t.Errorf("Err -> \nWant: %q\nGot: %q\n", test.expected.err, err)
+					t.Errorf("Error -> \nExpected: %q\nReceived: %q\n", test.expected.err, err)
 				}
 			} else {
 				if test.expected.out.Code != out.Code {
-					t.Errorf("Out -> \nWant: %q\nGot : %q", test.expected.out, out)
+					t.Errorf("Not Matching -> \nExpected: %q\nReceived : %q", test.expected.out, out)
 				}
 			}
 		})
@@ -426,11 +426,11 @@ func TestMDS_Objects(t *testing.T) {
 			out, err := client.Update(ctx, test.in)
 			if err != nil {
 				if test.expected.err.Error() != err.Error() {
-					t.Errorf("Err -> \nWant: %q\nGot: %q\n", test.expected.err, err)
+					t.Errorf("Error -> \nExpected: %q\nReceived: %q\n", test.expected.err, err)
 				}
 			} else {
 				if test.expected.out.Code != out.Code {
-					t.Errorf("Out -> \nWant: %q\nGot : %q", test.expected.out, out)
+					t.Errorf("Not Matching -> \nExpected: %q\nReceived : %q", test.expected.out, out)
 				}
 			}
 		})
@@ -474,12 +474,12 @@ func TestMDS_Objects(t *testing.T) {
 			out, err := client.List(ctx, test.in)
 			if err != nil {
 				if test.expected.err.Error() != err.Error() {
-					t.Errorf("Err -> \nWant: %q\nGot: %q\n", test.expected.err, err)
+					t.Errorf("Error -> \nExpected: %q\nReceived: %q\n", test.expected.err, err)
 				}
 			} else {
 				if len(test.expected.out.Results) != len(out.Results) ||
 					len(test.expected.out.CommonPrefixes) != len(out.CommonPrefixes) {
-					t.Errorf("Out -> \nWant: %q\nGot : %q", test.expected.out, out)
+					t.Errorf("Not Matching -> \nExpected: %q\nReceived : %q", test.expected.out, out)
 				}
 			}
 		})

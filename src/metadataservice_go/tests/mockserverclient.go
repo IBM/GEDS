@@ -10,7 +10,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/test/bufconn"
-	"log"
 	"net"
 	"os"
 )
@@ -42,7 +41,7 @@ func mockServerClient(ctx context.Context) (protos.MetadataServiceClient, func()
 	closer := func() {
 		err = lis.Close()
 		if err != nil {
-			log.Printf("error closing listener: %v", err)
+			logger.ErrorLogger.Println("error closing listener: ", err)
 		}
 		grpcServer.Stop()
 	}

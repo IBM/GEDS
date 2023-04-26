@@ -34,11 +34,11 @@ func TestMDS_Connection(t *testing.T) {
 			out, err := client.GetConnectionInformation(ctx, test.in)
 			if err != nil {
 				if test.expected.err.Error() != err.Error() {
-					t.Errorf("Err -> \nWant: %q\nGot: %q\n", test.expected.err, err)
+					t.Errorf("Error -> \nExpected: %q\nReceived: %q\n", test.expected.err, err)
 				}
 			} else {
 				if test.expected.out.RemoteAddress != out.RemoteAddress {
-					t.Errorf("Out -> \nWant: %q\nGot : %q", test.expected.out, out)
+					t.Errorf("Not Matching -> \nExpected: %q\nReceived : %q", test.expected.out, out)
 				}
 			}
 		})
