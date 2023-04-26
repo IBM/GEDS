@@ -440,7 +440,6 @@ absl::Status MetadataService::subscribeStream() {
       _stub->SubscribeStream(&context, subscription_stream_event));
 
   while (reader->Read(&subscription_response)) {
-
     const auto &objectPublication = subscription_response.object();
     auto obj_id = geds::ObjectID{objectPublication.id().bucket(), objectPublication.id().key()};
     auto obj_info =
@@ -466,6 +465,7 @@ absl::Status MetadataService::subscribeStream() {
   if (!status.ok()) {
     return absl::InternalError(status.error_message());
   }
+  std::this_thread::sleep_for(std::chrono::seconds(1));
   return subscribeStream();
 }
 
