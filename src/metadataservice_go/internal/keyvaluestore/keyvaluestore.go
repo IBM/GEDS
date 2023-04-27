@@ -45,6 +45,7 @@ func (kv *Service) RegisterObjectStore(objectStore *protos.ObjectStoreConfig) er
 		}
 		kv.objectStoreConfigs[objectStore.Bucket] = objectStore
 	}
+	go kv.populateKVSFromS3(objectStore)
 	return nil
 }
 

@@ -19,6 +19,7 @@ Do a ``make help`` to see all the available commands.
     cp tests/configs/app.env.secret tests/configs/app.env
     make test
   ```
+  For testing populating key-value store with S3 objects, set the config in``env``.
 
 	- Run command:
   ```bash
