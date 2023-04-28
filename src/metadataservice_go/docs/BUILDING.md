@@ -19,7 +19,8 @@ Do a ``make help`` to see all the available commands.
     cp tests/configs/app.env.secret tests/configs/app.env
     make test
   ```
-  For testing populating key-value store with S3 objects, set the config in``env``.
+  (Optional) for testing populating key-value store with S3 objects, set the S3 config in``env``.
+
 
 	- Run command:
   ```bash
@@ -27,4 +28,4 @@ Do a ``make help`` to see all the available commands.
     make run-mds
   ```
 
-  ``app.env`` contains the configurations of the Metadaserver, e.g., ports, enabling/disabling publish/subscribe, etc. 
+  ``app.env`` contains the configurations of the MDS, e.g., ports, enabling/disabling publish/subscribe, etc. 

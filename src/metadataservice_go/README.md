@@ -1,6 +1,6 @@
-# GEDS Metadataserver
+# GEDS Metadata Server
 
-This project is the implementation of Metadataserver of GEDS in the GO programming language.
+This project is the implementation of the Metadata Server (MDS) of GEDS in the GO programming language. Including a Publish/Subscribe feature for propagating metadata and persistent storage using LevelDB.
 
 - [Building](docs/BUILDING.md)
 

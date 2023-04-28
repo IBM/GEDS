@@ -1,6 +1,6 @@
 /**
- * Copyright 2023- Pezhman Nasirifard. All rights reserved
- * SPDX-License-Identifier: Apache-2.0
+* Copyright 2023- Pezhman Nasirifard. All rights reserved
+* SPDX-License-Identifier: Apache-2.0
  */
 
 package main
@@ -23,32 +23,31 @@ func mockServerClient(ctx context.Context) (protos.MetadataServiceClient, func()
 	metrics := &prommetrics.Metrics{}
 	_ = os.RemoveAll("./data")
 	buffer := 101024 * 1024
-	lis := bufconn.Listen(buffer)
+	listener := bufconn.Listen(buffer)
 	maxMessageSize := 64 * 1024 * 1024
 	opts := []grpc.ServerOption{grpc.KeepaliveEnforcementPolicy(serverconfig.KAEP),
 		grpc.KeepaliveParams(serverconfig.KASP),
 		grpc.MaxRecvMsgSize(maxMessageSize), grpc.MaxSendMsgSize(maxMessageSize)}
-	grpcServer := grpc.NewServer(opts...)
-	serviceInstance := mdsservice.NewService(metrics)
-	protos.RegisterMetadataServiceServer(grpcServer, serviceInstance)
+	mds := grpc.NewServer(opts...)
+	service := mdsservice.NewService(metrics)
+	protos.RegisterMetadataServiceServer(mds, service)
 	go func() {
-		if err := grpcServer.Serve(lis); err != nil {
+		if err := mds.Serve(listener); err != nil {
 			logger.ErrorLogger.Println("error serving server: ", err)
 		}
 	}()
 	conn, err := grpc.DialContext(ctx, "",
 		grpc.WithContextDialer(func(context.Context, string) (net.Conn, error) {
-			return lis.Dial()
+			return listener.Dial()
 		}), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		logger.ErrorLogger.Println("error connecting to server: ", err)
 	}
 	closer := func() {
-		err = lis.Close()
-		if err != nil {
+		if err = listener.Close(); err != nil {
 			logger.ErrorLogger.Println("error closing listener: ", err)
 		}
-		grpcServer.Stop()
+		mds.Stop()
 	}
 	client := protos.NewMetadataServiceClient(conn)
 	return client, closer
