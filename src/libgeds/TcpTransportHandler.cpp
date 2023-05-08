@@ -5,14 +5,22 @@
 
 #include "TcpTransportHandler.h"
 
+#include <asm-generic/errno-base.h>
+#include <asm-generic/errno.h>
+#include <boost/asio/buffer.hpp>
+#include <boost/system/detail/error_code.hpp>
 #include <cassert>
+#include <cerrno>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <istream>
 #include <iterator>
 #include <memory>
 #include <ostream>
 #include <sstream>
+#include <sys/sendfile.h>
+#include <sys/types.h>
 #include <vector>
 
 #include <absl/status/status.h>
@@ -25,6 +33,7 @@
 #include <boost/system/error_code.hpp>
 
 #include "GEDS.h"
+#include "GEDSFile.h"
 #include "Logging.h"
 #include "TcpDataTransport.h"
 
@@ -94,16 +103,45 @@ void TcpTransportHandler::handleWrite(const std::string &bucket, const std::stri
   std::vector<boost::asio::const_buffer> writeArray;
   writeArray.emplace_back(boost::asio::buffer(&response, sizeof(response)));
 
-  if (file->rawPtr().ok()) {
+  auto self = shared_from_this();
+
+  auto rawFd = file->rawFd();
+  auto rawPtr = file->rawPtr();
+
+  if (rawPtr.ok()) {
     auto size = file->size();
     response.length = offset > size ? 0 : (std::min(size - offset, length));
     if (offset > size) {
       response.length = 0;
     }
     if (response.length > 0) {
-      auto rawPtr = file->rawPtr();
       writeArray.emplace_back(boost::asio::buffer(&(*rawPtr)[offset], response.length));
     }
+  } else if (rawFd.ok() && length > 8192) {
+    int fd = *rawFd;
+    auto f = *file;
+
+    auto size = file->size();
+    length = offset > size ? 0 : (std::min(size - offset, length));
+    response.length = length;
+    // Write header, then proceed to sendfile.
+    boost::asio::async_write( //
+        _socket, writeArray,  //
+        [self, &writeArray, &response, f, fd, offset, length](boost::system::error_code ec,
+                                                              std::size_t /* length */) {
+          if (ec) {
+            LOG_ERROR("Error during write of ", f.identifier(), ": ", ec);
+            return;
+          }
+
+          (void)writeArray;
+          (void)response;
+
+          int64_t off = offset;
+          size_t count = length;
+          self->handleWriteSendfile(f, fd, off, count);
+        });
+    return;
   } else {
     byteBuffer = new uint8_t[length];
     auto size = file->read(byteBuffer, offset, length);
@@ -119,7 +157,6 @@ void TcpTransportHandler::handleWrite(const std::string &bucket, const std::stri
 
   LOG_DEBUG("Sending payload ", response.length);
   // Note: buffer, file need to be captured by the lambda.
-  auto self = shared_from_this();
   boost::asio::async_write( //
       _socket, writeArray,  //
       [self, &writeArray, byteBuffer, &response, file](boost::system::error_code ec,
@@ -136,6 +173,41 @@ void TcpTransportHandler::handleWrite(const std::string &bucket, const std::stri
 
         LOG_DEBUG("Finished writing");
         self->awaitRequest();
+      });
+}
+
+void TcpTransportHandler::handleWriteSendfile(GEDSFile file, int fd, int64_t offset, size_t count) {
+  LOG_DEBUG("Sending ", file.identifier(), " [", offset, "](", count, ")");
+
+  if (count == 0) {
+    awaitRequest();
+    return;
+  }
+
+  auto self = shared_from_this();
+  // Check if buffer is writable.
+  _socket.async_write_some(
+      boost::asio::null_buffers(),
+      [self, file, fd, offset, count](boost::system::error_code ec, std::size_t /* length*/) {
+        if (ec) {
+          LOG_ERROR("Error during write of ", file.identifier(), ": sendfile ", ec);
+          return;
+        }
+
+        int64_t off = offset;
+        ssize_t sent = 0;
+        do {
+          sent = sendfile64(self->_socket.native_handle(), fd, &off, count);
+        } while (sent < 0 && errno == EINTR);
+        if (sent < 0) {
+          int err = errno;
+          if (err != EWOULDBLOCK) {
+            LOG_ERROR("Error during sendfile of ", file.identifier(), ": ", strerror(err));
+            return;
+          }
+          sent = 0;
+        }
+        self->handleWriteSendfile(file, fd, offset + sent, count - sent);
       });
 }
 
