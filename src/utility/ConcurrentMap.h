@@ -53,7 +53,7 @@ public:
     return true;
   }
 
-  int size() {
+  size_t size() const {
     auto lock = getReadLock();
     return _map.size();
   }
