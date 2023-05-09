@@ -65,7 +65,8 @@ GEDS::GEDS(GEDSConfig &&argConfig)
       _server(_config.listenAddress, _config.port),
       _metadataService(_config.metadataServiceAddress), _pathPrefix(_config.localStoragePath),
       _hostname(_config.hostname.value_or("")), _httpServer(_config.portHttpServer),
-      _ioThreadPool(_config.io_thread_pool_size) {
+      _ioThreadPool(_config.io_thread_pool_size), _storageCounters(_config.available_local_storage),
+      _memoryCounters(_config.available_local_memory) {
   std::error_code ec;
   auto success = std::filesystem::create_directories(_pathPrefix, ec);
   if (!success && ec.value() != 0) {
@@ -912,42 +913,49 @@ void GEDS::relocate(std::shared_ptr<GEDSFileHandle> handle, bool force) {
 
 void GEDS::startStorageMonitoringThread() {
   _storageMonitoringThread = std::thread([&]() {
-    auto statsLocalStorage = geds::Statistics::createGauge("GEDS: Local Storage used");
+    auto statsLocalStorageUsed = geds::Statistics::createGauge("GEDS: Local Storage used");
     auto statsLocalStorageFree = geds::Statistics::createGauge("GEDS: Local Storage free");
     auto statsLocalStorageAllocated =
         geds::Statistics::createGauge("GEDS: Local Storage allocated");
-    auto statsLocalMemory = geds::Statistics::createGauge("GEDS: Local Memory used");
+    auto statsLocalMemoryUsed = geds::Statistics::createGauge("GEDS: Local Memory used");
     auto statsLocalMemoryFree = geds::Statistics::createGauge("GEDS: Local Memory free");
     auto statsLocalMemoryAllocated = geds::Statistics::createGauge("GEDS: Local Memory allocated");
 
     std::vector<std::shared_ptr<GEDSFileHandle>> relocatable;
     while (_state == ServiceState::Running) {
       relocatable.clear();
-      size_t localMemory = 0;
-      size_t localStorage = 0;
+      size_t memoryUsed = 0;
+      size_t storageUsed = 0;
       _fileHandles.forall(
-          [&relocatable, &localStorage, &localMemory](std::shared_ptr<GEDSFileHandle> &fh) {
-            localStorage += fh->localStorageSize();
-            localMemory += fh->localMemorySize();
+          [&relocatable, &storageUsed, &memoryUsed](std::shared_ptr<GEDSFileHandle> &fh) {
+            storageUsed += fh->localStorageSize();
+            memoryUsed += fh->localMemorySize();
             if (fh->isRelocatable()) {
               if (fh->openCount() == 0) {
                 relocatable.push_back(fh);
               }
             }
           });
-      _localStorageUsed = localStorage;
-      _localMemoryUsed = localMemory;
 
-      *statsLocalStorage = localStorageUsed();
-      *statsLocalStorageAllocated = localStorageAllocated();
-      *statsLocalStorageFree = localStorageFree();
+      _storageCounters.updateUsed(storageUsed);
+      _memoryCounters.updateUsed(memoryUsed);
 
-      *statsLocalMemory = localMemoryUsed();
-      *statsLocalMemoryAllocated = localMemoryAllocated();
-      *statsLocalMemoryFree = localMemoryFree();
+      {
+        auto lock = _storageCounters.getReadLock();
+        *statsLocalStorageUsed = _storageCounters.used;
+        *statsLocalStorageAllocated = _storageCounters.allocated;
+        *statsLocalStorageFree = _storageCounters.free;
+      }
+
+      {
+        auto lock = _memoryCounters.getReadLock();
+        *statsLocalMemoryAllocated = _memoryCounters.allocated;
+        *statsLocalMemoryUsed = _memoryCounters.used;
+        *statsLocalMemoryFree = _memoryCounters.free;
+      }
 
       auto targetStorage = (size_t)(0.7 * (double)_config.available_local_storage);
-      if (localStorage > targetStorage) {
+      if (memoryUsed > targetStorage) {
         std::sort(std::begin(relocatable), std::end(relocatable),
                   [](std::shared_ptr<GEDSFileHandle> a, std::shared_ptr<GEDSFileHandle> b) {
                     return a->lastReleased() < b->lastReleased();
@@ -971,27 +979,3 @@ void GEDS::startStorageMonitoringThread() {
     }
   });
 }
-
-size_t GEDS::localStorageUsed() const { return _localStorageUsed.load(); }
-
-size_t GEDS::localStorageFree() const {
-  auto used = _localStorageUsed.load();
-  if (used > _config.available_local_storage) {
-    return 0;
-  }
-  return localMemoryAllocated() - used;
-}
-
-size_t GEDS::localStorageAllocated() const { return _config.available_local_storage; }
-
-size_t GEDS::localMemoryUsed() const { return _localMemoryUsed.load(); }
-
-size_t GEDS::localMemoryFree() const {
-  auto used = _localMemoryUsed.load();
-  if (used > _config.available_local_memory) {
-    return 0;
-  }
-  return _config.available_local_memory - used;
-}
-
-size_t GEDS::localMemoryAllocated() const { return _config.available_local_memory; }

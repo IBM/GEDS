@@ -39,7 +39,7 @@ struct RemoteFileInfo {
   const size_t length;
 };
 
-class FileTransferService: public utility::RWConcurrentObjectAdaptor {
+class FileTransferService : public utility::RWConcurrentObjectAdaptor {
   ConnectionState _connectionState;
   std::shared_ptr<grpc::Channel> _channel;
   std::unique_ptr<geds::rpc::GEDSService::Stub> _stub;

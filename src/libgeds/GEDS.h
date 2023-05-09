@@ -41,6 +41,7 @@
 #include "S3ObjectStores.h"
 #include "Server.h"
 #include "Statistics.h"
+#include "StorageCounter.h"
 #include "TcpTransport.h"
 
 const char Default_GEDSFolderDelimiter = '/';
@@ -107,8 +108,8 @@ protected:
   std::thread _storageMonitoringThread;
   void startStorageMonitoringThread();
 
-  std::atomic<size_t> _localStorageUsed;
-  std::atomic<size_t> _localMemoryUsed;
+  geds::StorageCounter _storageCounters;
+  geds::StorageCounter _memoryCounters;
 
 public:
   /**
@@ -159,7 +160,8 @@ public:
   /**
    * @brief Parse the object name and split it into bucket and key.
    */
-  static absl::StatusOr<std::pair<std::string, std::string>> parseObjectName(const std::string& objectName);
+  static absl::StatusOr<std::pair<std::string, std::string>>
+  parseObjectName(const std::string &objectName);
 
   /**
    * @brief Create object located at bucket/key.
@@ -317,13 +319,6 @@ public:
   void relocate(bool force = false);
   void relocate(std::vector<std::shared_ptr<GEDSFileHandle>> &relocatable, bool force = false);
   void relocate(std::shared_ptr<GEDSFileHandle> handle, bool force = false);
-
-  size_t localStorageUsed() const;
-  size_t localStorageFree() const;
-  size_t localStorageAllocated() const;
-  size_t localMemoryUsed() const;
-  size_t localMemoryFree() const;
-  size_t localMemoryAllocated() const;
 };
 
 #endif // GEDS_GEDS_H
