@@ -130,6 +130,7 @@ absl::Status GEDS::start() {
       return absl::UnknownError("Unable to obtain connection IP! Reason: " +
                                 std::string{hostIP.status().message()});
     }
+    _hostname = hostIP.value();
     _hostURI = computeHostUri(hostIP.value(), _server.port());
     LOG_INFO("Using ", _hostURI, " to announce myself.");
   }
