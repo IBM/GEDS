@@ -165,14 +165,10 @@ absl::Status GEDS::stop() {
   auto result = _metadataService.disconnect();
   if (!result.ok()) {
     LOG_ERROR("cannot disconnect metadata service");
-    _state = ServiceState::Unknown;
-    return result;
   }
   result = _server.stop();
   if (!result.ok()) {
-    _state = ServiceState::Unknown;
     LOG_ERROR("cannot stop server");
-    return result;
   }
 
   _httpServer.stop();
