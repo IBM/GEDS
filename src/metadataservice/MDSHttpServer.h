@@ -11,6 +11,7 @@
 #include <boost/asio/io_context.hpp>
 
 #include "MDSHttpSession.h"
+#include "MDSKVS.h"
 
 class Nodes;
 
@@ -24,9 +25,10 @@ class MDSHttpServer {
   std::thread _thread;
 
   Nodes &_nodes;
+  std::shared_ptr<MDSKVS> _kvs;
 
 public:
-  MDSHttpServer(uint16_t port, Nodes &nodes);
+  MDSHttpServer(uint16_t port, Nodes &nodes, std::shared_ptr<MDSKVS> kvs);
   absl::Status start();
   void stop();
 

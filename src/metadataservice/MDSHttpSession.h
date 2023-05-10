@@ -17,6 +17,8 @@
 #include <memory>
 #include <string>
 
+#include "MDSKVS.h"
+
 class Nodes;
 
 namespace geds {
@@ -28,9 +30,10 @@ class MDSHttpSession : public std::enable_shared_from_this<MDSHttpSession> {
   boost::beast::http::response<boost::beast::http::dynamic_body> _response;
 
   Nodes &_nodes;
+  std::shared_ptr<MDSKVS> _kvs;
 
 public:
-  MDSHttpSession(boost::asio::ip::tcp::socket &&socket, Nodes &nodes);
+  MDSHttpSession(boost::asio::ip::tcp::socket &&socket, Nodes &nodes, std::shared_ptr<MDSKVS> kvs);
   ~MDSHttpSession();
   void start();
 
@@ -39,6 +42,7 @@ public:
   void prepareHtmlReply();
   void prepareMetricsReply();
   void prepareApiNodesReply();
+  void prepareApiDecommissionReply(const std::string &body);
   void prepareError(boost::beast::http::status status, std::string message);
   void handleWrite();
 

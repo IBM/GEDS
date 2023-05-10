@@ -23,7 +23,7 @@
 #include "boost/json/detail/value_from.hpp"
 #include "geds.grpc.pb.h"
 
-enum class NodeState { Registered, Decomissioning, Unknown };
+enum class NodeState { Registered, Decommissioning, ReadyForShutdown, Unknown };
 
 struct NodeHeartBeat {
   size_t memoryAllocated{0};
@@ -67,6 +67,8 @@ public:
 
   void setState(NodeState state);
   NodeState state() const;
+
+  std::string gedsHostUri() const;
 
   void updateHeartBeat(const NodeHeartBeat &heartBeat);
   std::tuple<NodeHeartBeat, std::chrono::time_point<std::chrono::system_clock>>

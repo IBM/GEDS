@@ -24,7 +24,8 @@
 
 namespace geds {
 
-MDSHttpServer::MDSHttpServer(uint16_t port, Nodes &nodes) : _port(port), _nodes(nodes) {}
+MDSHttpServer::MDSHttpServer(uint16_t port, Nodes &nodes, std::shared_ptr<MDSKVS> kvs)
+    : _port(port), _nodes(nodes), _kvs(kvs) {}
 
 absl::Status MDSHttpServer::start() {
   if (_acceptor != nullptr) {
@@ -53,15 +54,16 @@ void MDSHttpServer::stop() {
 }
 
 void MDSHttpServer::accept() {
-  _acceptor->async_accept(boost::asio::make_strand(_ioContext),
-                          [&](boost::beast::error_code ec, boost::asio::ip::tcp::socket socket) {
-                            if (ec) {
-                              LOG_ERROR("Unable to accept ", ec.message(), " ABORT.");
-                              return;
-                            }
-                            std::make_shared<MDSHttpSession>(std::move(socket), _nodes)->start();
-                            accept();
-                          });
+  _acceptor->async_accept(
+      boost::asio::make_strand(_ioContext),
+      [&](boost::beast::error_code ec, boost::asio::ip::tcp::socket socket) {
+        if (ec) {
+          LOG_ERROR("Unable to accept ", ec.message(), " ABORT.");
+          return;
+        }
+        std::make_shared<MDSHttpSession>(std::move(socket), _nodes, _kvs)->start();
+        accept();
+      });
 }
 
 } // namespace geds
