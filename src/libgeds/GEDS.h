@@ -112,6 +112,8 @@ protected:
   geds::StorageCounter _memoryCounters;
 
 public:
+  const std::string uuid;
+
   /**
    * @brief GEDS CTOR. Note: This CTOR needs to be wrapped in a SHARED_POINTER!
    */

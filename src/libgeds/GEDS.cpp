@@ -18,6 +18,7 @@
 #include <regex>
 #include <set>
 #include <shared_mutex>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -30,6 +31,10 @@
 #include <absl/status/status.h>
 #include <absl/status/statusor.h>
 #include <absl/strings/escaping.h>
+#include <boost/lexical_cast.hpp>
+#include <boost/uuid/uuid.hpp>
+#include <boost/uuid/uuid_generators.hpp>
+#include <boost/uuid/uuid_io.hpp>
 
 #include "DirectoryMarker.h"
 #include "FileTransferService.h"
@@ -60,13 +65,20 @@ static std::string computeHostUri(const std::string &hostname, uint16_t port) {
   return "geds://" + hostname + ":" + std::to_string(port);
 }
 
+static std::string createUUID() {
+  auto uuid = boost::uuids::random_generator()();
+  std::stringstream ss;
+  ss << uuid;
+  return ss.str();
+}
+
 GEDS::GEDS(GEDSConfig &&argConfig)
     : std::enable_shared_from_this<GEDS>(), _config(argConfig),
       _server(_config.listenAddress, _config.port),
       _metadataService(_config.metadataServiceAddress), _pathPrefix(_config.localStoragePath),
       _hostname(_config.hostname.value_or("")), _httpServer(_config.portHttpServer),
       _ioThreadPool(_config.io_thread_pool_size), _storageCounters(_config.available_local_storage),
-      _memoryCounters(_config.available_local_memory) {
+      _memoryCounters(_config.available_local_memory), uuid(createUUID()) {
   std::error_code ec;
   auto success = std::filesystem::create_directories(_pathPrefix, ec);
   if (!success && ec.value() != 0) {
