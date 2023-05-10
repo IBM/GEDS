@@ -44,7 +44,7 @@ class MetadataServiceImpl final : public geds::rpc::MetadataService::Service {
   geds::MDSHttpServer _httpServer;
 
 public:
-  MetadataServiceImpl(std::shared_ptr<MDSKVS> kvs) : _kvs(kvs), _httpServer(4383, _nodes) {
+  MetadataServiceImpl(std::shared_ptr<MDSKVS> kvs) : _kvs(kvs), _httpServer(4383, _nodes, _kvs) {
     auto status = _httpServer.start();
     if (!status.ok()) {
       LOG_ERROR("Unable to start HTTP Server!");

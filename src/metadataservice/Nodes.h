@@ -44,7 +44,8 @@ public:
   absl::Status registerNode(const std::string &uuid, const std::string &host, uint16_t port);
   absl::Status unregisterNode(const std::string &uuid);
   absl::Status heartbeat(const std::string &uuid, const NodeHeartBeat &heartbeat);
-  absl::Status decomissionNodes(const std::vector<std::string> &nodes, std::shared_ptr<MDSKVS> kvs);
+  absl::Status decommissionNodes(const std::vector<std::string> &nodes,
+                                 std::shared_ptr<MDSKVS> kvs);
 
   std::string toJson() const;
 };

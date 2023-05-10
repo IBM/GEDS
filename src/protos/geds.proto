@@ -70,7 +70,8 @@ message ObjectResponse {
 enum NodeState {
   Register = 0;
   Unregister = 1;
-  PrepareDecomission = 2;
+  PrepareDecommission = 2;
+  ReadyForShutdown = 3;
 }
 
 message NodeIdentifier {
