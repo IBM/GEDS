@@ -933,7 +933,11 @@ absl::Status GEDS::downloadObject(const std::string &bucket, const std::string &
   if (!newFile.ok()) {
     return newFile.status();
   }
-  return (*oldFile)->download(*newFile);
+  auto status = (*oldFile)->download(*newFile);
+  if (!status.ok()) {
+    return status;
+  }
+  return (*newFile)->seal();
 }
 
 absl::Status GEDS::downloadObjects(std::vector<geds::ObjectID> objects) {
