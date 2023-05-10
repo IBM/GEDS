@@ -3,13 +3,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef GEDS_FORMAT_TIME_ISO8601_H
-#define GEDS_FORMAT_TIME_ISO8601_H
+#pragma once
 
 #include <chrono>
 #include <iomanip>
 #include <iostream>
 #include <ostream>
+#include <sstream>
 
 template <typename Clock, typename Duration>
 std::ostream &operator<<(std::ostream &stream,
@@ -19,4 +19,9 @@ std::ostream &operator<<(std::ostream &stream,
   return stream << std::put_time(std::gmtime(&t), "%Y-%m-%dT%TZ");
 }
 
-#endif
+template <typename Clock, typename Duration>
+std::string toISO8601String(const std::chrono::time_point<Clock, Duration> &time) {
+  std::stringstream ss;
+  ss << time;
+  return ss.str();
+}
