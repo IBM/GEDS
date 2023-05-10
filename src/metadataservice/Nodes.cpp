@@ -21,6 +21,7 @@
 
 #include "Logging.h"
 #include "NodeInformation.h"
+#include "absl/status/status.h"
 #include "geds.grpc.pb.h"
 
 absl::Status Nodes::registerNode(const std::string &uuid, const std::string &host, uint16_t port) {
@@ -28,8 +29,8 @@ absl::Status Nodes::registerNode(const std::string &uuid, const std::string &hos
   auto existing = _nodes.insertOrExists(uuid, val);
   if (existing.get() != val.get()) {
     // auto diff = std::chrono::duration_cast<std::chrono::minutes>(now - existing->lastCheckin);
-    if (existing->state() == NodeState::Decomissioning) {
-      // Allow reregistering decomissioned nodes.
+    if (existing->state() == NodeState::Decommissioning) {
+      // Allow reregistering decommissioned nodes.
       auto connect = val->connect();
       if (!connect.ok()) {
         LOG_ERROR(connect.message());
@@ -73,32 +74,31 @@ absl::Status Nodes::heartbeat(const std::string &uuid, const NodeHeartBeat &hear
   return absl::OkStatus();
 }
 
-absl::Status Nodes::decomissionNodes(const std::vector<std::string> &nodes,
-                                     std::shared_ptr<MDSKVS> kvs) {
-  if (!_isDecommissioning.try_lock()) {
-    return absl::UnavailableError("Already decomissioning.");
+absl::Status Nodes::decommissionNodes(const std::vector<std::string> &nodes,
+                                      std::shared_ptr<MDSKVS> kvs) {
+  auto lock = std::unique_lock<std::mutex>(_isDecommissioning, std::try_to_lock);
+  if (!lock.owns_lock()) {
+    return absl::UnavailableError("Already decommissioning.");
   }
 
+  // Mark hosts as decommissioning and determine host uris to collect objects.
+  std::vector<std::string> gedsHostUris;
+  std::vector<std::shared_ptr<NodeInformation>> hostsToDecommision;
   for (const auto &node : nodes) {
     auto existing = _nodes.get(node);
     if (!existing.has_value()) {
-      LOG_ERROR("Unable to decomission: Node " + node + " since it does not exist!");
-      continue;
+      return absl::UnavailableError("Unable to decommission node: " + node +
+                                    " since it does not exist!");
     }
-    (*existing)->setState(NodeState::Decomissioning);
-  }
-
-  // Prefix nodes with geds://
-  std::vector<std::string> prefixedNodes(nodes.size());
-  for (const auto &node : nodes) {
-    prefixedNodes.emplace_back("geds://" + node);
+    (*existing)->setState(NodeState::Decommissioning);
+    hostsToDecommision.emplace_back(*existing);
+    gedsHostUris.emplace_back((*existing)->gedsHostUri());
   }
 
   // Find all buckets.
   auto buckets = kvs->listBuckets();
   if (!buckets.ok()) {
-    LOG_ERROR("Unable to list buckets when decomissioning: ", buckets.status().message());
-    _isDecommissioning.unlock();
+    LOG_ERROR("Unable to list buckets when decommissioning: ", buckets.status().message());
     return buckets.status();
   }
 
@@ -109,14 +109,14 @@ absl::Status Nodes::decomissionNodes(const std::vector<std::string> &nodes,
     if (!bucket.ok()) {
       continue;
     }
-    (*bucket)->forall([&objects, &prefixedNodes, &bucketName](const utility::Path &path,
-                                                              const geds::ObjectInfo &obj) {
+    (*bucket)->forall([&objects, &gedsHostUris, &bucketName](const utility::Path &path,
+                                                             const geds::ObjectInfo &obj) {
       // Do not relocate cached blocks.
       if (path.name.starts_with("_$cachedblock$/")) {
         return;
       }
-      for (const auto &n : prefixedNodes) {
-        if (obj.location.starts_with(n)) {
+      for (const auto &uri : gedsHostUris) {
+        if (obj.location == uri) {
           objects.emplace_back(
               new RelocatableObject{.bucket = bucketName, .key = path.name, .size = obj.size});
         }
@@ -176,12 +176,14 @@ absl::Status Nodes::decomissionNodes(const std::vector<std::string> &nodes,
     }
   }
 
+  std::atomic<size_t> failures;
   std::vector<std::thread> threads;
   threads.reserve(targetNodes.size());
   for (auto &target : targetNodes) {
-    threads.emplace_back([target] {
+    threads.emplace_back([target, &failures] {
       auto status = target->node->downloadObjects(target->objects);
       if (!status.ok()) {
+        failures += 1;
         LOG_ERROR("Unable to relocate objects to ", target->node->host,
                   " uuid: ", target->node->uuid);
         return;
@@ -197,7 +199,12 @@ absl::Status Nodes::decomissionNodes(const std::vector<std::string> &nodes,
     thread.join();
   }
 
-  _isDecommissioning.unlock();
+  if (failures == 0) {
+    for (auto &host : hostsToDecommision) {
+      host->setState(NodeState::ReadyForShutdown);
+    }
+  }
+
   return absl::OkStatus();
 }
 

@@ -57,6 +57,10 @@ NodeState NodeInformation::state() const {
   return _state;
 }
 
+std::string NodeInformation::gedsHostUri() const {
+  return "geds://" + host + ":" + std::to_string(port);
+}
+
 void NodeInformation::updateHeartBeat(const NodeHeartBeat &heartBeat) {
   auto lock = getWriteLock();
   _heartBeat = heartBeat;
