@@ -36,11 +36,12 @@ message_read = bytearray(len(message))
 l = file.read(message_read, 0, len(message_read))
 print(f"Read: {message_read.decode()}")
 
-# Print path
-# print(f"File: {file.path()}")
+file.seal()
+
+file2 = instance.create("bucket2", "testfile2")
+file2.write(message_read, 0, len(message))
+file2.seal()
 
 # Seal file
-
-file.seal()
 
 sleep(1000000)
