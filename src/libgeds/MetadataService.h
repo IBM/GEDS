@@ -47,9 +47,10 @@ public:
 
   absl::Status disconnect();
 
-  absl::Status configureNode(const std::string &identifier, geds::rpc::NodeState state);
+  absl::Status configureNode(const std::string &uuid, const std::string &identifier, uint16_t port,
+                             geds::rpc::NodeState state);
 
-  absl::Status heartBeat(const std::string &identifier, const StorageCounter &storage,
+  absl::Status heartBeat(const std::string &uuid, const StorageCounter &storage,
                          const StorageCounter &memory);
 
   absl::StatusOr<std::string> getConnectionInformation();

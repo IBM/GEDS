@@ -6,58 +6,66 @@
 #include "Nodes.h"
 
 #include <algorithm>
+#include <boost/json/object.hpp>
 #include <chrono>
+#include <cstdint>
 #include <map>
 #include <memory>
 #include <mutex>
 #include <thread>
 #include <vector>
 
+#include <boost/json/array.hpp>
+#include <boost/json/serialize.hpp>
+#include <boost/json/value_from.hpp>
+
 #include "Logging.h"
+#include "NodeInformation.h"
 #include "geds.grpc.pb.h"
 
-absl::Status Nodes::registerNode(const std::string &identifier) {
-  auto val = std::make_shared<NodeInformation>(identifier);
-  auto existing = _nodes.insertOrExists(identifier, val);
+absl::Status Nodes::registerNode(const std::string &uuid, const std::string &host, uint16_t port) {
+  auto val = std::make_shared<NodeInformation>(uuid, host, port);
+  auto existing = _nodes.insertOrExists(uuid, val);
   if (existing.get() != val.get()) {
     // auto diff = std::chrono::duration_cast<std::chrono::minutes>(now - existing->lastCheckin);
     if (existing->state() == NodeState::Decomissioning) {
       // Allow reregistering decomissioned nodes.
       auto connect = val->connect();
       if (!connect.ok()) {
-        LOG_ERROR("Unable to establish backchannel to " + identifier +
-                  " unable to decomission node!");
+        LOG_ERROR(connect.message());
       }
-      _nodes.insertOrReplace(identifier, val);
+      _nodes.insertOrReplace(uuid, val);
 
       return absl::OkStatus();
     }
-    auto message = "Node " + identifier + " was already registered!";
+    auto message = "Node " + uuid + " was already registered!";
     LOG_ERROR(message);
     return absl::AlreadyExistsError(message);
   }
 
   auto connect = val->connect();
-  if (!connect.ok()) {
-    LOG_ERROR("Unable to establish backchannel to " + identifier + " unable to decomission node!");
+  if (connect.ok()) {
+    val->setState(NodeState::Registered);
+  } else {
+    LOG_ERROR(connect.message());
   }
   return absl::OkStatus();
 }
 
-absl::Status Nodes::unregisterNode(const std::string &identifier) {
-  auto removed = _nodes.getAndRemove(identifier);
+absl::Status Nodes::unregisterNode(const std::string &uuid) {
+  auto removed = _nodes.getAndRemove(uuid);
   if (!removed.value()) {
-    auto message = "Unable to remove " + identifier + " not found!";
+    auto message = "Unable to remove " + uuid + " not found!";
     LOG_ERROR(message);
     return absl::NotFoundError(message);
   }
   return absl::OkStatus();
 }
 
-absl::Status Nodes::heartbeat(const std::string &identifier, const NodeHeartBeat &heartbeat) {
-  auto val = _nodes.get(identifier);
+absl::Status Nodes::heartbeat(const std::string &uuid, const NodeHeartBeat &heartbeat) {
+  auto val = _nodes.get(uuid);
   if (!val.value()) {
-    auto message = "Unable to process heartbeat " + identifier + " not found!";
+    auto message = "Unable to process heartbeat " + uuid + " not found!";
     LOG_ERROR(message);
     return absl::NotFoundError(message);
   }
@@ -174,7 +182,7 @@ absl::Status Nodes::decomissionNodes(const std::vector<std::string> &nodes,
     threads.emplace_back([target] {
       auto status = target->node->downloadObjects(target->objects);
       if (!status.ok()) {
-        LOG_ERROR("Unable to relocate objects to ", target->node->identifier);
+        LOG_ERROR("Unable to relocate objects to ", target->node->host);
       }
     });
   }
@@ -184,4 +192,18 @@ absl::Status Nodes::decomissionNodes(const std::vector<std::string> &nodes,
 
   _isDecommissioning.unlock();
   return absl::OkStatus();
+}
+
+void tag_invoke(boost::json::value_from_tag, boost::json::value &jv, Nodes const &n) {
+  boost::json::array nv;
+  const auto &info = n.information();
+  info.forall([&nv](const std::shared_ptr<NodeInformation> &node) {
+    nv.emplace_back(boost::json::value_from(node));
+  });
+  jv = {{"nodes", nv}};
+}
+
+void tag_invoke(boost::json::value_from_tag t, boost::json::value &jv,
+                std::shared_ptr<Nodes> const &n) {
+  tag_invoke(t, jv, *n);
 }

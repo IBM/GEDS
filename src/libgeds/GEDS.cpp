@@ -156,7 +156,8 @@ absl::Status GEDS::start() {
   // Update state.
   _state = ServiceState::Running;
 
-  (void)_metadataService.configureNode(_hostname, geds::rpc::NodeState::Register);
+  (void)_metadataService.configureNode(uuid, _hostname, _server.port(),
+                                       geds::rpc::NodeState::Register);
 
   startStorageMonitoringThread();
   startPubSubStreamThread();
@@ -1058,7 +1059,7 @@ void GEDS::startStorageMonitoringThread() {
 
       {
         // Send heartbeat.
-        auto status = _metadataService.heartBeat(_hostname, _storageCounters, _memoryCounters);
+        auto status = _metadataService.heartBeat(uuid, _storageCounters, _memoryCounters);
         if (!status.ok()) {
           LOG_ERROR("Unable to send heartbeat to metadata service: ", status.message());
         }
