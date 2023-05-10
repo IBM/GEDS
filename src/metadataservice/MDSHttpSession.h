@@ -38,6 +38,7 @@ public:
   void handleRequest();
   void prepareHtmlReply();
   void prepareMetricsReply();
+  void prepareApiNodesReply();
   void prepareError(boost::beast::http::status status, std::string message);
   void handleWrite();
 

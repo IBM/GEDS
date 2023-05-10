@@ -102,15 +102,19 @@ enum NodeState {
   PrepareDecomission = 2;
 }
 
-message NodeIdentifier { string identifier = 1; }
+message NodeIdentifier {
+  string identifier = 1;
+  uint32 port = 2;
+}
 
 message NodeStatus {
   NodeIdentifier node = 1;
   NodeState state = 2;
+  string uuid = 3;
 }
 
 message HeartbeatMessage {
-  NodeIdentifier node = 1;
+  string uuid = 1;
   uint64 memoryAllocated = 2;
   uint64 memoryUsed = 3;
   uint64 storageAllocated = 4;

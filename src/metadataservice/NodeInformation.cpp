@@ -8,8 +8,8 @@
 #include "Logging.h"
 #include "Status.h"
 
-NodeInformation::NodeInformation(std::string identifierArg)
-    : identifier(std::move(identifierArg)) {}
+NodeInformation::NodeInformation(std::string uuid, std::string hostArg, uint16_t port)
+    : uuid(std::move(uuid)), host(std::move(hostArg)), port(port) {}
 
 absl::Status NodeInformation::connect() {
   auto channelLock = std::lock_guard<std::mutex>(_connectionMutex);
@@ -18,20 +18,20 @@ absl::Status NodeInformation::connect() {
     // Already connected.
     return absl::OkStatus();
   }
+  auto loc = host + ":" + std::to_string(port);
   try {
-    _channel = grpc::CreateChannel(identifier, grpc::InsecureChannelCredentials());
+    _channel = grpc::CreateChannel(loc, grpc::InsecureChannelCredentials());
     auto success =
         _channel->WaitForConnected(std::chrono::system_clock::now() + std::chrono::seconds(10));
     if (!success) {
       // Destroy channel.
       _channel = nullptr;
-      return absl::UnavailableError("Could not connect to " + identifier + ".");
+      return absl::UnavailableError("Could not connect to " + loc + ".");
     }
     _stub = geds::rpc::GEDSService::NewStub(_channel);
   } catch (const std::exception &e) {
     _channel = nullptr;
-    return absl::UnavailableError("Could not open channel with " + identifier +
-                                  ". Reason: " + e.what());
+    return absl::UnavailableError("Could not open channel with " + loc + ". Reason: " + e.what());
   }
   return absl::OkStatus();
 }
@@ -52,7 +52,7 @@ void NodeInformation::setState(NodeState state) {
   auto lock = getWriteLock();
   _state = state;
 }
-NodeState NodeInformation::state() {
+NodeState NodeInformation::state() const {
   auto lock = getReadLock();
   return _state;
 }
@@ -64,7 +64,7 @@ void NodeInformation::updateHeartBeat(const NodeHeartBeat &heartBeat) {
 }
 
 std::tuple<NodeHeartBeat, std::chrono::time_point<std::chrono::system_clock>>
-NodeInformation::lastHeartBeat() {
+NodeInformation::lastHeartBeat() const {
   auto lock = getReadLock();
   return std::make_tuple(_heartBeat, _lastCheckin);
 }
@@ -98,4 +98,24 @@ NodeInformation::downloadObjects(const std::vector<std::shared_ptr<RelocatableOb
   }
 
   return convertStatus(response);
+}
+
+void tag_invoke(boost::json::value_from_tag, boost::json::value &jv,
+                std::shared_ptr<NodeInformation> const &n) {
+  const auto &[h, timeStamp] = n->lastHeartBeat();
+
+  auto storageFree = h.storageUsed > h.storageAllocated ? 0 : h.storageAllocated - h.storageUsed;
+  auto memoryFree = h.memoryUsed > h.memoryAllocated ? 0 : h.memoryAllocated - h.memoryUsed;
+
+  jv = {{"uuid", n->uuid},
+        {"host", n->host},
+        {"port", n->port},
+        {"storageAllocated", h.storageAllocated},
+        {"storageUsed", h.storageUsed},
+        {"storageFree", storageFree},
+        {"memoryAllocated", h.memoryAllocated},
+        {"memoryUsed", h.memoryUsed},
+        {"memoryFree", memoryFree},
+        {"lastCheckIn", toISO8601String(timeStamp)},
+        {"state", std::string{magic_enum::enum_name(n->state())}}};
 }

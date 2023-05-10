@@ -5,6 +5,7 @@
 
 #include "GRPCServer.h"
 
+#include <cstdint>
 #include <iostream>
 #include <map>
 #include <memory>
@@ -67,13 +68,15 @@ protected:
                              ::geds::rpc::StatusResponse *response) override {
     LOG_ACCESS("ConfigureNode");
     const auto &identifier = request->node().identifier();
+    uint16_t port = request->node().port();
     const auto state = request->state();
+    const auto &uuid = request->uuid();
 
     absl::Status status;
     if (state == geds::rpc::NodeState::Register) {
-      status = _nodes.registerNode(identifier);
+      status = _nodes.registerNode(uuid, identifier, port);
     } else if (state == geds::rpc::NodeState::Unregister) {
-      status = _nodes.unregisterNode(identifier);
+      status = _nodes.unregisterNode(uuid);
     } else {
       LOG_ERROR("Invalid state ", state);
       status = absl::InvalidArgumentError("Invalid state: " + std::to_string(state));
@@ -86,16 +89,16 @@ protected:
   grpc::Status Heartbeat(::grpc::ServerContext *context,
                          const ::geds::rpc::HeartbeatMessage *request,
                          ::geds::rpc::StatusResponse *response) override {
-    LOG_ACCESS("Heartbeat: ", request->node().identifier());
+    LOG_ACCESS("Heartbeat: ", request->uuid());
 
-    const auto &identifier = request->node().identifier();
+    const auto &uuid = request->uuid();
     NodeHeartBeat val;
     val.memoryAllocated = request->memoryallocated();
     val.memoryUsed = request->memoryused();
     val.storageAllocated = request->storageallocated();
     val.storageUsed = request->storageused();
 
-    auto status = _nodes.heartbeat(identifier, std::move(val));
+    auto status = _nodes.heartbeat(uuid, std::move(val));
     convertStatus(response, status);
     return grpc::Status::OK;
   }
