@@ -100,6 +100,32 @@ NodeInformation::downloadObjects(const std::vector<std::shared_ptr<RelocatableOb
   return convertStatus(response);
 }
 
+absl::Status
+NodeInformation::purgeLocalObjects(const std::vector<std::shared_ptr<RelocatableObject>> &objects) {
+  if (!_connectionMutex.try_lock()) {
+    return absl::UnavailableError("Unable to pull objects: Lock is unavailable!");
+  }
+
+  geds::rpc::MultiObjectID request;
+  geds::rpc::StatusResponse response;
+  grpc::ClientContext context;
+
+  for (const auto &o : objects) {
+    auto obj = request.add_objects();
+    obj->set_bucket(o->bucket);
+    obj->set_key(o->key);
+  }
+
+  auto status = _stub->DeleteObjectsLocally(&context, request, &response);
+  if (!status.ok()) {
+    LOG_ERROR("Unable to execute object delete grpc call, status: ", status.error_code(), " ",
+              status.error_details());
+    return absl::UnknownError("Unable to execute object delete!");
+  }
+
+  return convertStatus(response);
+}
+
 void tag_invoke(boost::json::value_from_tag, boost::json::value &jv,
                 std::shared_ptr<NodeInformation> const &n) {
   const auto &[h, timeStamp] = n->lastHeartBeat();

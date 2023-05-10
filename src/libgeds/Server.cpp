@@ -85,10 +85,14 @@ class ServerImpl final : public geds::rpc::GEDSService::Service {
                                       ::geds::rpc::StatusResponse *response) override {
     LOG_INFO(context->peer(), " has requested to delete ", request->objects().size(), " objects.");
 
-    (void)context;
-    (void)request;
-    (void)response;
-    auto status = absl::UnimplementedError("DeleteObjectsLocally: NYI");
+    std::vector<geds::ObjectID> objects;
+    const auto &data = request->objects();
+    objects.reserve(data.size());
+    for (const auto &o : data) {
+      objects.emplace_back(geds::ObjectID(o.bucket(), o.key()));
+    }
+
+    auto status = _geds->purgeLocalObjects(objects);
     convertStatus(response, status);
     return grpc::Status::OK;
   }

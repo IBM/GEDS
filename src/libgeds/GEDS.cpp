@@ -1079,3 +1079,23 @@ void GEDS::startStorageMonitoringThread() {
     }
   });
 }
+
+absl::Status GEDS::purgeLocalObject(const std::string &bucket, const std::string &key) {
+  const auto path = getPath(bucket, key);
+  auto result = _fileHandles.getAndRemove(path);
+  if (!result.has_value()) {
+    return absl::NotFoundError("The object with the path " + path.name +
+                               " does not exist locally.");
+  }
+  return absl::OkStatus();
+}
+
+absl::Status GEDS::purgeLocalObjects(std::vector<geds::ObjectID> objects) {
+  for (const auto &obj : objects) {
+    auto status = purgeLocalObject(obj.bucket, obj.key);
+    if (!status.ok()) {
+      LOG_ERROR(status.message());
+    }
+  }
+  return absl::OkStatus();
+}

@@ -323,8 +323,21 @@ public:
   void relocate(std::vector<std::shared_ptr<GEDSFileHandle>> &relocatable, bool force = false);
   void relocate(std::shared_ptr<GEDSFileHandle> handle, bool force = false);
 
+  /**
+   * @brief Pull object to this GEDS instance.
+   */
   absl::Status downloadObject(const std::string &bucket, const std::string &key);
   absl::Status downloadObjects(std::vector<geds::ObjectID> objects);
+
+  /**
+   * @brief Purge locally stored object without updating the Metadata server.
+   */
+  absl::Status purgeLocalObject(const std::string &bucket, const std::string &key);
+
+  /**
+   * @brief Purge locally stored objects if they exist locally. Missing files will be logged.
+   */
+  absl::Status purgeLocalObjects(std::vector<geds::ObjectID> objects);
 };
 
 #endif // GEDS_GEDS_H

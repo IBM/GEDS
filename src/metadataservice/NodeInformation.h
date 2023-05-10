@@ -75,6 +75,7 @@ public:
   // End subject to state mutex
 
   absl::Status downloadObjects(const std::vector<std::shared_ptr<RelocatableObject>> &objects);
+  absl::Status purgeLocalObjects(const std::vector<std::shared_ptr<RelocatableObject>> &objects);
 };
 
 void tag_invoke(boost::json::value_from_tag, boost::json::value &jv,
