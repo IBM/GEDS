@@ -6,6 +6,7 @@
 #pragma once
 
 #include <chrono>
+#include <cstdint>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -14,6 +15,7 @@
 #include <vector>
 
 #include <absl/status/status.h>
+#include <boost/json.hpp>
 
 #include "ConcurrentMap.h"
 #include "MDSKVS.h"
@@ -39,8 +41,15 @@ public:
     return _nodes;
   };
 
-  absl::Status registerNode(const std::string &identifier);
-  absl::Status unregisterNode(const std::string &identifier);
-  absl::Status heartbeat(const std::string &identifier, const NodeHeartBeat &heartbeat);
+  absl::Status registerNode(const std::string &uuid, const std::string &host, uint16_t port);
+  absl::Status unregisterNode(const std::string &uuid);
+  absl::Status heartbeat(const std::string &uuid, const NodeHeartBeat &heartbeat);
   absl::Status decomissionNodes(const std::vector<std::string> &nodes, std::shared_ptr<MDSKVS> kvs);
+
+  std::string toJson() const;
 };
+
+void tag_invoke(boost::json::value_from_tag, boost::json::value &jv, Nodes const &n);
+
+void tag_invoke(boost::json::value_from_tag t, boost::json::value &jv,
+                std::shared_ptr<Nodes> const &n);

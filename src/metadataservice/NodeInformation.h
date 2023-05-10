@@ -6,16 +6,21 @@
 #pragma once
 
 #include <chrono>
+#include <cstdint>
 #include <memory>
 #include <mutex>
 #include <shared_mutex>
 #include <string>
-
-#include <absl/status/status.h>
-#include <grpcpp/grpcpp.h>
 #include <tuple>
 
+#include <absl/status/status.h>
+#include <boost/json.hpp>
+#include <grpcpp/grpcpp.h>
+#include <magic_enum.hpp>
+
+#include "FormatISO8601.h"
 #include "RWConcurrentObjectAdaptor.h"
+#include "boost/json/detail/value_from.hpp"
 #include "geds.grpc.pb.h"
 
 enum class NodeState { Registered, Decomissioning, Unknown };
@@ -44,7 +49,7 @@ class NodeInformation : public utility::RWConcurrentObjectAdaptor {
   std::chrono::time_point<std::chrono::system_clock> _lastCheckin;
   // End subject to state mutex
 public:
-  NodeInformation(std::string identifier);
+  NodeInformation(std::string uuid, std::string host, uint16_t port);
   NodeInformation(NodeInformation &) = delete;
   NodeInformation(NodeInformation &&) = delete;
   NodeInformation &operator=(NodeInformation &) = delete;
@@ -55,15 +60,22 @@ public:
 
   // Subject to state mutex
   absl::Status queryHeartBeat();
-  const std::string identifier;
+
+  const std::string uuid;
+  const std::string host;
+  const uint16_t port;
 
   void setState(NodeState state);
-  NodeState state();
+  NodeState state() const;
 
   void updateHeartBeat(const NodeHeartBeat &heartBeat);
-  std::tuple<NodeHeartBeat, std::chrono::time_point<std::chrono::system_clock>> lastHeartBeat();
+  std::tuple<NodeHeartBeat, std::chrono::time_point<std::chrono::system_clock>>
+  lastHeartBeat() const;
   std::chrono::time_point<std::chrono::system_clock> lastCheckin();
   // End subject to state mutex
 
   absl::Status downloadObjects(const std::vector<std::shared_ptr<RelocatableObject>> &objects);
 };
+
+void tag_invoke(boost::json::value_from_tag, boost::json::value &jv,
+                std::shared_ptr<NodeInformation> const &n);

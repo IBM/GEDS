@@ -66,7 +66,8 @@ void MDSHttpSession::prepareHtmlReply() {
     info.forall([&](const std::shared_ptr<NodeInformation> &node) {
       const auto &[heartBeat, ts] = node->lastHeartBeat();
       boost::beast::ostream(_response.body())
-          << " - " << node->identifier << " "                         //
+          << " - " << node->uuid << ": "                              //
+          << node->host << ":" << node->port << " "                   //
           << "Allocated: " << heartBeat.storageAllocated << " "       //
           << "Used: " << heartBeat.storageUsed << " "                 //
           << "Memory Allocated: " << heartBeat.memoryAllocated << " " //
@@ -78,22 +79,41 @@ void MDSHttpSession::prepareHtmlReply() {
   handleWrite();
 }
 
+void MDSHttpSession::prepareApiNodesReply() {
+  _response.result(boost::beast::http::status::ok);
+  _response.set(boost::beast::http::field::server, BOOST_BEAST_VERSION_STRING);
+  _response.set(boost::beast::http::field::content_type, "text/csv");
+  _response.keep_alive(_request.keep_alive());
+
+  auto data = boost::json::value_from(_nodes);
+  boost::beast::ostream(_response.body()) << boost::json::serialize(data);
+
+  handleWrite();
+}
+
 void MDSHttpSession::handleRequest() {
-  if (_request.method() != boost::beast::http::verb::get) {
-    return prepareError(boost::beast::http::status::bad_request, "Invalid method.");
-  }
   if (_request.target().empty() || _request.target()[0] != '/') {
     return prepareError(boost::beast::http::status::bad_request, "Invalid path.");
   }
 
-  if (_request.target() == "/") {
-    return prepareHtmlReply();
+  if (_request.method() == boost::beast::http::verb::get) {
+    if (_request.target() == "/") {
+      return prepareHtmlReply();
+    }
+    if (_request.target() == "/api/nodes") {
+      return prepareApiNodesReply();
+    }
+    if (_request.target() == "/metrics") {
+      return prepareMetricsReply();
+    }
+    return prepareError(boost::beast::http::status::not_found, "Invalid path");
   }
-  if (_request.target() == "/metrics") {
-    return prepareMetricsReply();
+  if (_request.method() == boost::beast::http::verb::post) {
+    if (_request.target() == "/api/decomission") {
+    }
+    return prepareError(boost::beast::http::status::not_found, "Invalid path");
   }
-
-  return prepareError(boost::beast::http::status::not_found, "Invalid path");
+  return prepareError(boost::beast::http::status::bad_request, "Invalid method.");
 }
 
 void MDSHttpSession::prepareMetricsReply() {

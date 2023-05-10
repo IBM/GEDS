@@ -23,7 +23,9 @@ set(SOURCES
 add_library(libmetadataservice STATIC ${SOURCES})
 target_link_libraries(libmetadataservice
         PUBLIC
+        magic_enum::magic_enum
         ${GRPC_LIBRARIES}
+        ${Boost_LIBRARIES}
         geds_utility
         geds_proto
         geds_s3
