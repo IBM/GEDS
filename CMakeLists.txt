@@ -170,7 +170,7 @@ endif()
 set(Boost_USE_STATIC_LIBS ON)
 find_package(Boost ${BOOST_VERSION}
     REQUIRED
-    system
+    system json
 )
 
 # # Python bindings
