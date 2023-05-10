@@ -63,7 +63,7 @@ protected:
   /**
    * @brief GEDS Service state.
    */
-  geds::ServiceState _state{geds::ServiceState::Stopped};
+  std::atomic<geds::ServiceState> _state{geds::ServiceState::Stopped};
 
   /**
    * @brief Metadata service.

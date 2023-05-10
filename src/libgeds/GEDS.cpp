@@ -35,6 +35,7 @@
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
 #include <boost/uuid/uuid_io.hpp>
+#include <magic_enum.hpp>
 
 #include "DirectoryMarker.h"
 #include "FileTransferService.h"
@@ -102,7 +103,7 @@ std::shared_ptr<GEDS> GEDS::factory(GEDSConfig config) {
 }
 
 GEDS::~GEDS() {
-  LOG_DEBUG("GEDS Destructor. state: ", (int)_state);
+  LOG_DEBUG("GEDS Destructor. state: ", magic_enum::enum_name(_state.load()));
   if (_state == ServiceState::Running) {
     LOG_INFO("Stopping GEDS Service");
     (void)stop();
