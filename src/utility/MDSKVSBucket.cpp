@@ -106,7 +106,7 @@ MDSKVSBucket::listObjects(const std::string &keyPrefix, char delimiter) {
 }
 
 void MDSKVSBucket::forall(
-    std::function<void(const utility::Path &, const geds::ObjectInfo &)> action) {
+    std::function<void(const utility::Path &, const geds::ObjectInfo &)> action) const {
   auto lock = getReadLock();
   for (const auto &v : _map) {
     const auto &key = v.first;
