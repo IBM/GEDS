@@ -967,8 +967,8 @@ absl::Status GEDS::downloadObjects(std::vector<geds::ObjectID> objects) {
       rend = objects.size();
     }
     for (auto i = rbegin; i < rend; i++) {
-      auto file = objects[i];
-      boost::asio::post(_ioThreadPool, [self, &file, h]() {
+      const auto &file = objects[i];
+      boost::asio::post(_ioThreadPool, [self, file, h]() {
         bool error = false;
         try {
           auto status = self->downloadObject(file.bucket, file.key);
@@ -1126,13 +1126,15 @@ absl::Status GEDS::purgeLocalObject(const std::string &bucket, const std::string
   const auto path = getPath(bucket, key);
   auto result = _fileHandles.getAndRemove(path);
   if (!result.has_value()) {
-    return absl::NotFoundError("The object with the path " + path.name +
-                               " does not exist locally.");
+    auto message = "The object with the path " + path.name + " does not exist locally.";
+    LOG_ERROR(message);
+    return absl::NotFoundError(message);
   }
   return absl::OkStatus();
 }
 
 absl::Status GEDS::purgeLocalObjects(std::vector<geds::ObjectID> objects) {
+  LOG_DEBUG("Purging ", objects.size(), ".");
   for (const auto &obj : objects) {
     auto status = purgeLocalObject(obj.bucket, obj.key);
     if (!status.ok()) {

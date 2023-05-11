@@ -53,6 +53,15 @@ absl::Status Nodes::registerNode(const std::string &uuid, const std::string &hos
   return absl::OkStatus();
 }
 
+absl::Status Nodes::reregisterNode(const std::string &uuid) {
+  auto exists = _nodes.get(uuid);
+  if (!exists.has_value()) {
+    return absl::NotFoundError("Node " + uuid + " does not exist!");
+  }
+  (*exists)->setState(NodeState::Registered);
+  return absl::OkStatus();
+}
+
 absl::Status Nodes::unregisterNode(const std::string &uuid) {
   auto removed = _nodes.getAndRemove(uuid);
   if (!removed.value()) {
@@ -168,6 +177,7 @@ absl::Status Nodes::decommissionNodes(const std::vector<std::string> &nodes,
         foundTarget = true;
         target->objects.push_back(obj);
         target->target += obj->size;
+        break;
       }
     }
     if (!foundTarget) {
@@ -187,11 +197,6 @@ absl::Status Nodes::decommissionNodes(const std::vector<std::string> &nodes,
         LOG_ERROR("Unable to relocate objects to ", target->node->host,
                   " uuid: ", target->node->uuid);
         return;
-      }
-      status = target->node->purgeLocalObjects(target->objects);
-      if (!status.ok()) {
-        LOG_ERROR("Unable to cleanup local objects on ", target->node->host,
-                  " uuid: ", target->node->uuid);
       }
     });
   }
