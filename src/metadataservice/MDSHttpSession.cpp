@@ -13,6 +13,7 @@
 #include <boost/beast/core/buffers_to_string.hpp>
 #include <boost/json/parse.hpp>
 #include <boost/json/system_error.hpp>
+#include <magic_enum.hpp>
 
 #include "Logging.h"
 #include "Nodes.h"
@@ -74,16 +75,18 @@ void MDSHttpSession::prepareHtmlReply() {
     info.forall([&](const std::shared_ptr<NodeInformation> &node) {
       const auto &[heartBeat, ts] = node->lastHeartBeat();
       boost::beast::ostream(_response.body())
-          << " - " << node->uuid << ": "                              //
-          << node->host << ":" << node->port << " "                   //
-          << "Allocated: " << heartBeat.storageAllocated << " "       //
-          << "Used: " << heartBeat.storageUsed << " "                 //
-          << "Memory Allocated: " << heartBeat.memoryAllocated << " " //
+          << " - " << node->uuid << ": "                                 //
+          << node->host << ":" << node->port << " "                      //
+          << std::string{magic_enum::enum_name(node->state())} << " -- " //
+          << "Allocated: " << heartBeat.storageAllocated << " "          //
+          << "Used: " << heartBeat.storageUsed << " "                    //
+          << "Memory Allocated: " << heartBeat.memoryAllocated << " "    //
           << "Memory Used: " << heartBeat.memoryUsed << "\n";
     });
   }
   boost::beast::ostream(_response.body()) << "</pre>"
                                           << "</body></html>" << std::endl;
+  boost::beast::ostream(_response.body()) << "\n";
   handleWrite();
 }
 
@@ -95,7 +98,7 @@ void MDSHttpSession::prepareApiNodesReply() {
 
   auto data = boost::json::value_from(_nodes);
   boost::beast::ostream(_response.body()) << boost::json::serialize(data);
-
+  boost::beast::ostream(_response.body()) << "\n";
   handleWrite();
 }
 
@@ -128,8 +131,46 @@ void MDSHttpSession::prepareApiDecommissionReply(const std::string &body) {
                         std::string{status.message()});
   }
 
-  boost::beast::ostream(_response.body())
-      << R"({"status": "success", "nodes": )" << body << R"(}\n)";
+  boost::beast::ostream(_response.body()) << R"({"status": "success", "nodes": )" << body << "}";
+  boost::beast::ostream(_response.body()) << "\n";
+  handleWrite();
+}
+
+void MDSHttpSession::prepareApiReregisterReply(const std::string &body) {
+  _response.result(boost::beast::http::status::ok);
+  _response.set(boost::beast::http::field::server, BOOST_BEAST_VERSION_STRING);
+  _response.set(boost::beast::http::field::content_type, "application/json");
+  _response.keep_alive(_request.keep_alive());
+
+  // Parse body
+  boost::json::error_code ec;
+  auto parsed = boost::json::parse(body, ec);
+  if (ec) {
+    return prepareError(boost::beast::http::status::bad_request, ec.message());
+  }
+  if (!parsed.is_array()) {
+    return prepareError(boost::beast::http::status::bad_request, "Expected array!");
+  }
+
+  // Send reply
+  size_t count = 0;
+  boost::beast::ostream(_response.body()) << R"({"status": "success", "nodes": [)";
+  for (const auto &value : parsed.as_array()) {
+    if (!value.is_string()) {
+      continue;
+    }
+    auto host = boost::json::value_to<std::string>(value);
+    auto status = _nodes.reregisterNode(host);
+    if (status.ok()) {
+      if (count > 1) {
+        boost::beast::ostream(_response.body()) << ", ";
+      }
+      boost::beast::ostream(_response.body()) << "\"" << host << "\"";
+      count++;
+    }
+  }
+
+  boost::beast::ostream(_response.body()) << "\n";
   handleWrite();
 }
 
@@ -155,6 +196,9 @@ void MDSHttpSession::handleRequest() {
     if (_request.target() == "/api/decommission") {
       return prepareApiDecommissionReply(body);
     }
+    if (_request.target() == "/api/reregister") {
+      return prepareApiReregisterReply(body);
+    }
     return prepareError(boost::beast::http::status::not_found, "Invalid path");
   }
   return prepareError(boost::beast::http::status::bad_request, "Invalid method.");
@@ -169,6 +213,7 @@ void MDSHttpSession::prepareMetricsReply() {
   std::stringstream stream;
   Statistics::get().prometheusMetrics(stream);
   boost::beast::ostream(_response.body()) << stream.str();
+  boost::beast::ostream(_response.body()) << "\n";
   handleWrite();
 }
 

@@ -89,7 +89,8 @@ protected:
   grpc::Status Heartbeat(::grpc::ServerContext *context,
                          const ::geds::rpc::HeartbeatMessage *request,
                          ::geds::rpc::StatusResponse *response) override {
-    LOG_ACCESS("Heartbeat: ", request->uuid());
+    // LOG_ACCESS("Heartbeat: ", request->uuid());
+    (void)context;
 
     const auto &uuid = request->uuid();
     NodeHeartBeat val;

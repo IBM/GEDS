@@ -43,6 +43,7 @@ public:
   void prepareMetricsReply();
   void prepareApiNodesReply();
   void prepareApiDecommissionReply(const std::string &body);
+  void prepareApiReregisterReply(const std::string &body);
   void prepareError(boost::beast::http::status status, std::string message);
   void handleWrite();
 
