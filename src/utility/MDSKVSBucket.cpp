@@ -104,3 +104,13 @@ MDSKVSBucket::listObjects(const std::string &keyPrefix, char delimiter) {
   return std::make_pair(std::move(result),
                         std::vector<std::string>{commonPrefixes.begin(), commonPrefixes.end()});
 }
+
+void MDSKVSBucket::forall(
+    std::function<void(const utility::Path &, const geds::ObjectInfo &)> action) const {
+  auto lock = getReadLock();
+  for (const auto &v : _map) {
+    const auto &key = v.first;
+    const auto &value = v.second;
+    action(key, value->obj);
+  }
+}
