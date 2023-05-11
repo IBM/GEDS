@@ -53,5 +53,5 @@ public:
   absl::StatusOr<std::pair<std::vector<geds::Object>, std::vector<std::string>>>
   listObjects(const std::string &keyPrefix, char delimiter = 0);
 
-  void forall(std::function<void(const utility::Path &, const geds::ObjectInfo &)> action);
+  void forall(std::function<void(const utility::Path &, const geds::ObjectInfo &)> action) const;
 };
