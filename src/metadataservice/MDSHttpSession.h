@@ -41,6 +41,7 @@ public:
   void handleRequest();
   void prepareHtmlReply();
   void prepareMetricsReply();
+  void prepareApiListReply();
   void prepareApiNodesReply();
   void prepareApiDecommissionReply(const std::string &body);
   void prepareApiReregisterReply(const std::string &body);
@@ -49,4 +50,5 @@ public:
 
   void close();
 };
+
 } // namespace geds
