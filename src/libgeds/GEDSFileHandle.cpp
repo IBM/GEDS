@@ -120,6 +120,7 @@ absl::Status GEDSFileHandle::download(std::shared_ptr<GEDSFileHandle> destinatio
     }
     pos += *count;
   } while (pos < *totalSize);
+
   return absl::OkStatus();
 }
 

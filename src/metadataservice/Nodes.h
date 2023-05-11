@@ -42,6 +42,7 @@ public:
   };
 
   absl::Status registerNode(const std::string &uuid, const std::string &host, uint16_t port);
+  absl::Status reregisterNode(const std::string &uuid);
   absl::Status unregisterNode(const std::string &uuid);
   absl::Status heartbeat(const std::string &uuid, const NodeHeartBeat &heartbeat);
   absl::Status decommissionNodes(const std::vector<std::string> &nodes,
