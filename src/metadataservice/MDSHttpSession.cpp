@@ -11,13 +11,51 @@
 #include <vector>
 
 #include <boost/beast/core/buffers_to_string.hpp>
+#include <boost/json/array.hpp>
+#include <boost/json/object.hpp>
 #include <boost/json/parse.hpp>
 #include <boost/json/system_error.hpp>
+#include <boost/json/value_from.hpp>
 #include <magic_enum.hpp>
 
 #include "Logging.h"
+#include "MDSKVS.h"
+#include "MDSKVSBucket.h"
 #include "Nodes.h"
 #include "Statistics.h"
+
+void tag_invoke(boost::json::value_from_tag, boost::json::value &jv,
+                const std::shared_ptr<MDSKVSBucket> &n) {
+  auto &nv = jv.emplace_array();
+  n->forall([&nv](const utility::Path &key, const geds::ObjectInfo &info) {
+    nv.push_back({key.name,
+                  {{"location", info.location},
+                   {"size", info.size},
+                   {"metadata", info.metadata.has_value()
+                                    ? (std::to_string(info.metadata->size()) + " bytes")
+                                    : std::string{"<none>"}}}});
+  });
+}
+
+void tag_invoke(boost::json::value_from_tag, boost::json::value &jv,
+                const std::shared_ptr<MDSKVS> &n) {
+  auto &nv = jv.emplace_array();
+  auto buckets = n->listBuckets();
+  if (!buckets.ok()) {
+    jv = nv;
+    return;
+  }
+  for (const auto &bucket : *buckets) {
+    auto objs = n->getBucket(bucket);
+    if (!objs.ok()) {
+      continue;
+    }
+    auto b = *objs;
+    auto value = boost::json::value_from(b);
+    nv.push_back({bucket, value});
+  }
+  jv = nv;
+}
 
 namespace geds {
 
@@ -86,6 +124,18 @@ void MDSHttpSession::prepareHtmlReply() {
   }
   boost::beast::ostream(_response.body()) << "</pre>"
                                           << "</body></html>" << std::endl;
+  boost::beast::ostream(_response.body()) << "\n";
+  handleWrite();
+}
+
+void MDSHttpSession::prepareApiListReply() {
+  _response.result(boost::beast::http::status::ok);
+  _response.set(boost::beast::http::field::server, BOOST_BEAST_VERSION_STRING);
+  _response.set(boost::beast::http::field::content_type, "application/json");
+  _response.keep_alive(_request.keep_alive());
+
+  auto data = boost::json::value_from(_kvs);
+  boost::beast::ostream(_response.body()) << boost::json::serialize(data);
   boost::beast::ostream(_response.body()) << "\n";
   handleWrite();
 }
@@ -182,6 +232,9 @@ void MDSHttpSession::handleRequest() {
   if (_request.method() == boost::beast::http::verb::get) {
     if (_request.target() == "/") {
       return prepareHtmlReply();
+    }
+    if (_request.target() == "/api/list") {
+      return prepareApiListReply();
     }
     if (_request.target() == "/api/nodes") {
       return prepareApiNodesReply();
