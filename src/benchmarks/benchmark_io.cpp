@@ -172,19 +172,19 @@ int main(int argc, char **argv) {
     << "Time Open [max],"
     << "Time Last Byte [avg],Time Last Byte [min],Time Last Byte [p25],Time Last Byte [p50],"
     << "Time Last Byte [p75],Time Last Byte [max]" << std::endl;
+
+  auto config = GEDSConfig(FLAGS_address.CurrentValue());
+  config.port = absl::GetFlag(FLAGS_port);
+  config.localStoragePath = FLAGS_gedsRoot.CurrentValue();
+  auto geds = GEDS::factory(config);
+  auto status = geds->start();
+  if (!status.ok()) {
+    std::cout << "Unable to start GEDS:" << status.message() << std::endl;
+    exit(EXIT_FAILURE);
+  }
+
   for (size_t i = 0; i <= absl::GetFlag(FLAGS_maxFactor); i++) {
     for (size_t j = 1; j < absl::GetFlag(FLAGS_maxThreads); j++) {
-      // Create a new GEDS instance for each iteration to measure performance.
-      auto config = GEDSConfig(FLAGS_address.CurrentValue());
-      config.port = absl::GetFlag(FLAGS_port);
-      config.localStoragePath = FLAGS_gedsRoot.CurrentValue();
-      auto geds = GEDS::factory(config);
-      auto status = geds->start();
-      if (!status.ok()) {
-        std::cout << "Unable to start GEDS:" << status.message() << std::endl;
-        exit(EXIT_FAILURE);
-      }
-
       auto result = benchmark(geds, i, j);
       std::cout << result.payloadSize << ": " << result.threads << " " << result.rate << " MB/s"
                 << std::endl;
@@ -194,10 +194,9 @@ int main(int argc, char **argv) {
         << result.timeLastByteAvg << "," << result.timeLastByteMin << "," << result.timeLastByteP25
         << "," << result.timeLastByteP50 << "," << result.timeLastByteP75 << ","
         << result.timeLastByteMax << std::endl;
-
-      (void)geds->stop();
     }
   }
+  (void)geds->stop();
   f.close();
 
   return EXIT_SUCCESS;
