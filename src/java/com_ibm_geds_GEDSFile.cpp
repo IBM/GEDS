@@ -277,6 +277,11 @@ JNIEXPORT jint JNICALL Java_com_ibm_geds_GEDSFile_readNative__JJ_3BII(JNIEnv *en
   *timer += std::chrono::duration_cast<std::chrono::nanoseconds>(
                 std::chrono::high_resolution_clock::now() - timerBegin)
                 .count();
+
+  // Handle EOF.
+  if (*readStatus == 0 && length > 0) {
+    return -1;
+  }
   return *readStatus; // NOLINT
 }
 
@@ -342,6 +347,11 @@ JNIEXPORT jint JNICALL Java_com_ibm_geds_GEDSFile_readNative__JJJII(JNIEnv *env,
   *timer += std::chrono::duration_cast<std::chrono::nanoseconds>(
                 std::chrono::high_resolution_clock::now() - timerBegin)
                 .count();
+
+  // Handle EOF.
+  if (*readStatus == 0 && length > 0) {
+    return -1;
+  }
   return *readStatus; // NOLINT
 }
 
