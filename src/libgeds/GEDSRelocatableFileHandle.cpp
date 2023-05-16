@@ -62,7 +62,7 @@ absl::StatusOr<size_t> GEDSRelocatableFileHandle::readBytes(uint8_t *bytes, size
   }
   // Reopen in case of read failures.
   {
-    auto lock = std::unique_lock<std::mutex>(_retryMutex);
+    auto lock = lockFile();
     auto ioLock = lockExclusive();
     if (_fileHandle.get() != oldFh) {
       // The file has already been reopened.

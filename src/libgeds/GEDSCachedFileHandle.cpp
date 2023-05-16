@@ -42,13 +42,9 @@ GEDSCachedFileHandle::GEDSCachedFileHandle(std::shared_ptr<GEDS> gedsService, st
   _blockMutex = std::vector<std::mutex>(_remoteSize / _blockSize + 1);
 }
 
-absl::StatusOr<size_t> GEDSCachedFileHandle::size() const {
-  auto lock = lockShared();
-  return _remoteSize;
-}
+absl::StatusOr<size_t> GEDSCachedFileHandle::size() const { return _remoteSize; }
 
 size_t GEDSCachedFileHandle::localStorageSize() const {
-  auto lock = lockShared();
   size_t result = 0;
   for (size_t idx = 0; idx < _blocks.size(); idx++) {
     auto lock = std::lock_guard(_blockMutex[idx]);
