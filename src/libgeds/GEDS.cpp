@@ -176,11 +176,17 @@ absl::Status GEDS::stop() {
   GEDS_CHECK_SERVICE_RUNNING
   LOG_INFO("Stopping");
   LOG_INFO("Printing statistics");
+  _state = ServiceState::Stopped;
 
   geds::Statistics::print();
-  auto result = _metadataService.disconnect();
+  auto result = _metadataService.configureNode(uuid, _hostname, _server.port(),
+                                               geds::rpc::NodeState::Unregister);
   if (!result.ok()) {
-    LOG_ERROR("cannot disconnect metadata service");
+    LOG_ERROR("Unable to unregister: ", result.message());
+  }
+  result = _metadataService.disconnect();
+  if (!result.ok()) {
+    LOG_ERROR("cannot disconnect metadata service: ", result.message());
   }
   result = _server.stop();
   if (!result.ok()) {
@@ -194,7 +200,6 @@ absl::Status GEDS::stop() {
   _fileTransfers.clear();
   _tcpTransport->stop();
 
-  _state = ServiceState::Stopped;
 
   _storageMonitoringThread.join();
 
