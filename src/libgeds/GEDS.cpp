@@ -931,21 +931,25 @@ void GEDS::startStorageMonitoringThread() {
     auto statsLocalMemoryFree = geds::Statistics::createGauge("GEDS: Local Memory free");
     auto statsLocalMemoryAllocated = geds::Statistics::createGauge("GEDS: Local Memory allocated");
 
-    std::vector<std::shared_ptr<GEDSFileHandle>> relocatable;
-    while (_state == ServiceState::Running) {
-      relocatable.clear();
+    while (_state.load() == ServiceState::Running) {
+      std::vector<std::shared_ptr<GEDSFileHandle>> relocatable;
       size_t memoryUsed = 0;
       size_t storageUsed = 0;
-      _fileHandles.forall(
-          [&relocatable, &storageUsed, &memoryUsed](std::shared_ptr<GEDSFileHandle> &fh) {
-            storageUsed += fh->localStorageSize();
-            memoryUsed += fh->localMemorySize();
-            if (fh->isRelocatable()) {
-              if (fh->openCount() == 0) {
-                relocatable.push_back(fh);
-              }
+      { // Extract all file handles to avoid deadlocks.
+        std::vector<std::shared_ptr<GEDSFileHandle>> allFileHandles;
+        _fileHandles.forall([&allFileHandles](std::shared_ptr<GEDSFileHandle> &fh) {
+          allFileHandles.push_back(fh);
+        });
+        for (const auto &fh : allFileHandles) {
+          storageUsed += fh->localStorageSize();
+          memoryUsed += fh->localMemorySize();
+          if (fh->isRelocatable()) {
+            if (fh->openCount() == 0) {
+              relocatable.push_back(fh);
             }
-          });
+          }
+        }
+      }
 
       _storageCounters.updateUsed(storageUsed);
       _memoryCounters.updateUsed(memoryUsed);
