@@ -5,6 +5,7 @@
 
 #include "GRPCServer.h"
 
+#include <cstdint>
 #include <iostream>
 #include <map>
 #include <memory>
@@ -20,6 +21,8 @@
 
 #include "FormatISO8601.h"
 #include "Logging.h"
+#include "MDSHttpServer.h"
+#include "Nodes.h"
 #include "ObjectStoreConfig.h"
 #include "ObjectStoreHandler.h"
 #include "ParseGRPC.h"
@@ -37,8 +40,16 @@ class MetadataServiceImpl final : public geds::rpc::MetadataService::Service {
   std::shared_ptr<MDSKVS> _kvs;
   ObjectStoreHandler _objectStoreHandler;
 
+  Nodes _nodes;
+  geds::MDSHttpServer _httpServer;
+
 public:
-  MetadataServiceImpl(std::shared_ptr<MDSKVS> kvs) : _kvs(kvs) {}
+  MetadataServiceImpl(std::shared_ptr<MDSKVS> kvs) : _kvs(kvs), _httpServer(4383, _nodes, _kvs) {
+    auto status = _httpServer.start();
+    if (!status.ok()) {
+      LOG_ERROR("Unable to start HTTP Server!");
+    }
+  }
 
   geds::ObjectID convert(const ::geds::rpc::ObjectID *r) {
     return geds::ObjectID(r->bucket(), r->key());
@@ -53,6 +64,51 @@ public:
   }
 
 protected:
+  grpc::Status ConfigureNode(::grpc::ServerContext *context, const ::geds::rpc::NodeStatus *request,
+                             ::geds::rpc::StatusResponse *response) override {
+    LOG_ACCESS("ConfigureNode");
+    const auto &identifier = request->node().identifier();
+    uint16_t port = request->node().port();
+    const auto state = request->state();
+    const auto &uuid = request->uuid();
+
+    absl::Status status;
+    if (state == geds::rpc::NodeState::Register) {
+      status = _nodes.registerNode(uuid, identifier, port);
+    } else if (state == geds::rpc::NodeState::Unregister) {
+      std::vector<std::string> toDecommission = {uuid};
+      auto decommissionStatus = _nodes.decommissionNodes(toDecommission, _kvs);
+      if (!decommissionStatus.ok()) {
+        LOG_ERROR("Unable to decommission node: ", decommissionStatus.message());
+      }
+      status = _nodes.unregisterNode(uuid);
+    } else {
+      LOG_ERROR("Invalid state ", state);
+      status = absl::InvalidArgumentError("Invalid state: " + std::to_string(state));
+    }
+
+    convertStatus(response, status);
+    return grpc::Status::OK;
+  }
+
+  grpc::Status Heartbeat(::grpc::ServerContext *context,
+                         const ::geds::rpc::HeartbeatMessage *request,
+                         ::geds::rpc::StatusResponse *response) override {
+    // LOG_ACCESS("Heartbeat: ", request->uuid());
+    (void)context;
+
+    const auto &uuid = request->uuid();
+    NodeHeartBeat val;
+    val.memoryAllocated = request->memoryallocated();
+    val.memoryUsed = request->memoryused();
+    val.storageAllocated = request->storageallocated();
+    val.storageUsed = request->storageused();
+
+    auto status = _nodes.heartbeat(uuid, std::move(val));
+    convertStatus(response, status);
+    return grpc::Status::OK;
+  }
+
   grpc::Status GetConnectionInformation(::grpc::ServerContext *context,
                                         const ::geds::rpc::EmptyParams * /* unused request */,
                                         ::geds::rpc::ConnectionInformation *response) override {

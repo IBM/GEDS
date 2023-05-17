@@ -174,7 +174,7 @@ public:
     if (!isValid()) {
       return absl::UnavailableError("The file " + identifier + " is no longer valid!");
     }
-    LOG_INFO("Relocating ", identifier);
+    LOG_INFO("Relocating ", identifier, " (size: ", _file.size(), ") ");
     if (_openCount > 0) {
       auto message = "Unable to relocate " + identifier + " reason: The file is still in use.";
       LOG_ERROR(message);
@@ -205,13 +205,13 @@ public:
     }
     auto fh = GEDSS3FileHandle::factory(_gedsService, bucket, key, metadata());
     if (!fh.ok()) {
-      LOG_ERROR("Unable to reopen the relocateed file ", identifier,
+      LOG_ERROR("Unable to reopen the relocated file ", identifier,
                 " on s3:", fh.status().message());
       return fh.status();
     }
     auto status = (*fh)->seal();
     if (!status.ok()) {
-      LOG_ERROR("Unable to seal relocateed file!");
+      LOG_ERROR("Unable to seal relocated file!");
       (void)(*s3Endpoint)->deleteObject(bucket, key);
       return status;
     }
