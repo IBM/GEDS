@@ -858,45 +858,34 @@ void GEDS::relocate(std::vector<std::shared_ptr<GEDSFileHandle>> &relocatable, b
   struct RelocateHelper {
     std::mutex mutex;
     std::condition_variable cv;
-    size_t nTasks;
-    auto lock() { return std::unique_lock<std::mutex>(mutex); }
+    std::atomic<size_t> nTasks;
   };
   auto h = std::make_shared<RelocateHelper>();
   {
-    auto lock = h->lock();
+    std::lock_guard lock(h->mutex);
     h->nTasks = relocatable.size();
   }
 
   LOG_INFO("Relocating ", relocatable.size(), " objects.");
 
   auto self = shared_from_this();
-  size_t off = 3 * _config.io_thread_pool_size;
-
-  for (size_t offset = 0; offset < relocatable.size(); offset += off) {
-    auto rbegin = offset;
-    auto rend = rbegin + off;
-    if (rend > relocatable.size()) {
-      rend = relocatable.size();
-    }
-    for (auto i = rbegin; i < rend; i++) {
-      auto fh = relocatable[i];
-      boost::asio::post(_ioThreadPool, [self, fh, h, force]() {
-        try {
-          self->relocate(fh, force);
-        } catch (...) {
-          LOG_ERROR("Encountered an exception during relocation ", fh->identifier);
-        }
-        {
-          auto lock = h->lock();
-          h->nTasks -= 1;
-        }
-        h->cv.notify_all();
-      });
-    }
-    auto relocateLock = h->lock();
-    h->cv.wait(relocateLock, [h]() { return h->nTasks == 0; });
-    LOG_INFO("Relocated ", relocatable.size(), " objects.");
+  for (auto fh : relocatable) {
+    boost::asio::post(_ioThreadPool, [self, fh, h, force]() {
+      try {
+        self->relocate(fh, force);
+      } catch (...) {
+        LOG_ERROR("Encountered an exception during relocation ", fh->identifier);
+      }
+      {
+        std::lock_guard lock(h->mutex);
+        h->nTasks -= 1;
+      }
+      h->cv.notify_one();
+    });
   }
+  std::unique_lock lock(h->mutex);
+  h->cv.wait(lock, [h]() { return h->nTasks == 0; });
+  LOG_INFO("Relocated ", relocatable.size(), " objects.");
 }
 
 void GEDS::relocate(std::shared_ptr<GEDSFileHandle> handle, bool force) {
