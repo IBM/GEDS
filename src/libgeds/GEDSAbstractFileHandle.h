@@ -205,13 +205,13 @@ public:
     }
     auto fh = GEDSS3FileHandle::factory(_gedsService, bucket, key, metadata());
     if (!fh.ok()) {
-      LOG_ERROR("Unable to reopen the relocateed file ", identifier,
+      LOG_ERROR("Unable to reopen the relocated file ", identifier,
                 " on s3:", fh.status().message());
       return fh.status();
     }
     auto status = (*fh)->seal();
     if (!status.ok()) {
-      LOG_ERROR("Unable to seal relocateed file!");
+      LOG_ERROR("Unable to seal relocated file!");
       (void)(*s3Endpoint)->deleteObject(bucket, key);
       return status;
     }
