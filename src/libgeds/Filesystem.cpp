@@ -44,8 +44,11 @@ absl::Status removeFile(const std::string &path) {
   int err = unlink(path.c_str());
   if (err != 0 && (errno != ENOENT)) {
     int error = errno;
-    return absl::UnknownError("Unable to delete file " + path + ": " + std::strerror(error));
+    auto message = "Unable to delete file " + path + ": " + std::strerror(error);
+    LOG_ERROR(message);
+    return absl::UnknownError(message);
   }
+  LOG_DEBUG("Removed ", path);
   return absl::OkStatus();
 }
 
