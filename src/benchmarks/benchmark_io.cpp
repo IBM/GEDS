@@ -65,6 +65,8 @@ struct Latency {
 constexpr size_t KILOBYTE = 1024;
 constexpr size_t MEGABYTE = KILOBYTE * KILOBYTE;
 
+std::vector<std::vector<uint8_t>> buffers;
+
 size_t getPayloadSize(size_t factor) { return KILOBYTE * (1 << factor); }
 
 void runBenchmarkThread(std::shared_ptr<GEDS> geds, size_t threadId, size_t factor,
@@ -77,10 +79,11 @@ void runBenchmarkThread(std::shared_ptr<GEDS> geds, size_t threadId, size_t fact
   } else {
     key = std::to_string(factor) + "-" + std::to_string(threadId) + ".data";
   }
-  std::vector<uint8_t> buffer(payloadSize);
+
   auto file = geds->open(FLAGS_bucket.CurrentValue(), key);
   if (file.ok()) {
     auto openTime = std::chrono::steady_clock::now();
+    auto buffer = buffers[threadId].data();
     auto status = file->read(buffer, 0, payloadSize);
     auto lastByteTime = std::chrono::steady_clock::now();
     constexpr auto milliseconds = 1e6;
@@ -93,7 +96,6 @@ void runBenchmarkThread(std::shared_ptr<GEDS> geds, size_t threadId, size_t fact
              lastByteTime - startTime)
                  .count() /
              milliseconds});
-
     if (!status.ok()) {
       auto message = "Error: " + std::string{status.status().message()};
       LOG_ERROR(message);
@@ -183,8 +185,16 @@ int main(int argc, char **argv) {
     exit(EXIT_FAILURE);
   }
 
-  for (size_t i = 0; i <= absl::GetFlag(FLAGS_maxFactor); i++) {
-    for (size_t j = 1; j < absl::GetFlag(FLAGS_maxThreads); j++) {
+  auto threadCount = absl::GetFlag(FLAGS_maxThreads);
+  buffers.resize(threadCount);
+  auto factorCount = absl::GetFlag(FLAGS_maxFactor);
+  auto maxPayload = getPayloadSize(factorCount);
+  for (auto &buffer : buffers) {
+    buffer.resize(maxPayload);
+  }
+
+  for (size_t i = 0; i <= factorCount; i++) {
+    for (size_t j = 1; j < threadCount; j++) {
       auto result = benchmark(geds, i, j);
       std::cout << result.payloadSize << ": " << result.threads << " " << result.rate << " MB/s"
                 << std::endl;
