@@ -174,7 +174,7 @@ public:
     if (!isValid()) {
       return absl::UnavailableError("The file " + identifier + " is no longer valid!");
     }
-    LOG_INFO("Relocating ", identifier);
+    LOG_INFO("Relocating ", identifier, " (size: ", _file.size(), ") ");
     if (_openCount > 0) {
       auto message = "Unable to relocate " + identifier + " reason: The file is still in use.";
       LOG_ERROR(message);
