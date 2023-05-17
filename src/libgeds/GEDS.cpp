@@ -179,6 +179,9 @@ absl::Status GEDS::stop() {
   _state = ServiceState::Stopped;
 
   geds::Statistics::print();
+  // Relocate to S3 if available.
+  relocate(true);
+  // Unregister.
   auto result = _metadataService.configureNode(uuid, _hostname, _server.port(),
                                                geds::rpc::NodeState::Unregister);
   if (!result.ok()) {
@@ -199,7 +202,6 @@ absl::Status GEDS::stop() {
   _fileHandles.clear();
   _fileTransfers.clear();
   _tcpTransport->stop();
-
 
   _storageMonitoringThread.join();
 
@@ -1024,12 +1026,12 @@ void GEDS::startStorageMonitoringThread() {
           allFileHandles.push_back(fh);
         });
         for (const auto &fh : allFileHandles) {
-          storageUsed += fh->localStorageSize();
-          memoryUsed += fh->localMemorySize();
-          if (fh->isRelocatable()) {
-            if (fh->openCount() == 0) {
-              relocatable.push_back(fh);
-            }
+          auto storageSize = fh->localStorageSize();
+          auto memSize = fh->localMemorySize();
+          storageUsed += storageSize;
+          memoryUsed += memSize;
+          if (fh->isRelocatable() && memoryUsed == 0) {
+            relocatable.push_back(fh);
           }
         }
       }
@@ -1059,11 +1061,20 @@ void GEDS::startStorageMonitoringThread() {
         }
       }
 
-      auto targetStorage = (size_t)(0.7 * (double)_config.available_local_storage);
-      if (memoryUsed > targetStorage) {
+      auto targetStorage = (size_t)(0.5 * (double)_config.available_local_storage);
+      if (storageUsed > targetStorage) {
         std::sort(std::begin(relocatable), std::end(relocatable),
                   [](std::shared_ptr<GEDSFileHandle> a, std::shared_ptr<GEDSFileHandle> b) {
-                    return a->lastReleased() < b->lastReleased();
+                    if (a->openCount() == 0 && b->openCount() == 0) {
+                      return a->lastReleased() < b->lastReleased();
+                    }
+                    if (a->openCount() == 0) {
+                      return true;
+                    }
+                    if (b->openCount() == 0) {
+                      return false;
+                    }
+                    return a->lastOpened() < b->lastOpened();
                   });
 
         std::vector<std::shared_ptr<GEDSFileHandle>> tasks;
@@ -1077,6 +1088,8 @@ void GEDS::startStorageMonitoringThread() {
         }
         if (tasks.size()) {
           relocate(tasks);
+        } else {
+          LOG_WARNING("Unable to relocate files: No task found!");
         }
       }
       relocatable.clear();
