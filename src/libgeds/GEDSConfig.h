@@ -16,6 +16,7 @@
 
 #include "Ports.h"
 
+
 struct GEDSConfig {
   /**
    * @brief The hostname of the metadata service/
@@ -84,14 +85,21 @@ struct GEDSConfig {
    */
   bool pubSubEnabled = false;
 
+  /**
+   * @brief Fraction of the storage where GEDS should start spilling.
+   */
+  double storage_spilling_fraction = 0.7;
+
   GEDSConfig(std::string metadataServiceAddressArg)
       : metadataServiceAddress(std::move(metadataServiceAddressArg)) {}
 
   absl::Status set(const std::string &key, const std::string &value);
   absl::Status set(const std::string &key, size_t value);
   absl::Status set(const std::string &key, int64_t value);
+  absl::Status set(const std::string &key, double value);
 
   absl::StatusOr<std::string> getString(const std::string &key) const;
   absl::StatusOr<size_t> getUnsignedInt(const std::string &key) const;
   absl::StatusOr<int64_t> getSignedInt(const std::string &key) const;
+  absl::StatusOr<double> getDouble(const std::string &key) const;
 };
