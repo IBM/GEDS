@@ -6,6 +6,7 @@
 syntax = "proto3";
 
 package geds.rpc;
+option go_package = "./;protos";
 
 enum StatusCode {
   // Need to match third_party/abseil-cpp/absl/status/status.h
