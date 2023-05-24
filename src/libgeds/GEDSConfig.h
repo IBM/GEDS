@@ -16,6 +16,8 @@
 
 #include "Ports.h"
 
+enum class GEDSNodeType { Standard, Storage };
+
 struct GEDSConfig {
   /**
    * @brief The hostname of the metadata service/
@@ -79,14 +81,26 @@ struct GEDSConfig {
 
   size_t available_local_memory = 16 * 1024 * 1024 * (size_t)1024;
 
+  /**
+   * @brief Fraction of the storage where GEDS should start spilling.
+   */
+  double storage_spilling_fraction = 0.7;
+
+  /**
+   * @brief Node type.
+   */
+  GEDSNodeType node_type = GEDSNodeType::Standard;
+
   GEDSConfig(std::string metadataServiceAddressArg)
       : metadataServiceAddress(std::move(metadataServiceAddressArg)) {}
 
   absl::Status set(const std::string &key, const std::string &value);
   absl::Status set(const std::string &key, size_t value);
   absl::Status set(const std::string &key, int64_t value);
+  absl::Status set(const std::string &key, double value);
 
   absl::StatusOr<std::string> getString(const std::string &key) const;
   absl::StatusOr<size_t> getUnsignedInt(const std::string &key) const;
   absl::StatusOr<int64_t> getSignedInt(const std::string &key) const;
+  absl::StatusOr<double> getDouble(const std::string &key) const;
 };

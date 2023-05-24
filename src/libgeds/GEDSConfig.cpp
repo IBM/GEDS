@@ -4,7 +4,11 @@
  */
 
 #include "GEDSConfig.h"
+
+#include <magic_enum.hpp>
+
 #include "Logging.h"
+#include "absl/status/status.h"
 
 absl::Status GEDSConfig::set(const std::string &key, const std::string &value) {
   LOG_DEBUG("Trying to set '", key, "' to '", value, "'");
@@ -14,6 +18,14 @@ absl::Status GEDSConfig::set(const std::string &key, const std::string &value) {
     hostname = value == "" ? std::nullopt : std::make_optional(value);
   } else if (key == "local_storage_path") {
     localStoragePath = value;
+  } else if (key == "node_type") {
+    if (value == "Standard") {
+      node_type = GEDSNodeType::Standard;
+    } else if (value == "Storage") {
+      node_type = GEDSNodeType::Storage;
+    } else {
+      return absl::NotFoundError("Invalid node type " + value);
+    }
   } else {
     LOG_ERROR("Configuration " + key + " not supported (type: string).");
     return absl::NotFoundError("Key " + key + " not found.");
@@ -64,6 +76,15 @@ absl::Status GEDSConfig::set(const std::string &key, int64_t value) {
   return set(key, (size_t)value);
 }
 
+absl::Status GEDSConfig::set(const std::string &key, double value) {
+  if (key == "storage_spilling_fraction") {
+    storage_spilling_fraction = value;
+    return absl::OkStatus();
+  }
+  LOG_ERROR("Configuration " + key + " not supported (type: double).");
+  return absl::NotFoundError("Key " + key + " not found.");
+}
+
 absl::StatusOr<std::string> GEDSConfig::getString(const std::string &key) const {
   LOG_INFO("Get ", key, " as string");
   if (key == "listen_address") {
@@ -74,6 +95,9 @@ absl::StatusOr<std::string> GEDSConfig::getString(const std::string &key) const 
   }
   if (key == "local_storage_path") {
     return localStoragePath;
+  }
+  if (key == "node_type") {
+    return std::string{magic_enum::enum_name(node_type)};
   }
   LOG_ERROR("Configuration " + key + " not supported (type: string).");
   return absl::NotFoundError("Key " + key + " not found.");
@@ -109,4 +133,12 @@ absl::StatusOr<int64_t> GEDSConfig::getSignedInt(const std::string &key) const {
     return (int64_t)*value;
   }
   return value.status();
+}
+
+absl::StatusOr<double> GEDSConfig::getDouble(const std::string &key) const {
+  if (key == "storage_spilling_fraction") {
+    return storage_spilling_fraction;
+  }
+  LOG_ERROR("Configuration " + key + " not supported (type: double).");
+  return absl::NotFoundError("Key " + key + " (double) not found.");
 }
