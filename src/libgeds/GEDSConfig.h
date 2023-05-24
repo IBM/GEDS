@@ -79,6 +79,11 @@ struct GEDSConfig {
 
   size_t available_local_memory = 16 * 1024 * 1024 * (size_t)1024;
 
+  /**
+   * @brief Publish/Subscribe is enabled.
+   */
+  bool pubSubEnabled = false;
+
   GEDSConfig(std::string metadataServiceAddressArg)
       : metadataServiceAddress(std::move(metadataServiceAddressArg)) {}
 

@@ -284,4 +284,30 @@ public class GEDS {
     }
 
     private native void nativeRelocate(long nativePtr, boolean force);
+
+    /**
+     * Create a PubSub subscription, based in these subscription types:
+     * BUCKET = 1,
+     * OBJECT = 2,
+     * PREFIX = 3,
+     */
+    public boolean subscribe(String bucket, String key, int subscriptionType) throws IOException {
+        checkGEDS();
+        return nativeSubscribe(nativePtr, bucket, key, subscriptionType);
+    }
+
+    private native static boolean nativeSubscribe(long ptr, String bucket, String key, int subscriptionType)
+            throws IOException;
+
+    /**
+     * Remove a PubSub subscription
+     */
+    public boolean unsubscribe(String bucket, String key, int subscriptionType) throws IOException {
+        checkGEDS();
+        return nativeUnsubscribe(nativePtr, bucket, key, subscriptionType);
+    }
+
+    private native static boolean nativeUnsubscribe(long ptr, String bucket, String key, int subscriptionType)
+            throws IOException;
+
 }

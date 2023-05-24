@@ -160,6 +160,7 @@ absl::Status GEDS::start() {
   _state = ServiceState::Running;
 
   startStorageMonitoringThread();
+  startPubSubStreamThread();
 
   auto st = syncObjectStoreConfigs();
   if (!syncObjectStoreConfigs().ok()) {
@@ -197,6 +198,10 @@ absl::Status GEDS::stop() {
   _state = ServiceState::Stopped;
 
   _storageMonitoringThread.join();
+
+  if (_pubSubStreamThread.joinable()) {
+    _pubSubStreamThread.join();
+  }
 
   return result;
 }
@@ -573,7 +578,12 @@ absl::StatusOr<std::vector<GEDSFileStatus>> GEDS::list(const std::string &bucket
   LOG_DEBUG(bucket, "/", prefix);
 
   bool prefixExists = false;
-  auto list = _metadataService.listPrefix(bucket, prefix, delimiter);
+  absl::StatusOr<std::pair<std::vector<geds::Object>, std::vector<std::string>>> list;
+  if (_config.pubSubEnabled) {
+    list = _metadataService.listPrefixFromCache(bucket, prefix, delimiter);
+  } else {
+    list = _metadataService.listPrefix(bucket, prefix, delimiter);
+  }
   if (!list.ok()) {
     return list.status();
   }
@@ -995,4 +1005,33 @@ void GEDS::startStorageMonitoringThread() {
       sleep(1);
     }
   });
+}
+
+void GEDS::startPubSubStreamThread() {
+  if (!_config.pubSubEnabled) {
+    LOG_DEBUG("PubSub streaming thread not enabled.");
+    return;
+  }
+  if (_state == ServiceState::Running) {
+    _pubSubStreamThread = std::thread([&]() { auto status = _metadataService.subscribeStream(); });
+  } else {
+    LOG_ERROR("Unable to start pub/sub streaming thread.");
+  }
+  LOG_DEBUG("PubSub streaming thread enabled.");
+}
+
+absl::Status GEDS::subscribe(const geds::SubscriptionEvent &event) {
+  GEDS_CHECK_SERVICE_RUNNING
+  if (!_config.pubSubEnabled) {
+    return absl::FailedPreconditionError("publish/subscribe is not enabled.");
+  }
+  return _metadataService.subscribe(event);
+}
+
+absl::Status GEDS::unsubscribe(const geds::SubscriptionEvent &event) {
+  GEDS_CHECK_SERVICE_RUNNING
+  if (!_config.pubSubEnabled) {
+    return absl::FailedPreconditionError("publish/subscribe is not enabled.");
+  }
+  return _metadataService.unsubscribe(event);
 }

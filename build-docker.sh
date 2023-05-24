@@ -33,12 +33,14 @@ docker build -t ${GRPC_DOCKER_IMAGE} \
     --build-arg AWS_SDK_VERSION=${AWS_SDK_VERSION} \
     --build-arg BOOST_VERSION=${BOOST_VERSION} \
     --build-arg BOOST_VERSION_=${BOOST_VERSION//./_} \
+    --build-arg CMAKE_BUILD_PARALLEL_LEVEL=$(($(nproc) + 1)) \
     -f docker/Dockerfile-dependencies .
 
 docker build -t geds-build_${DOCKER_BUILD_TARGET}:${GIT_REVISION} \
     --build-arg GIT_REVISION=${GIT_REVISION} \
     --build-arg GEDS_VERSION=${GEDS_VERSION} \
     --build-arg DOCKER_BUILD_TARGET=${DOCKER_BUILD_TARGET} \
+    --build-arg CMAKE_BUILD_PARALLEL_LEVEL=$(($(nproc) + 1)) \
     -f docker/Dockerfile-build .
 
 docker build -t ${IMAGE_NAME}:${GIT_REVISION} \

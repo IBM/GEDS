@@ -111,6 +111,9 @@ protected:
   geds::StorageCounter _storageCounters;
   geds::StorageCounter _memoryCounters;
 
+  std::thread _pubSubStreamThread;
+  void startPubSubStreamThread();
+
 public:
   const std::string uuid;
 
@@ -321,6 +324,9 @@ public:
   void relocate(bool force = false);
   void relocate(std::vector<std::shared_ptr<GEDSFileHandle>> &relocatable, bool force = false);
   void relocate(std::shared_ptr<GEDSFileHandle> handle, bool force = false);
+
+  absl::Status subscribe(const geds::SubscriptionEvent &event);
+  absl::Status unsubscribe(const geds::SubscriptionEvent &event);
 };
 
 #endif // GEDS_GEDS_H

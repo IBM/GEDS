@@ -5,6 +5,10 @@
 
 #include "MetadataService.h"
 
+#include <boost/lexical_cast.hpp>
+#include <boost/uuid/uuid.hpp>
+#include <boost/uuid/uuid_generators.hpp>
+#include <boost/uuid/uuid_io.hpp>
 #include <grpcpp/client_context.h>
 #include <grpcpp/support/status.h>
 #include <grpcpp/support/status_code_enum.h>
@@ -34,7 +38,10 @@ static std::string printGRPCError(const grpc::Status &status) {
 
 MetadataService::MetadataService(std::string serverAddress)
     : _connectionState(ConnectionState::Disconnected), _channel(nullptr),
-      serverAddress(std::move(serverAddress)) {}
+      serverAddress(std::move(serverAddress)) {
+  boost::uuids::uuid uuid_generated = boost::uuids::random_generator()();
+  uuid = boost::lexical_cast<std::string>(uuid_generated);
+}
 
 MetadataService::~MetadataService() {
   if (_connectionState == ConnectionState::Connected) {
@@ -406,8 +413,99 @@ MetadataService::listPrefix(const std::string &bucket, const std::string &keyPre
 }
 
 absl::StatusOr<std::pair<std::vector<geds::Object>, std::vector<std::string>>>
+MetadataService::listPrefixFromCache(const std::string &bucket, const std::string &keyPrefix,
+                                     char delimiter) {
+
+  auto status_or_objects = _mdsCache.listObjects(bucket, keyPrefix, delimiter);
+  if (!status_or_objects.ok()) {
+    status_or_objects = listPrefix(bucket, keyPrefix, delimiter);
+  }
+  return status_or_objects;
+}
+
+absl::StatusOr<std::pair<std::vector<geds::Object>, std::vector<std::string>>>
 MetadataService::listFolder(const std::string &bucket, const std::string &keyPrefix) {
   return listPrefix(bucket, keyPrefix, Default_GEDSFolderDelimiter);
+}
+
+absl::Status MetadataService::subscribeStream() {
+  METADATASERVICE_CHECK_CONNECTED;
+
+  geds::rpc::SubscriptionStreamEvent subscription_stream_event;
+  geds::rpc::SubscriptionStreamResponse subscription_response;
+  grpc::ClientContext context;
+  subscription_stream_event.set_subscriberid(uuid);
+
+  std::unique_ptr<grpc::ClientReader<geds::rpc::SubscriptionStreamResponse>> reader(
+      _stub->SubscribeStream(&context, subscription_stream_event));
+
+  while (reader->Read(&subscription_response)) {
+    const auto &objectPublication = subscription_response.object();
+    auto obj_id = geds::ObjectID{objectPublication.id().bucket(), objectPublication.id().key()};
+    auto obj_info =
+        geds::ObjectInfo{objectPublication.info().location(), objectPublication.info().size(),
+                         objectPublication.info().sealedoffset(),
+                         objectPublication.info().has_metadata()
+                             ? std::make_optional(objectPublication.info().metadata())
+                             : std::nullopt};
+    auto obj = geds::Object{obj_id, obj_info};
+
+    if (subscription_response.publicationtype() == geds::rpc::CREATE_OBJECT) {
+      (void)_mdsCache.createObject(obj, true);
+    } else if (subscription_response.publicationtype() == geds::rpc::UPDATE_OBJECT) {
+      (void)_mdsCache.updateObject(obj);
+    } else if (subscription_response.publicationtype() == geds::rpc::DELETE_OBJECT) {
+      (void)_mdsCache.deleteObject(obj.id.bucket, obj.id.key);
+    }
+
+    LOG_DEBUG("Received subscription and added to cache (bucket, key): ", obj.id.bucket, " , ",
+              obj.id.key);
+  }
+  auto status = reader->Finish();
+  if (!status.ok()) {
+    return absl::InternalError(status.error_message());
+  }
+  std::this_thread::sleep_for(std::chrono::seconds(1));
+  return subscribeStream();
+}
+
+absl::Status MetadataService::subscribe(const geds::SubscriptionEvent &event) {
+  METADATASERVICE_CHECK_CONNECTED
+
+  geds::rpc::SubscriptionEvent subscription_event;
+  geds::rpc::StatusResponse response;
+  grpc::ClientContext context;
+
+  subscription_event.set_subscriberid(uuid);
+  subscription_event.set_bucketid(std::string{event.bucket});
+  subscription_event.set_key(std::string{event.key});
+  subscription_event.set_subscriptiontype(event.subscriptionType);
+
+  auto status = _stub->Subscribe(&context, subscription_event, &response);
+  if (!status.ok()) {
+    return absl::UnavailableError("Unable to execute CreateBucket command: " +
+                                  status.error_message());
+  }
+  return convertStatus(response);
+}
+
+absl::Status MetadataService::unsubscribe(const geds::SubscriptionEvent &event) {
+  METADATASERVICE_CHECK_CONNECTED;
+
+  geds::rpc::SubscriptionEvent subscription_event;
+  geds::rpc::StatusResponse response;
+  grpc::ClientContext context;
+
+  subscription_event.set_subscriberid(uuid);
+  subscription_event.set_bucketid(std::string{event.bucket});
+  subscription_event.set_key(std::string{event.key});
+  subscription_event.set_subscriptiontype(event.subscriptionType);
+
+  auto status = _stub->Unsubscribe(&context, subscription_event, &response);
+  if (!status.ok()) {
+    return absl::UnavailableError("Unable to unsubscribe: " + status.error_message());
+  }
+  return convertStatus(response);
 }
 
 } // namespace geds
