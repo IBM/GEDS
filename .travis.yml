@@ -20,12 +20,14 @@ env:
   - DOCKER_BUILD_TARGET=ubuntu22.04 CMAKE_BUILD_TYPE=Debug
   - DOCKER_BUILD_TARGET=debian11.5 CMAKE_BUILD_TYPE=Release
   - DOCKER_BUILD_TARGET=debian11.5 CMAKE_BUILD_TYPE=Debug
+  - DOCKER_BUILD_TARGET=ubi8 CMAKE_BUILD_TYPE=Release
+  - DOCKER_BUILD_TARGET=ubi8 CMAKE_BUILD_TYPE=Debug
 notifications:
   email:
     on_success: never
     on_failure: always
 before_install:
-- ".travis/build-or-cache-grpc.sh"
+- travis_wait 55 ".travis/build-or-cache-grpc.sh"
 script:
 - ".travis/build-geds.sh"
 cache:
