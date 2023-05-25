@@ -32,7 +32,7 @@ if(HAVE_PROMETHEUS_HISTOGRAM_BUCKETS)
     add_compile_definitions(HAVE_PROMETHEUS_HISTOGRAM_BUCKETS=1)
 endif()
 
-if (ENABLE_PROFILING)
+if(ENABLE_PROFILING)
     message(STATUS "ENABLE_PROFILING:     ${ENABLE_PROFILING}")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pg")
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pg")
@@ -41,14 +41,21 @@ endif()
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
-set(compilerIsGNU $<CMAKE_CXX_COMPILER_ID:GNU>)
-set(compilerIsClang $<CMAKE_CXX_COMPILER_ID:GNU>)
-
 set(GEDS_EXTRA_COMPILER_FLAGS -Wall -Wextra -Werror) # -Wpedantic # error: ISO C++ does not support ‘__int128’ for ‘type name’ [-Werror=pedantic]
-set(GEDS_EXTRA_LINKER_FLAGS  )
-if(${compilerIsClang})
-    set(GEDS_EXTRA_COMPILER_FLAGS ${GEDS_EXTRA_COMPILER_FLAGS} -Wpedantic)
+set(GEDS_EXTRA_LINKER_FLAGS)
+
+# if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+#     set(GEDS_EXTRA_COMPILER_FLAGS ${GEDS_EXTRA_COMPILER_FLAGS} -Wpedantic)
+# endif()
+
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+    if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "12.3.0" AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER "12.0.0")
+        # Workaround for https://github.com/google/googletest/issues/4108
+        message(WARNING "GCC ${CXX_COMPILER_VERSION} workaround: Disabling tests.")
+        set(HAVE_TESTS OFF)
+    endif()
 endif()
+message(STATUS "Using ${CMAKE_CXX_COMPILER_ID} ${CXX_COMPILER_VERSION}")
 
 # #####################
 # ## Dependencies
