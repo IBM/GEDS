@@ -76,6 +76,11 @@ protected:
     if (state == geds::rpc::NodeState::Register) {
       status = _nodes.registerNode(uuid, identifier, port);
     } else if (state == geds::rpc::NodeState::Unregister) {
+      std::vector<std::string> toDecommission = {uuid};
+      auto decommissionStatus = _nodes.decommissionNodes(toDecommission, _kvs);
+      if (!decommissionStatus.ok()) {
+        LOG_ERROR("Unable to decommission node: ", decommissionStatus.message());
+      }
       status = _nodes.unregisterNode(uuid);
     } else {
       LOG_ERROR("Invalid state ", state);
