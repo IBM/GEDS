@@ -143,6 +143,57 @@ absl::StatusOr<std::string> MetadataService::getConnectionInformation() {
   return response.remoteaddress();
 }
 
+absl::Status MetadataService::configureNode(const std::string &identifier,
+                                            geds::rpc::NodeState state) {
+  METADATASERVICE_CHECK_CONNECTED;
+
+  geds::rpc::NodeStatus request;
+  geds::rpc::StatusResponse response;
+  grpc::ClientContext context;
+
+  auto node = request.mutable_node();
+  node->set_identifier(identifier);
+
+  request.set_state(state);
+
+  auto status = _stub->ConfigureNode(&context, request, &response);
+  if (!status.ok()) {
+    return absl::UnavailableError("Unable to execute ConfigureNode: " + status.error_message());
+  }
+  return convertStatus(response);
+}
+
+absl::Status MetadataService::heartBeat(const std::string &identifier,
+                                        const StorageCounter &storage,
+                                        const StorageCounter &memory) {
+  METADATASERVICE_CHECK_CONNECTED;
+
+  geds::rpc::HeartbeatMessage request;
+  geds::rpc::StatusResponse response;
+  grpc::ClientContext context;
+
+  auto node = request.mutable_node();
+  node->set_identifier(identifier);
+
+  {
+    auto lock = memory.getReadLock();
+    request.set_memoryallocated(memory.allocated);
+    request.set_memoryused(memory.used);
+  }
+
+  {
+    auto lock = storage.getReadLock();
+    request.set_storageused(storage.used);
+    request.set_storageallocated(storage.allocated);
+  }
+
+  auto status = _stub->Heartbeat(&context, request, &response);
+  if (!status.ok()) {
+    return absl::UnavailableError("Unable to send heart beat: " + status.error_message());
+  }
+  return convertStatus(response);
+}
+
 absl::Status MetadataService::createBucket(const std::string_view &bucket) {
   METADATASERVICE_CHECK_CONNECTED;
   geds::rpc::Bucket request;

@@ -159,6 +159,8 @@ absl::Status GEDS::start() {
   // Update state.
   _state = ServiceState::Running;
 
+  (void)_metadataService.configureNode(_hostname, geds::rpc::NodeState::Register);
+
   startStorageMonitoringThread();
   startPubSubStreamThread();
 
@@ -923,6 +925,77 @@ void GEDS::relocate(std::shared_ptr<GEDSFileHandle> handle, bool force) {
   (void)handle->relocate();
 }
 
+absl::Status GEDS::downloadObject(const std::string &bucket, const std::string &key) {
+  auto oldFile = openAsFileHandle(bucket, key);
+  if (!oldFile.ok()) {
+    return oldFile.status();
+  }
+  auto newFile = createAsFileHandle(bucket, key, true /* overwrite */);
+  if (!newFile.ok()) {
+    return newFile.status();
+  }
+  return (*oldFile)->download(*newFile);
+}
+
+absl::Status GEDS::downloadObjects(std::vector<geds::ObjectID> objects) {
+  struct PullHelper {
+    std::mutex mutex;
+    std::condition_variable cv;
+    size_t nTasks;
+    size_t nErrors;
+    auto lock() { return std::unique_lock<std::mutex>(mutex); }
+  };
+  auto h = std::make_shared<PullHelper>();
+  {
+    auto lock = h->lock();
+    h->nTasks = objects.size();
+    h->nErrors = 0;
+  }
+
+  auto self = shared_from_this();
+  size_t off = 3 * _config.io_thread_pool_size;
+
+  for (size_t offset = 0; offset < objects.size(); offset += off) {
+    auto rbegin = offset;
+    auto rend = rbegin + off;
+    if (rend > objects.size()) {
+      rend = objects.size();
+    }
+    for (auto i = rbegin; i < rend; i++) {
+      auto file = objects[i];
+      boost::asio::post(_ioThreadPool, [self, &file, h]() {
+        bool error = false;
+        try {
+          auto status = self->downloadObject(file.bucket, file.key);
+          if (!status.ok()) {
+            LOG_ERROR("Unable to download ", file.bucket, "/", file.key);
+            error = true;
+          }
+        } catch (...) {
+          LOG_ERROR("Encountered an exception when downloading ", file.bucket, "/", file.key);
+          error = true;
+        }
+        {
+          auto lock = h->lock();
+          h->nTasks -= 1;
+          if (error) {
+            h->nErrors += 1;
+          }
+        }
+        h->cv.notify_all();
+      });
+    }
+  }
+  auto relocateLock = h->lock();
+  h->cv.wait(relocateLock, [h]() { return h->nTasks == 0; });
+  LOG_INFO("Downloaded ", objects.size(), " objects, errors: ", h->nErrors);
+  if (h->nErrors) {
+    return absl::UnknownError("Some objects were not downloaded: Observed " +
+                              std::to_string(h->nErrors) + " errors!");
+  }
+  return absl::OkStatus();
+}
+
 void GEDS::startStorageMonitoringThread() {
   _storageMonitoringThread = std::thread([&]() {
     auto statsLocalStorageUsed = geds::Statistics::createGauge("GEDS: Local Storage used");
@@ -970,8 +1043,16 @@ void GEDS::startStorageMonitoringThread() {
         *statsLocalMemoryFree = _memoryCounters.free;
       }
 
-      auto targetStorage = (size_t)(0.5 * (double)_config.available_local_storage);
-      if (storageUsed > targetStorage) {
+      {
+        // Send heartbeat.
+        auto status = _metadataService.heartBeat(_hostname, _storageCounters, _memoryCounters);
+        if (!status.ok()) {
+          LOG_ERROR("Unable to send heartbeat to metadata service: ", status.message());
+        }
+      }
+
+      auto targetStorage = (size_t)(0.7 * (double)_config.available_local_storage);
+      if (memoryUsed > targetStorage) {
         std::sort(std::begin(relocatable), std::end(relocatable),
                   [](std::shared_ptr<GEDSFileHandle> a, std::shared_ptr<GEDSFileHandle> b) {
                     if (a->openCount() == 0 && b->openCount() == 0) {

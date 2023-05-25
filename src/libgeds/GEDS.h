@@ -17,6 +17,7 @@
 #include <set>
 #include <shared_mutex>
 #include <string>
+#include <tuple>
 #include <utility>
 
 #include <absl/status/status.h>
@@ -327,6 +328,9 @@ public:
 
   absl::Status subscribe(const geds::SubscriptionEvent &event);
   absl::Status unsubscribe(const geds::SubscriptionEvent &event);
+  
+  absl::Status downloadObject(const std::string &bucket, const std::string &key);
+  absl::Status downloadObjects(std::vector<geds::ObjectID> objects);
 };
 
 #endif // GEDS_GEDS_H
