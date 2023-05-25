@@ -175,13 +175,22 @@ absl::Status GEDS::stop() {
   LOG_INFO("Stopping");
   LOG_INFO("Printing statistics");
 
-  geds::Statistics::print();
+  // Update state
+  _state = ServiceState::Stopped;
+
   // Relocate to S3 if available.
   if (_config.force_relocation_when_stopping) {
     relocate(true);
   }
 
-  auto result = _metadataService.disconnect();
+  // Decomission node.
+  auto result = _metadataService.configureNode(uuid, _hostname, _server.port(),
+                                               geds::rpc::NodeState::Unregister);
+  if (!result.ok()) {
+    LOG_ERROR("Unable to unregister: ", result.message());
+  }
+
+  result = _metadataService.disconnect();
   if (!result.ok()) {
     LOG_ERROR("cannot disconnect metadata service: ", result.message());
   }
@@ -196,13 +205,13 @@ absl::Status GEDS::stop() {
   _fileHandles.clear();
   _fileTransfers.clear();
 
-  _state = ServiceState::Stopped;
-
   _storageMonitoringThread.join();
 
   if (_pubSubStreamThread.joinable()) {
     _pubSubStreamThread.join();
   }
+
+  geds::Statistics::print();
 
   return result;
 }
