@@ -24,13 +24,14 @@ RUN git clone --recurse-submodules -b ${GRPC_VERSION} --depth 1 --shallow-submod
     && mkdir -p /build/grpc \
     && cd /build/grpc \
     && cmake -DgRPC_INSTALL=ON \
-             -DgRPC_BUILD_TESTS=OFF \
-             -DgRPC_SSL_PROVIDER=package \
-             -DCMAKE_CXX_COMPILER=/usr/bin/clang++ \
-             -DCMAKE_C_COMPILER=/usr/bin/clang \
-             -DCMAKE_INSTALL_PREFIX=${GRPC_INSTALL_DIR} \
-             -DCMAKE_CXX_STANDARD=${CMAKE_CXX_STANDARD} \
-             -S /src/grpc -B . -G Ninja \
+            -DgRPC_BUILD_TESTS=OFF \
+            -DgRPC_SSL_PROVIDER=package \
+            -DCMAKE_CXX_COMPILER=/usr/bin/clang++ \
+            -DCMAKE_C_COMPILER=/usr/bin/clang \
+            -DCMAKE_INSTALL_PREFIX=${GRPC_INSTALL_DIR} \
+            -DCMAKE_CXX_STANDARD=${CMAKE_CXX_STANDARD} \
+            -DCMAKE_BUILD_PARALLEL_LEVEL=${CMAKE_BUILD_PARALLEL_LEVEL} \
+            -S /src/grpc -B . -G Ninja \
     && cmake --build . --target all \
     && cmake --install . --prefix ${GRPC_INSTALL_DIR} \
     && cd / \
@@ -43,13 +44,14 @@ RUN git clone --recurse-submodules -b ${AWS_SDK_VERSION} --depth 1 --shallow-sub
     && mkdir -p /build/aws-sdk-cpp \
     && cd /build/aws-sdk-cpp \
     && cmake -DCMAKE_BUILD_TYPE=Release \
-             -DBUILD_ONLY=s3 \
-             -DBUILD_SHARED_LIBS=OFF \
-             -DCMAKE_CXX_STANDARD=${CMAKE_CXX_STANDARD} \
-             -DCPP_STANDARD=${CMAKE_CXX_STANDARD} \
-             -DENABLE_TESTING=OFF -DAUTORUN_UNIT_TESTS=OFF \
-             -DCMAKE_INSTALL_PREFIX=${AWS_SDK_INSTALL_DIR} \
-             -S /src/aws-sdk-cpp -B . \
+            -DBUILD_ONLY=s3 \
+            -DBUILD_SHARED_LIBS=OFF \
+            -DCMAKE_CXX_STANDARD=${CMAKE_CXX_STANDARD} \
+            -DCPP_STANDARD=${CMAKE_CXX_STANDARD} \
+            -DENABLE_TESTING=OFF -DAUTORUN_UNIT_TESTS=OFF \
+            -DCMAKE_INSTALL_PREFIX=${AWS_SDK_INSTALL_DIR} \
+            -DCMAKE_BUILD_PARALLEL_LEVEL=${CMAKE_BUILD_PARALLEL_LEVEL} \
+            -S /src/aws-sdk-cpp -B . \
     && cmake --build . \
     && cmake --install . --prefix ${AWS_SDK_INSTALL_DIR} \
     && cd / \
