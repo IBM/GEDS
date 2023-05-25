@@ -24,8 +24,6 @@ cd "${BUILD_FOLDER}"
 
 cmake -S "${SOURCE_FOLDER}" -B "${BUILD_FOLDER}" -G Ninja \
          -DUSE_EXTERNAL_GRPC=ON \
-         -DCMAKE_CXX_COMPILER=/usr/bin/clang++ \
-         -DCMAKE_C_COMPILER=/usr/bin/clang  \
          -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} \
          -DCMAKE_INSTALL_PREFIX="${INSTALL_PREFIX}"
 

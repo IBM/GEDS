@@ -27,6 +27,9 @@ RUN apt-get clean apt-get clean && apt-get update && \
             --slave /usr/bin/gcov gcov /usr/bin/gcov-10
 
 RUN locale-gen ${DEFAULT_LOCALE}
-ENV LC_ALL=${DEFAULT_LOCALE}
-ENV LANG=${DEFAULT_LOCALE}
-ENV LANGUAGE=${DEFAULT_LOCALE}
+ENV LC_ALL=${DEFAULT_LOCALE} \
+    LANG=${DEFAULT_LOCALE} \
+    LANGUAGE=${DEFAULT_LOCALE}
+
+ENV CC=/usr/bin/clang \
+    CXX=/usr/bin/clang++
