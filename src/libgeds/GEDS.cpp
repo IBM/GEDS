@@ -1066,7 +1066,7 @@ void GEDS::startStorageMonitoringThread() {
       }
 
       auto targetStorage = (size_t)(0.7 * (double)_config.available_local_storage);
-      if (memoryUsed > targetStorage) {
+      if (storageUsed > targetStorage) {
         std::sort(std::begin(relocatable), std::end(relocatable),
                   [](std::shared_ptr<GEDSFileHandle> a, std::shared_ptr<GEDSFileHandle> b) {
                     if (a->openCount() == 0 && b->openCount() == 0) {
