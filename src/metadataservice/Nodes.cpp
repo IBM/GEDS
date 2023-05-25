@@ -182,7 +182,14 @@ absl::Status Nodes::decomissionNodes(const std::vector<std::string> &nodes,
     threads.emplace_back([target] {
       auto status = target->node->downloadObjects(target->objects);
       if (!status.ok()) {
-        LOG_ERROR("Unable to relocate objects to ", target->node->host);
+        LOG_ERROR("Unable to relocate objects to ", target->node->host,
+                  " uuid: ", target->node->uuid);
+        return;
+      }
+      status = target->node->purgeLocalObjects(target->objects);
+      if (!status.ok()) {
+        LOG_ERROR("Unable to cleanup local objects on ", target->node->host,
+                  " uuid: ", target->node->uuid);
       }
     });
   }

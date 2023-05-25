@@ -329,8 +329,21 @@ public:
   absl::Status subscribe(const geds::SubscriptionEvent &event);
   absl::Status unsubscribe(const geds::SubscriptionEvent &event);
   
+  /**
+   * @brief Pull object to this GEDS instance.
+   */
   absl::Status downloadObject(const std::string &bucket, const std::string &key);
   absl::Status downloadObjects(std::vector<geds::ObjectID> objects);
+
+  /**
+   * @brief Purge locally stored object without updating the Metadata server.
+   */
+  absl::Status purgeLocalObject(const std::string &bucket, const std::string &key);
+
+  /**
+   * @brief Purge locally stored objects if they exist locally. Missing files will be logged.
+   */
+  absl::Status purgeLocalObjects(std::vector<geds::ObjectID> objects);
 };
 
 #endif // GEDS_GEDS_H
