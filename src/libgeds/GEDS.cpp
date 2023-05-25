@@ -1034,7 +1034,7 @@ void GEDS::startStorageMonitoringThread() {
           auto memSize = fh->localMemorySize();
           storageUsed += storageSize;
           memoryUsed += memSize;
-          if (fh->isRelocatable() && memoryUsed == 0) {
+          if (fh->isRelocatable() && fh->openCount() == 0) {
             relocatable.push_back(fh);
           }
         }
@@ -1065,26 +1065,18 @@ void GEDS::startStorageMonitoringThread() {
         }
       }
 
-      auto targetStorage = (size_t)(0.7 * (double)_config.available_local_storage);
+      auto targetStorage =
+          (size_t)(_config.storage_spilling_fraction * (double)_config.available_local_storage);
       if (storageUsed > targetStorage) {
         std::sort(std::begin(relocatable), std::end(relocatable),
                   [](std::shared_ptr<GEDSFileHandle> a, std::shared_ptr<GEDSFileHandle> b) {
-                    if (a->openCount() == 0 && b->openCount() == 0) {
-                      return a->lastReleased() < b->lastReleased();
-                    }
-                    if (a->openCount() == 0) {
-                      return true;
-                    }
-                    if (b->openCount() == 0) {
-                      return false;
-                    }
-                    return a->lastOpened() < b->lastOpened();
+                    return a->lastReleased() < b->lastReleased();
                   });
 
         std::vector<std::shared_ptr<GEDSFileHandle>> tasks;
         size_t relocateBytes = 0;
         for (auto &f : relocatable) {
-          if (relocateBytes > targetStorage) {
+          if (relocateBytes > (storageUsed - targetStorage)) {
             break;
           }
           relocateBytes += f->localStorageSize();
