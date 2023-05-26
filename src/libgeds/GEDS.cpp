@@ -182,7 +182,7 @@ absl::Status GEDS::stop() {
   _state = ServiceState::Stopped;
 
   // Relocate to S3 if available.
-  relocate(true);
+  // relocate(true);
 
   // Decomission node.
   auto result = _metadataService.configureNode(uuid, _hostname, _server.port(),
@@ -508,7 +508,8 @@ GEDS::reopenFileHandle(const std::string &bucket, const std::string &key, bool i
   if (location.compare(0, gedsPrefix.size(), gedsPrefix) == 0) {
     fileHandle = GEDSRemoteFileHandle::factory(shared_from_this(), object);
   } else if (location.compare(0, s3Prefix.size(), s3Prefix) == 0) {
-    fileHandle = GEDSCachedFileHandle::factory<GEDSS3FileHandle>(shared_from_this(), object);
+    // fileHandle = GEDSCachedFileHandle::factory<GEDSS3FileHandle>(shared_from_this(), object);
+    fileHandle = GEDSS3FileHandle::factory(shared_from_this(), object);
   } else {
     return absl::UnknownError("The remote location format " + location + " is not known.");
   }
