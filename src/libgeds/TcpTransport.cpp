@@ -570,7 +570,7 @@ bool TcpPeer::processEndpointRecv(int sock) {
           auto message = "Error from GET_REPLY: " + std::to_string(ctx->hdr.error) +
                          "length: " + std::to_string(datalen) + " Ep: " + std::to_string(tep->sock);
           LOG_DEBUG(message);
-          ctx->p->set_value(absl::AbortedError(message));
+          ctx->p->set_value(absl::UnknownError(message));
           ctx->p = nullptr;
           ctx->state = PROC_IDLE;
           ctx->progress = 0;
