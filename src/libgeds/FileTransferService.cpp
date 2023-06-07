@@ -30,7 +30,7 @@ using std::string;
 
 FileTransferService::FileTransferService(std::string nodeAddress, std::shared_ptr<GEDS> geds)
     : _geds(geds), nodeAddress(std::move(nodeAddress)) {
-  LOG_INFO("Creating a filetransfer service for ", nodeAddress);
+  LOG_INFO("Creating a filetransfer service for ", this->nodeAddress);
 }
 
 FileTransferService::~FileTransferService() {
