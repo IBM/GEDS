@@ -58,7 +58,7 @@ void TcpTransport::start() {
                          "=d"(registers[3])
                        : "a"(1), "c"(0));
   bool hyperthreading = registers[3] & (1 << 28); // NOLINT
-  num_proc = std::thread::hardware_concurrency();
+  num_proc = std::thread::hardware_concurrency() * 2;
   if (hyperthreading)
     num_proc /= 2;
 

@@ -195,7 +195,7 @@ public:
   ~TcpPeer();
 };
 constexpr unsigned int MAX_PEERS = 8096;
-constexpr unsigned int MAX_IO_THREADS = 8;
+constexpr unsigned int MAX_IO_THREADS = 16;
 constexpr unsigned int EPOLL_MAXEVENTS = MAX_PEERS / MAX_IO_THREADS;
 
 class TcpTransport : public std::enable_shared_from_this<TcpTransport> {
