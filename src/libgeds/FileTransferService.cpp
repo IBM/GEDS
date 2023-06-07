@@ -56,6 +56,9 @@ FileTransferService::~FileTransferService() {
 }
 
 absl::Status FileTransferService::connect() {
+  if (_connectionState == ConnectionState::Connected) {
+    return absl::OkStatus();
+  }
   if (_connectionState != ConnectionState::Disconnected) {
     return absl::FailedPreconditionError("Cannot reinitialize service.");
   }
@@ -77,7 +80,7 @@ absl::Status FileTransferService::connect() {
   for (auto &addr : *endpoints) {
     if (std::get<1>(addr) == FileTransferProtocol::Socket) {
       struct sockaddr saddr = std::get<0>(addr);
-      auto peer = _tcp->getPeer(&saddr);
+      auto peer = _tcp->getPeer(&saddr, true);
 
       if (peer) {
         _tcpPeer = peer;
@@ -85,6 +88,12 @@ absl::Status FileTransferService::connect() {
         break;
       }
     }
+  }
+  if (_tcpPeer == nullptr) {
+    _channel = nullptr;
+    _stub = nullptr;
+    auto message = "Unable to establish a connection to " + nodeAddress;
+    return absl::UnknownError(message);
   }
   _connectionState = ConnectionState::Connected;
   LOG_INFO("Connected to ", nodeAddress);
@@ -160,6 +169,7 @@ absl::StatusOr<size_t> FileTransferService::readBytes(const std::string &bucket,
   }
   // Close the FileTransferService on error.
   if (status.status().code() == absl::StatusCode::kAborted) {
+    LOG_ERROR("FileTransfer was aborted: ", status.status().message());
     auto lock = getWriteLock();
     if (peer == _tcpPeer) {
       LOG_ERROR("Encountered an error on the TCP Transport. Trying to reconnect! Node: ",

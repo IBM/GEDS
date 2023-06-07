@@ -243,7 +243,7 @@ public:
   void start();
   void stop();
 
-  std::shared_ptr<TcpPeer> getPeer(sockaddr *);
+  std::shared_ptr<TcpPeer> getPeer(sockaddr *, bool override = false);
   bool addEndpointPassive(int sock);
 };
 } // namespace geds
