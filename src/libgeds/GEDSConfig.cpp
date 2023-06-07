@@ -64,6 +64,8 @@ absl::Status GEDSConfig::set(const std::string &key, size_t value) {
     available_local_memory = value;
   } else if (key == "pub_sub_enabled") {
     pubSubEnabled = value != 0;
+  } else if (key == "force_relocation_when_stopping") {
+    force_relocation_when_stopping = value != 0;
   } else {
     LOG_ERROR("Configuration " + key + " not supported (type: signed/unsigned integer).");
     return absl::NotFoundError("Key " + key + " not found.");

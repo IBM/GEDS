@@ -96,8 +96,18 @@ struct GEDSConfig {
    */
   bool pubSubEnabled = false;
 
+  /**
+   * @brief Force relocation when stopping.
+   */
+  bool force_relocation_when_stopping = false;
+
   GEDSConfig(std::string metadataServiceAddressArg)
-      : metadataServiceAddress(std::move(metadataServiceAddressArg)) {}
+      : metadataServiceAddress(std::move(metadataServiceAddressArg)) {
+    if (available_local_storage <= 4 * 1024 * 1024 * (size_t)1024) {
+      io_thread_pool_size = std::min<size_t>(io_thread_pool_size, 6);
+      storage_spilling_fraction = 0.9;
+    }
+  }
 
   absl::Status set(const std::string &key, const std::string &value);
   absl::Status set(const std::string &key, size_t value);
