@@ -22,14 +22,13 @@ absl::Status PopulateKVS(std::shared_ptr<geds::ObjectStoreConfig> config,
       return status;
     }
   }
-    return absl::OkStatus();
+  return absl::OkStatus();
   // auto bucket = kvs->getBucket(config->bucket);
   // if (!bucket.ok()) {
   //   return bucket.status();
   // }
-  // auto s3Endpoint = geds::s3::Endpoint(config->endpointURL, config->accessKey, config->secretKey);
-  // auto files = s3Endpoint.list(config->bucket, "");
-  // if (!files.ok()) {
+  // auto s3Endpoint = geds::s3::Endpoint(config->endpointURL, config->accessKey,
+  // config->secretKey); auto files = s3Endpoint.list(config->bucket, ""); if (!files.ok()) {
   //   LOG_ERROR("Unable to list s3 endpoint for ", config->bucket, ": ", files.status().message());
   //   return files.status();
   // }
@@ -47,8 +46,8 @@ absl::Status PopulateKVS(std::shared_ptr<geds::ObjectStoreConfig> config,
   //   auto status = (*bucket)->createObject(
   //       geds::Object{.id = geds::ObjectID{config->bucket, f.key}, .info = objInfo});
   //   if (!status.ok() && status.code() != absl::StatusCode::kAlreadyExists) {
-  //     LOG_ERROR("Unable to create entry for ", config->bucket, "/", f.key, ": ", status.message());
-  //     continue;
+  //     LOG_ERROR("Unable to create entry for ", config->bucket, "/", f.key, ": ",
+  //     status.message()); continue;
   //   }
   // }
   return absl::OkStatus();
