@@ -41,14 +41,23 @@ GEDSRemoteFileHandle::factory(std::shared_ptr<GEDS> gedsService, const geds::Obj
   return std::shared_ptr<GEDSFileHandle>(
       new GEDSRemoteFileHandle(gedsService, object, fileTransferService.value()));
 }
+
 absl::StatusOr<size_t> GEDSRemoteFileHandle::readBytes(uint8_t *bytes, size_t position,
                                                        size_t length) {
+  return readBytes(bytes, position, length, true);
+}
+
+absl::StatusOr<size_t> GEDSRemoteFileHandle::readBytes(uint8_t *bytes, size_t position,
+                                                       size_t length, bool retry) {
   if (length == 0) {
     return 0;
   }
   auto lock = lockShared();
   auto read = _fileTransferService->read(bucket, key, bytes, position, length);
   if (!read.ok()) {
+    if (read.status().code() == absl::StatusCode::kAborted && retry) {
+      return readBytes(bytes, position, length, false);
+    }
     return read;
   }
   if (*read != length) {

@@ -45,7 +45,7 @@ class FileTransferService : public utility::RWConcurrentObjectAdaptor {
   std::unique_ptr<geds::rpc::GEDSService::Stub> _stub;
   std::shared_ptr<GEDS> _geds;
   std::shared_ptr<TcpTransport> _tcp;
-  std::weak_ptr<TcpPeer> _tcpPeer;
+  std::shared_ptr<TcpPeer> _tcpPeer;
 
   absl::StatusOr<std::vector<std::tuple<sockaddr, geds::FileTransferProtocol>>>
   availTransportEndpoints();
