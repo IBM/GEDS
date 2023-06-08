@@ -15,6 +15,7 @@
 #include <boost/asio/executor.hpp>
 #include <boost/asio/io_service.hpp>
 #include <boost/asio/ip/tcp.hpp>
+#include <boost/lockfree/stack.hpp>
 #include <thread>
 #include <vector>
 
@@ -25,11 +26,14 @@ class GEDS;
 
 namespace geds {
 
+constexpr size_t MIN_SENDFILE_SIZE = 8192;
+
 class TcpServer : public utility::RWConcurrentObjectAdaptor {
   bool _started = false;
   std::shared_ptr<GEDS> _geds;
 
   std::vector<std::thread> _threads;
+  boost::lockfree::stack<uint8_t *, boost::lockfree::fixed_sized<false>> _buffers;
 
 public:
   const uint16_t port;
@@ -42,6 +46,10 @@ protected:
 
 public:
   TcpServer(std::shared_ptr<GEDS> geds, uint16_t portArg);
+  ~TcpServer();
+
+  uint8_t *getBuffer();
+  void releaseBuffer(uint8_t *buffer);
 
   absl::Status start();
   void stop();

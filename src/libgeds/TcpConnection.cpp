@@ -36,20 +36,22 @@
 #include "GEDSFile.h"
 #include "Logging.h"
 #include "TcpDataTransport.h"
+#include "TcpServer.h"
 
 namespace geds {
 
-TcpConnection::TcpConnection(boost::asio::ip::tcp::socket &&socket,
-                                         std::shared_ptr<GEDS> geds)
+TcpConnection::TcpConnection(boost::asio::ip::tcp::socket &&socket, std::shared_ptr<GEDS> geds,
+                             TcpServer &server)
     : _socket(std::move(socket)), _geds(geds),
-      _strand(boost::asio::make_strand(socket.get_executor())) {
+      _strand(boost::asio::make_strand(socket.get_executor())), _server(server) {
   LOG_DEBUG("Creating connection on ", _socket.remote_endpoint().address().to_string(), ":",
             _socket.remote_endpoint().port());
 }
 
-std::shared_ptr<TcpConnection>
-TcpConnection::create(boost::asio::ip::tcp::socket &&socket, std::shared_ptr<GEDS> geds) {
-  return std::shared_ptr<TcpConnection>(new TcpConnection(std::move(socket), geds));
+std::shared_ptr<TcpConnection> TcpConnection::create(boost::asio::ip::tcp::socket &&socket,
+                                                     std::shared_ptr<GEDS> geds,
+                                                     TcpServer &server) {
+  return std::shared_ptr<TcpConnection>(new TcpConnection(std::move(socket), geds, server));
 }
 
 void TcpConnection::start() {
@@ -86,8 +88,8 @@ void TcpConnection::awaitRequest() {
           }));
 }
 
-void TcpConnection::handleWrite(const std::string &bucket, const std::string &key,
-                                      size_t offset, size_t length) {
+void TcpConnection::handleWrite(const std::string &bucket, const std::string &key, size_t offset,
+                                size_t length) {
   geds::tcp_transport::Response response;
   response.statusCode = absl::OkStatus().raw_code();
   response.length = 0;
@@ -108,22 +110,19 @@ void TcpConnection::handleWrite(const std::string &bucket, const std::string &ke
   auto rawFd = file->rawFd();
   auto rawPtr = file->rawPtr();
 
-  if (rawPtr.ok()) {
-    auto size = file->size();
-    response.length = offset > size ? 0 : (std::min(size - offset, length));
-    if (offset > size) {
-      response.length = 0;
+  auto size = file->size();
+  length = offset > size ? 0 : (std::min(size - offset, length));
+  response.length = length;
+
+  if (length == 0) {
+    // Length is 0.
+  } else if (rawPtr.ok()) {
+    if (length > 0) {
+      writeArray.emplace_back(boost::asio::buffer(&(*rawPtr)[offset], length));
     }
-    if (response.length > 0) {
-      writeArray.emplace_back(boost::asio::buffer(&(*rawPtr)[offset], response.length));
-    }
-  } else if (rawFd.ok() && length > 8192) {
+  } else if (rawFd.ok() && length > MIN_SENDFILE_SIZE) {
     int fd = *rawFd;
     auto f = *file;
-
-    auto size = file->size();
-    length = offset > size ? 0 : (std::min(size - offset, length));
-    response.length = length;
     // Write header, then proceed to sendfile.
     boost::asio::async_write( //
         _socket, writeArray,  //
@@ -143,26 +142,35 @@ void TcpConnection::handleWrite(const std::string &bucket, const std::string &ke
         });
     return;
   } else {
-    byteBuffer = new uint8_t[length];
+    if (length <= MIN_SENDFILE_SIZE) {
+      byteBuffer = _server.getBuffer();
+    } else {
+      byteBuffer = new uint8_t[length];
+    }
     auto size = file->read(byteBuffer, offset, length);
     if (!size.ok()) {
       handleError(size.status());
       return;
     }
-    response.length = *size;
-    if (*size) {
+    length = *size;
+    response.length = length;
+    if (*size > 0) {
       writeArray.emplace_back(boost::asio::buffer(byteBuffer, *size));
     }
   }
 
-  LOG_DEBUG("Sending payload ", response.length);
+  LOG_DEBUG("Sending payload ", length);
   // Note: buffer, file need to be captured by the lambda.
   boost::asio::async_write( //
       _socket, writeArray,  //
-      [self, &writeArray, byteBuffer, &response, file](boost::system::error_code ec,
-                                                       std::size_t /* length */) {
+      [self, &writeArray, byteBuffer, &response, file, length](boost::system::error_code ec,
+                                                               std::size_t /* length */) {
         if (byteBuffer) {
-          delete[] byteBuffer;
+          if (length <= MIN_SENDFILE_SIZE) {
+            self->_server.releaseBuffer(byteBuffer);
+          } else {
+            delete[] byteBuffer;
+          }
         }
         if (ec) {
           LOG_ERROR("Error during write of ", file->identifier(), ": ", ec);

@@ -21,7 +21,7 @@ class GEDS;
 
 namespace geds {
 
-class FileTransferService: public utility::RWConcurrentObjectAdaptor {
+class FileTransferService : public utility::RWConcurrentObjectAdaptor {
   ConnectionState _connectionState = ConnectionState::Disconnected;
   std::shared_ptr<grpc::Channel> _channel;
   std::unique_ptr<geds::rpc::GEDSService::Stub> _stub;
