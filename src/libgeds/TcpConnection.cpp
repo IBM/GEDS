@@ -93,7 +93,7 @@ void TcpConnection::handleWrite(const std::string &bucket, const std::string &ke
   response.length = 0;
 
   uint8_t *byteBuffer = nullptr;
-  auto file = _geds->open(bucket, key);
+  auto file = _geds->localOpen(bucket, key);
   if (!file.ok()) {
     LOG_DEBUG("Unable to open ", bucket, "/", key, ": ", file.status().message());
     handleError(file.status());
