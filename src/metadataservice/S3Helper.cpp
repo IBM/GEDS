@@ -13,6 +13,8 @@
 
 absl::Status PopulateKVS(std::shared_ptr<geds::ObjectStoreConfig> config,
                          std::shared_ptr<MDSKVS> kvs) {
+
+  return absl::OkStatus();
   // Ensure the bucket already exists
   {
     auto status = kvs->createBucket(config->bucket);
@@ -20,33 +22,33 @@ absl::Status PopulateKVS(std::shared_ptr<geds::ObjectStoreConfig> config,
       return status;
     }
   }
-  auto bucket = kvs->getBucket(config->bucket);
-  if (!bucket.ok()) {
-    return bucket.status();
-  }
-  auto s3Endpoint = geds::s3::Endpoint(config->endpointURL, config->accessKey, config->secretKey);
-  auto files = s3Endpoint.list(config->bucket, "");
-  if (!files.ok()) {
-    LOG_ERROR("Unable to list s3 endpoint for ", config->bucket, ": ", files.status().message());
-    return files.status();
-  }
-  for (const auto &f : *files) {
-    if (f.isDirectory) {
-      continue;
-    }
-    LOG_DEBUG("Adding: ", config->bucket, "/", f.key);
-    bool slash = f.key.size() > 0 && f.key[0] == '/';
-    auto objInfo =
-        geds::ObjectInfo{.location = "s3://" + config->bucket + (slash ? "" : "/") + f.key,
-                         .size = f.size,
-                         .sealedOffset = f.size,
-                         .metadata = std::nullopt};
-    auto status = (*bucket)->createObject(
-        geds::Object{.id = geds::ObjectID{config->bucket, f.key}, .info = objInfo});
-    if (!status.ok() && status.code() != absl::StatusCode::kAlreadyExists) {
-      LOG_ERROR("Unable to create entry for ", config->bucket, "/", f.key, ": ", status.message());
-      continue;
-    }
-  }
+  return absl::OkStatus();
+  // auto bucket = kvs->getBucket(config->bucket);
+  // if (!bucket.ok()) {
+  //   return bucket.status();
+  // }
+  // auto s3Endpoint = geds::s3::Endpoint(config->endpointURL, config->accessKey,
+  // config->secretKey); auto files = s3Endpoint.list(config->bucket, ""); if (!files.ok()) {
+  //   LOG_ERROR("Unable to list s3 endpoint for ", config->bucket, ": ", files.status().message());
+  //   return files.status();
+  // }
+  // for (const auto &f : *files) {
+  //   if (f.isDirectory) {
+  //     continue;
+  //   }
+  //   LOG_DEBUG("Adding: ", config->bucket, "/", f.key);
+  //   bool slash = f.key.size() > 0 && f.key[0] == '/';
+  //   auto objInfo =
+  //       geds::ObjectInfo{.location = "s3://" + config->bucket + (slash ? "" : "/") + f.key,
+  //                        .size = f.size,
+  //                        .sealedOffset = f.size,
+  //                        .metadata = std::nullopt};
+  //   auto status = (*bucket)->createObject(
+  //       geds::Object{.id = geds::ObjectID{config->bucket, f.key}, .info = objInfo});
+  //   if (!status.ok() && status.code() != absl::StatusCode::kAlreadyExists) {
+  //     LOG_ERROR("Unable to create entry for ", config->bucket, "/", f.key, ": ",
+  //     status.message()); continue;
+  //   }
+  // }
   return absl::OkStatus();
 }

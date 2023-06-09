@@ -11,6 +11,7 @@
 #include "Object.h"
 #include "Statistics.h"
 
+
 class GEDSRemoteFileHandle : public GEDSFileHandle {
   std::shared_ptr<geds::FileTransferService> _fileTransferService;
   geds::ObjectInfo _info;
@@ -37,6 +38,8 @@ public:
   absl::Status seal() override;
 
   absl::StatusOr<size_t> readBytes(uint8_t *bytes, size_t position, size_t length) override;
+
+  absl::StatusOr<size_t> readBytes(uint8_t *bytes, size_t position, size_t length, bool retry);
 };
 
 #endif

@@ -56,10 +56,12 @@ FileTransferService::~FileTransferService() {
 }
 
 absl::Status FileTransferService::connect() {
+  if (_connectionState == ConnectionState::Connected) {
+    return absl::OkStatus();
+  }
   if (_connectionState != ConnectionState::Disconnected) {
     return absl::FailedPreconditionError("Cannot reinitialize service.");
   }
-  auto lock = getWriteLock();
   try {
     assert(_channel.get() == nullptr);
     _channel = grpc::CreateChannel(nodeAddress, grpc::InsecureChannelCredentials());
@@ -78,7 +80,7 @@ absl::Status FileTransferService::connect() {
   for (auto &addr : *endpoints) {
     if (std::get<1>(addr) == FileTransferProtocol::Socket) {
       struct sockaddr saddr = std::get<0>(addr);
-      auto peer = _tcp->getPeer(&saddr);
+      auto peer = _tcp->getPeer(&saddr, true);
 
       if (peer) {
         _tcpPeer = peer;
@@ -87,7 +89,14 @@ absl::Status FileTransferService::connect() {
       }
     }
   }
+  if (_tcpPeer == nullptr) {
+    _channel = nullptr;
+    _stub = nullptr;
+    auto message = "Unable to establish a connection to " + nodeAddress;
+    return absl::UnknownError(message);
+  }
   _connectionState = ConnectionState::Connected;
+  LOG_INFO("Connected to ", nodeAddress);
   return absl::OkStatus();
 }
 
@@ -95,9 +104,9 @@ absl::Status FileTransferService::disconnect() {
   if (_connectionState != ConnectionState::Connected) {
     return absl::UnknownError("The service is in the wrong state!");
   }
-  auto lock = getWriteLock();
-  _tcpPeer.reset();
+  _tcpPeer = nullptr;
   _channel = nullptr;
+  _connectionState = ConnectionState::Disconnected;
   return absl::OkStatus();
 }
 
@@ -137,18 +146,19 @@ FileTransferService::availTransportEndpoints() {
 absl::StatusOr<size_t> FileTransferService::readBytes(const std::string &bucket,
                                                       const std::string &key, uint8_t *buffer,
                                                       size_t position, size_t length) {
-  CHECK_CONNECTED
-
+  std::shared_ptr<TcpPeer> peer;
   std::future<absl::StatusOr<size_t>> fut;
   // Create a scope for the std::shared_ptr<TcpPeer> so that the peer is automatically cleaned up.
   {
     auto lock = getReadLock();
-    if (_tcpPeer.expired()) {
+    CHECK_CONNECTED
+
+    if (!_tcpPeer) {
       return absl::UnavailableError("No TCP for " + nodeAddress);
     }
 
     LOG_DEBUG("Found TCP peer for ", nodeAddress);
-    auto peer = _tcpPeer.lock();
+    peer = _tcpPeer;
     lock.unlock();
     auto prom = peer->sendRpcRequest((uint64_t)buffer, bucket + "/" + key, position, length);
     fut = prom->get_future();
@@ -159,8 +169,17 @@ absl::StatusOr<size_t> FileTransferService::readBytes(const std::string &bucket,
   }
   // Close the FileTransferService on error.
   if (status.status().code() == absl::StatusCode::kAborted) {
+    LOG_ERROR("FileTransfer was aborted: ", status.status().message());
     auto lock = getWriteLock();
-    _tcpPeer.reset();
+    if (peer == _tcpPeer) {
+      LOG_ERROR("Encountered an error on the TCP Transport. Trying to reconnect! Node: ",
+                nodeAddress);
+      disconnect().IgnoreError();
+      auto s = connect();
+      if (!s.ok()) {
+        LOG_ERROR("Unable to reconnect: ", s.message());
+      }
+    }
   }
   return status.status();
 }

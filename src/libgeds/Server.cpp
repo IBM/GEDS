@@ -30,6 +30,7 @@
 #include "Platform.h"
 #include "Ports.h"
 #include "Status.h"
+#include "absl/status/status.h"
 #include "geds.grpc.pb.h"
 #include "geds.pb.h"
 
@@ -60,6 +61,39 @@ class ServerImpl final : public geds::rpc::GEDSService::Service {
       ep->set_port(laddr->sin_port);
       LOG_DEBUG("Report local endpoint: ", inet_ntoa(laddr->sin_addr), "::", laddr->sin_port);
     }
+    return grpc::Status::OK;
+  }
+
+  ::grpc::Status DownloadObjects(::grpc::ServerContext *context,
+                                 const ::geds::rpc::MultiObjectID *request,
+                                 ::geds::rpc::StatusResponse *response) override {
+    LOG_INFO(context->peer(), " has requested to pull ", request->objects().size(), " objects.");
+
+    std::vector<geds::ObjectID> objects;
+    const auto &data = request->objects();
+    objects.reserve(data.size());
+    for (const auto &o : data) {
+      objects.emplace_back(geds::ObjectID(o.bucket(), o.key()));
+    }
+    auto status = _geds->downloadObjects(objects);
+    convertStatus(response, status);
+    return grpc::Status::OK;
+  };
+
+  ::grpc::Status DeleteObjectsLocally(::grpc::ServerContext *context,
+                                      const ::geds::rpc::MultiObjectID *request,
+                                      ::geds::rpc::StatusResponse *response) override {
+    LOG_INFO(context->peer(), " has requested to delete ", request->objects().size(), " objects.");
+
+    std::vector<geds::ObjectID> objects;
+    const auto &data = request->objects();
+    objects.reserve(data.size());
+    for (const auto &o : data) {
+      objects.emplace_back(geds::ObjectID(o.bucket(), o.key()));
+    }
+
+    auto status = _geds->purgeLocalObjects(objects);
+    convertStatus(response, status);
     return grpc::Status::OK;
   }
 

@@ -12,7 +12,6 @@
 #include <grpcpp/client_context.h>
 #include <grpcpp/support/status.h>
 #include <grpcpp/support/status_code_enum.h>
-#include <optional>
 
 #include "GEDS.h"
 #include "Logging.h"
@@ -141,6 +140,56 @@ absl::StatusOr<std::string> MetadataService::getConnectionInformation() {
     return convertStatus(response.error());
   }
   return response.remoteaddress();
+}
+
+absl::Status MetadataService::configureNode(const std::string &uuid, const std::string &identifier,
+                                            uint16_t port, geds::rpc::NodeState state) {
+  METADATASERVICE_CHECK_CONNECTED;
+
+  geds::rpc::NodeStatus request;
+  geds::rpc::StatusResponse response;
+  grpc::ClientContext context;
+
+  auto node = request.mutable_node();
+  node->set_identifier(identifier);
+  node->set_port(port);
+
+  request.set_state(state);
+  request.set_uuid(uuid);
+
+  auto status = _stub->ConfigureNode(&context, request, &response);
+  if (!status.ok()) {
+    return absl::UnavailableError("Unable to execute ConfigureNode: " + status.error_message());
+  }
+  return convertStatus(response);
+}
+
+absl::Status MetadataService::heartBeat(const std::string &uuid, const StorageCounter &storage,
+                                        const StorageCounter &memory) {
+  METADATASERVICE_CHECK_CONNECTED;
+
+  geds::rpc::HeartbeatMessage request;
+  geds::rpc::StatusResponse response;
+  grpc::ClientContext context;
+
+  request.set_uuid(uuid);
+  {
+    auto lock = memory.getReadLock();
+    request.set_memoryallocated(memory.allocated);
+    request.set_memoryused(memory.used);
+  }
+
+  {
+    auto lock = storage.getReadLock();
+    request.set_storageused(storage.used);
+    request.set_storageallocated(storage.allocated);
+  }
+
+  auto status = _stub->Heartbeat(&context, request, &response);
+  if (!status.ok()) {
+    return absl::UnavailableError("Unable to send heart beat: " + status.error_message());
+  }
+  return convertStatus(response);
 }
 
 absl::Status MetadataService::createBucket(const std::string_view &bucket) {

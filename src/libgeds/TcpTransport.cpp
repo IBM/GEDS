@@ -58,7 +58,7 @@ void TcpTransport::start() {
                          "=d"(registers[3])
                        : "a"(1), "c"(0));
   bool hyperthreading = registers[3] & (1 << 28); // NOLINT
-  num_proc = std::thread::hardware_concurrency();
+  num_proc = std::thread::hardware_concurrency() * 2;
   if (hyperthreading)
     num_proc /= 2;
 
@@ -238,8 +238,9 @@ bool TcpPeer::processEndpointSend(std::shared_ptr<TcpEndpoint> tep) {
           ctx->progress = 0;
         }
       } else {
-        if (errno != EWOULDBLOCK)
+        if (errno != EWOULDBLOCK) {
           LOG_ERROR("Send failed, errno: ", errno);
+        }
         break;
       }
     }
@@ -311,7 +312,7 @@ void TcpTransport::tcpTxThread(unsigned int id) {
   }
   epoll_wfd[id] = poll_fd;
   do {
-    int cnt = ::epoll_wait(poll_fd, events, EPOLL_MAXEVENTS, -1);
+    int cnt = ::epoll_wait(poll_fd, events, EPOLL_MAXEVENTS, 500);
 
     for (int i = 0; i < cnt; i++) {
       struct epoll_event *ev = &events[i];
@@ -657,7 +658,7 @@ void TcpTransport::tcpRxThread(unsigned int id) {
   epoll_rfd[id] = poll_fd;
 
   do {
-    int cnt = ::epoll_wait(poll_fd, events, EPOLL_MAXEVENTS, -1);
+    int cnt = ::epoll_wait(poll_fd, events, EPOLL_MAXEVENTS, 500);
 
     for (int i = 0; i < cnt; i++) {
       struct epoll_event *ev = &events[i];
@@ -681,6 +682,7 @@ void TcpTransport::tcpRxThread(unsigned int id) {
         continue;
       }
       if (ev->events & (EPOLLHUP | EPOLLRDHUP | EPOLLERR)) {
+        LOG_INFO("Disabling endpoint with ", sock, " epoll.");
         deactivateEndpoint(poll_fd, sock, RX_CLOSED);
         if (tcpPeer->SocketStateChange(sock, RX_CLOSED)) {
           tcpPeers.remove(tcpPeer->Id);
@@ -693,6 +695,7 @@ void TcpTransport::tcpRxThread(unsigned int id) {
       }
 
       if (!tcpPeer->processEndpointRecv(sock)) {
+        LOG_INFO("Disabling endpoint with ", sock, " socket shutdown");
         shutdown(sock, SHUT_RDWR);
         deactivateEndpoint(poll_fd, sock, RX_CLOSED);
         if (tcpPeer->SocketStateChange(sock, RX_CLOSED)) {
@@ -789,7 +792,7 @@ bool TcpTransport::addEndpointPassive(int sock) {
   return true;
 }
 
-std::shared_ptr<TcpPeer> TcpTransport::getPeer(sockaddr *peer) {
+std::shared_ptr<TcpPeer> TcpTransport::getPeer(sockaddr *peer, bool override) {
   auto inaddr = (sockaddr_in *)peer;
   std::string hostname = inet_ntoa(inaddr->sin_addr);
   size_t addrlen = sizeof *peer;
@@ -802,7 +805,7 @@ std::shared_ptr<TcpPeer> TcpTransport::getPeer(sockaddr *peer) {
    */
   std::shared_ptr<TcpPeer> tcpPeer;
   auto it = tcpPeers.get(epId);
-  if (it.has_value()) {
+  if (it.has_value() && !override) {
     tcpPeer = *it;
     return tcpPeer;
   }

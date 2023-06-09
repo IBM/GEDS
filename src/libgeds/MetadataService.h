@@ -22,7 +22,9 @@
 #include "ObjectStoreConfig.h"
 #include "PubSub.h"
 
+#include "StorageCounter.h"
 #include "geds.grpc.pb.h"
+#include "geds.pb.h"
 
 namespace geds {
 
@@ -44,6 +46,12 @@ public:
   absl::Status connect();
 
   absl::Status disconnect();
+
+  absl::Status configureNode(const std::string &uuid, const std::string &identifier, uint16_t port,
+                             geds::rpc::NodeState state);
+
+  absl::Status heartBeat(const std::string &uuid, const StorageCounter &storage,
+                         const StorageCounter &memory);
 
   absl::StatusOr<std::string> getConnectionInformation();
 
