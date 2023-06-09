@@ -26,7 +26,7 @@ class GEDS;
 
 namespace geds {
 
-constexpr size_t MIN_SENDFILE_SIZE = 8192;
+constexpr size_t MIN_SENDFILE_SIZE = 64 * 1024;
 
 class TcpServer : public utility::RWConcurrentObjectAdaptor {
   bool _started = false;
