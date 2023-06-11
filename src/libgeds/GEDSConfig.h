@@ -16,7 +16,6 @@
 
 #include "Ports.h"
 
-
 struct GEDSConfig {
   /**
    * @brief The hostname of the metadata service/
@@ -84,6 +83,11 @@ struct GEDSConfig {
    * @brief Publish/Subscribe is enabled.
    */
   bool pubSubEnabled = false;
+
+  /**
+   * @brief Cache objects located in S3.
+   */
+  bool cache_objects_from_s3 = false;
 
   /**
    * @brief Fraction of the storage where GEDS should start spilling.
