@@ -496,7 +496,11 @@ GEDS::reopenFileHandle(const std::string &bucket, const std::string &key, bool i
   if (location.compare(0, gedsPrefix.size(), gedsPrefix) == 0) {
     fileHandle = GEDSRemoteFileHandle::factory(shared_from_this(), object);
   } else if (location.compare(0, s3Prefix.size(), s3Prefix) == 0) {
-    fileHandle = GEDSCachedFileHandle::factory<GEDSS3FileHandle>(shared_from_this(), object);
+    if (_config.cache_objects_from_s3) {
+      fileHandle = GEDSCachedFileHandle::factory<GEDSS3FileHandle>(shared_from_this(), object);
+    } else {
+      fileHandle = GEDSS3FileHandle::factory(shared_from_this(), object);
+    }
   } else {
     return absl::UnknownError("The remote location format " + location + " is not known.");
   }
