@@ -894,8 +894,12 @@ void GEDS::relocate(std::vector<std::shared_ptr<GEDSFileHandle>> &relocatable, b
         std::lock_guard lock(h->mutex);
         h->nTasks -= 1;
       }
-      h->cv.notify_one();
+      h->cv.notify_all();
     });
+
+    const auto tp_size = _config.io_thread_pool_size;
+    std::unique_lock lock(h->mutex);
+    h->cv.wait(lock, [h, tp_size]() { return h->nTasks <= (tp_size + 1); });
   }
   std::unique_lock lock(h->mutex);
   h->cv.wait(lock, [h]() { return h->nTasks == 0; });
@@ -912,19 +916,27 @@ void GEDS::relocate(std::shared_ptr<GEDSFileHandle> handle, bool force) {
   }
 
   static auto stats = geds::Statistics::createCounter("GEDS: Storage Relocated");
+  auto fsize = handle->localStorageSize();
   *stats += handle->localStorageSize();
 
   // Remove cached files.
   const auto path = getPath(handle->bucket, handle->key);
   if (handle->key.starts_with(GEDSCachedFileHandle::CacheBlockMarker)) {
-    _fileHandles.removeIf(path, [handle](const std::shared_ptr<GEDSFileHandle> &existing) {
-      return handle.get() == existing.get();
-    });
+    auto status =
+        _fileHandles.removeIf(path, [handle](const std::shared_ptr<GEDSFileHandle> &existing) {
+          return handle.get() == existing.get();
+        });
+    if (status) {
+      *stats += fsize;
+    }
     return;
   }
 
   // Relocate all other files.
-  (void)handle->relocate();
+  auto status = handle->relocate();
+  if (status.ok()) {
+    *stats += fsize;
+  }
 }
 
 void GEDS::startStorageMonitoringThread() {

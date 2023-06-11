@@ -211,7 +211,7 @@ public:
     }
     auto status = (*fh)->seal();
     if (!status.ok()) {
-      LOG_ERROR("Unable to seal relocated file!");
+      LOG_ERROR("Unable to seal relocated file: ", status.message());
       (void)(*s3Endpoint)->deleteObject(bucket, key);
       return status;
     }
