@@ -177,7 +177,9 @@ absl::Status GEDS::stop() {
 
   geds::Statistics::print();
   // Relocate to S3 if available.
-  relocate(true);
+  if (_config.force_relocation_when_stopping) {
+    relocate(true);
+  }
 
   auto result = _metadataService.disconnect();
   if (!result.ok()) {
