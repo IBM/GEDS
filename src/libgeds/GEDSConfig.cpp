@@ -55,6 +55,8 @@ absl::Status GEDSConfig::set(const std::string &key, size_t value) {
     pubSubEnabled = value != 0;
   } else if (key == "cache_objects_from_s3") {
     cache_objects_from_s3 = value != 0;
+  } else if (key == "force_relocation_when_stopping") {
+    force_relocation_when_stopping = value != 0;
   } else {
     LOG_ERROR("Configuration " + key + " not supported (type: signed/unsigned integer).");
     return absl::NotFoundError("Key " + key + " not found.");

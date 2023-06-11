@@ -63,11 +63,6 @@ struct GEDSConfig {
   size_t cacheBlockSize = 32 * 1024 * 1024;
 
   /**
-   * @brief Relocate files on GEDS::close.
-   */
-  bool relocate_on_close = false;
-
-  /**
    * @brief Size of I/O thread pool.
    */
   size_t io_thread_pool_size = std::max(std::thread::hardware_concurrency() / 2, (uint32_t)8);
@@ -88,6 +83,11 @@ struct GEDSConfig {
    * @brief Cache objects located in S3.
    */
   bool cache_objects_from_s3 = false;
+
+  /**
+   * @brief Force relocation when stopping.
+   */
+  bool force_relocation_when_stopping = false;
 
   /**
    * @brief Fraction of the storage where GEDS should start spilling.
