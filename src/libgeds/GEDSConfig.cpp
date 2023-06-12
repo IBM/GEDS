@@ -5,6 +5,8 @@
 
 #include "GEDSConfig.h"
 
+#include <magic_enum.hpp>
+
 #include "Logging.h"
 
 absl::Status GEDSConfig::set(const std::string &key, const std::string &value) {
