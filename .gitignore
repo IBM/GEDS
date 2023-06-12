@@ -1,8 +1,10 @@
+cmake-build-debug/
 .cache
 .metals
 cmake-build-*
 travis_*
 __pycache__
+.idea/*
 
 CMakeLists.txt.user
 compile_commands.json

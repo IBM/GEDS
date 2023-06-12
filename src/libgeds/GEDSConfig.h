@@ -63,11 +63,6 @@ struct GEDSConfig {
   size_t cacheBlockSize = 32 * 1024 * 1024;
 
   /**
-   * @brief Relocate files on GEDS::close.
-   */
-  bool relocate_on_close = false;
-
-  /**
    * @brief Size of I/O thread pool.
    */
   size_t io_thread_pool_size = std::max(std::thread::hardware_concurrency() / 2, (uint32_t)8);
@@ -79,14 +74,41 @@ struct GEDSConfig {
 
   size_t available_local_memory = 16 * 1024 * 1024 * (size_t)1024;
 
+  /**
+   * @brief Publish/Subscribe is enabled.
+   */
+  bool pubSubEnabled = false;
+
+  /**
+   * @brief Cache objects located in S3.
+   */
+  bool cache_objects_from_s3 = false;
+
+  /**
+   * @brief Force relocation when stopping.
+   */
+  bool force_relocation_when_stopping = false;
+
+  /**
+   * @brief Fraction of the storage where GEDS should start spilling.
+   */
+  double storage_spilling_fraction = 0.7;
+
   GEDSConfig(std::string metadataServiceAddressArg)
-      : metadataServiceAddress(std::move(metadataServiceAddressArg)) {}
+      : metadataServiceAddress(std::move(metadataServiceAddressArg)) {
+    if (available_local_storage <= 4 * 1024 * 1024 * (size_t)1024) {
+      io_thread_pool_size = std::min<size_t>(io_thread_pool_size, 6);
+      storage_spilling_fraction = 0.9;
+    }
+  }
 
   absl::Status set(const std::string &key, const std::string &value);
   absl::Status set(const std::string &key, size_t value);
   absl::Status set(const std::string &key, int64_t value);
+  absl::Status set(const std::string &key, double value);
 
   absl::StatusOr<std::string> getString(const std::string &key) const;
   absl::StatusOr<size_t> getUnsignedInt(const std::string &key) const;
   absl::StatusOr<int64_t> getSignedInt(const std::string &key) const;
+  absl::StatusOr<double> getDouble(const std::string &key) const;
 };

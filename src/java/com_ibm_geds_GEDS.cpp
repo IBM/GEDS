@@ -458,6 +458,53 @@ JNIEXPORT void JNICALL Java_com_ibm_geds_GEDS_nativeSyncObjectStoreConfigs(JNIEn
   }
 }
 
+// NOLINTNEXTLINE(modernize-use-trailing-return-type)
+JNIEXPORT jboolean JNICALL Java_com_ibm_geds_GEDS_nativeSubscribe(JNIEnv *env, jclass,
+                                                                  jlong nativePtr, jstring jBucket,
+                                                                  jstring jKey,
+                                                                  jint jSubscriptionType) {
+  if (nativePtr == 0) {
+    return throwNullPointerException(env, "Invalid nativePtr.");
+  }
+  auto container = reinterpret_cast<GEDSContainer *>(nativePtr); // NOLINT
+
+  auto bucket = env->GetStringUTFChars(jBucket, nullptr);
+  auto key = env->GetStringUTFChars(jKey, nullptr);
+  auto status = container->element->subscribe(geds::SubscriptionEvent{
+      bucket, key, static_cast<geds::rpc::SubscriptionType>(jSubscriptionType)});
+  env->ReleaseStringUTFChars(jBucket, bucket);
+  env->ReleaseStringUTFChars(jKey, key);
+
+  if (!status.ok()) {
+    throwIOException(env, status.message());
+  }
+  return JNI_TRUE;
+}
+
+// NOLINTNEXTLINE(modernize-use-trailing-return-type)
+JNIEXPORT jboolean JNICALL Java_com_ibm_geds_GEDS_nativeUnsubscribe(JNIEnv *env, jclass,
+                                                                    jlong nativePtr,
+                                                                    jstring jBucket, jstring jKey,
+                                                                    jint jSubscriptionType) {
+  if (nativePtr == 0) {
+    return throwNullPointerException(env, "Invalid nativePtr.");
+  }
+  auto container = reinterpret_cast<GEDSContainer *>(nativePtr); // NOLINT
+
+  auto bucket = env->GetStringUTFChars(jBucket, nullptr);
+  auto key = env->GetStringUTFChars(jKey, nullptr);
+  auto status = container->element->unsubscribe(geds::SubscriptionEvent{
+      bucket, key, static_cast<geds::rpc::SubscriptionType>(jSubscriptionType)});
+
+  env->ReleaseStringUTFChars(jBucket, bucket);
+  env->ReleaseStringUTFChars(jKey, key);
+
+  if (!status.ok()) {
+    throwIOException(env, status.message());
+  }
+  return JNI_TRUE;
+}
+
 /*
  * Class:     com_ibm_geds_GEDS
  * Method:    nativeRelocate

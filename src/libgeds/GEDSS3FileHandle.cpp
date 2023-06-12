@@ -92,10 +92,7 @@ GEDSS3FileHandle::factory(std::shared_ptr<GEDS> gedsService, const std::string &
   }
 }
 
-absl::StatusOr<size_t> GEDSS3FileHandle::size() const {
-  auto lock = lockShared();
-  return _size;
-}
+absl::StatusOr<size_t> GEDSS3FileHandle::size() const { return _size; }
 
 absl::StatusOr<size_t> GEDSS3FileHandle::readBytes(uint8_t *bytes, size_t position, size_t length) {
   if (!_isValid) {

@@ -1,0 +1,28 @@
+#
+# Copyright 2023- IBM Inc. All rights reserved
+# SPDX-License-Identifier: Apache-2.0
+#
+
+FROM registry.access.redhat.com/ubi8/ubi
+
+RUN yum install -y  \
+    git unzip \
+    clang wget  \
+    gcc-toolset-12-gcc gcc-toolset-12-gcc-c++ gcc-toolset-12-runtime \
+    curl libcurl-devel \
+    openssl-devel \
+    python3.11 python3.11-devel \
+    java-11-openjdk java-11-openjdk-devel
+
+RUN wget https://github.com/ninja-build/ninja/releases/download/v1.11.1/ninja-linux.zip \
+    && unzip ninja-linux.zip \
+    && mv ninja /usr/bin/ninja \
+    && chmod +x /usr/bin/ninja \
+    && rm ninja-linux.zip
+
+ENV PATH=/opt/rh/gcc-toolset-12/root/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
+    LD_LIBRARY_PATH=/opt/rh/gcc-toolset-12/root/usr/lib64:/opt/rh/gcc-toolset-12/root/usr/lib \
+    PKG_CONFIG_PATH=/opt/rh/gcc-toolset-12/root/usr/lib64/pkgconfig
+
+ENV CC=/opt/rh/gcc-toolset-12/root/usr/bin/gcc \
+    CXX=/opt/rh/gcc-toolset-12/root/usr/bin/g++

@@ -160,6 +160,7 @@ absl::Status GEDS::start() {
   _state = ServiceState::Running;
 
   startStorageMonitoringThread();
+  startPubSubStreamThread();
 
   auto st = syncObjectStoreConfigs();
   if (!syncObjectStoreConfigs().ok()) {
@@ -175,13 +176,18 @@ absl::Status GEDS::stop() {
   LOG_INFO("Printing statistics");
 
   geds::Statistics::print();
+  // Relocate to S3 if available.
+  if (_config.force_relocation_when_stopping) {
+    relocate(true);
+  }
+
   auto result = _metadataService.disconnect();
   if (!result.ok()) {
-    LOG_ERROR("cannot disconnect metadata service");
+    LOG_ERROR("cannot disconnect metadata service: ", result.message());
   }
   result = _server.stop();
   if (!result.ok()) {
-    LOG_ERROR("cannot stop server");
+    LOG_ERROR("cannot stop server: ", result.message());
   }
 
   _httpServer.stop();
@@ -194,6 +200,10 @@ absl::Status GEDS::stop() {
   _state = ServiceState::Stopped;
 
   _storageMonitoringThread.join();
+
+  if (_pubSubStreamThread.joinable()) {
+    _pubSubStreamThread.join();
+  }
 
   return result;
 }
@@ -488,7 +498,11 @@ GEDS::reopenFileHandle(const std::string &bucket, const std::string &key, bool i
   if (location.compare(0, gedsPrefix.size(), gedsPrefix) == 0) {
     fileHandle = GEDSRemoteFileHandle::factory(shared_from_this(), object);
   } else if (location.compare(0, s3Prefix.size(), s3Prefix) == 0) {
-    fileHandle = GEDSCachedFileHandle::factory<GEDSS3FileHandle>(shared_from_this(), object);
+    if (_config.cache_objects_from_s3) {
+      fileHandle = GEDSCachedFileHandle::factory<GEDSS3FileHandle>(shared_from_this(), object);
+    } else {
+      fileHandle = GEDSS3FileHandle::factory(shared_from_this(), object);
+    }
   } else {
     return absl::UnknownError("The remote location format " + location + " is not known.");
   }
@@ -570,7 +584,12 @@ absl::StatusOr<std::vector<GEDSFileStatus>> GEDS::list(const std::string &bucket
   LOG_DEBUG(bucket, "/", prefix);
 
   bool prefixExists = false;
-  auto list = _metadataService.listPrefix(bucket, prefix, delimiter);
+  absl::StatusOr<std::pair<std::vector<geds::Object>, std::vector<std::string>>> list;
+  if (_config.pubSubEnabled) {
+    list = _metadataService.listPrefixFromCache(bucket, prefix, delimiter);
+  } else {
+    list = _metadataService.listPrefix(bucket, prefix, delimiter);
+  }
   if (!list.ok()) {
     return list.status();
   }
@@ -855,45 +874,38 @@ void GEDS::relocate(std::vector<std::shared_ptr<GEDSFileHandle>> &relocatable, b
   struct RelocateHelper {
     std::mutex mutex;
     std::condition_variable cv;
-    size_t nTasks;
-    auto lock() { return std::unique_lock<std::mutex>(mutex); }
+    std::atomic<size_t> nTasks;
   };
   auto h = std::make_shared<RelocateHelper>();
   {
-    auto lock = h->lock();
+    std::lock_guard lock(h->mutex);
     h->nTasks = relocatable.size();
   }
 
   LOG_INFO("Relocating ", relocatable.size(), " objects.");
 
   auto self = shared_from_this();
-  size_t off = 3 * _config.io_thread_pool_size;
+  for (auto fh : relocatable) {
+    boost::asio::post(_ioThreadPool, [self, fh, h, force]() {
+      try {
+        self->relocate(fh, force);
+      } catch (...) {
+        LOG_ERROR("Encountered an exception during relocation ", fh->identifier);
+      }
+      {
+        std::lock_guard lock(h->mutex);
+        h->nTasks -= 1;
+      }
+      h->cv.notify_all();
+    });
 
-  for (size_t offset = 0; offset < relocatable.size(); offset += off) {
-    auto rbegin = offset;
-    auto rend = rbegin + off;
-    if (rend > relocatable.size()) {
-      rend = relocatable.size();
-    }
-    for (auto i = rbegin; i < rend; i++) {
-      auto fh = relocatable[i];
-      boost::asio::post(_ioThreadPool, [self, fh, h, force]() {
-        try {
-          self->relocate(fh, force);
-        } catch (...) {
-          LOG_ERROR("Encountered an exception during relocation ", fh->identifier);
-        }
-        {
-          auto lock = h->lock();
-          h->nTasks -= 1;
-        }
-        h->cv.notify_all();
-      });
-    }
-    auto relocateLock = h->lock();
-    h->cv.wait(relocateLock, [h]() { return h->nTasks == 0; });
-    LOG_INFO("Relocated ", relocatable.size(), " objects.");
+    const auto tp_size = _config.io_thread_pool_size;
+    std::unique_lock lock(h->mutex);
+    h->cv.wait(lock, [h, tp_size]() { return h->nTasks <= (tp_size + 1); });
   }
+  std::unique_lock lock(h->mutex);
+  h->cv.wait(lock, [h]() { return h->nTasks == 0; });
+  LOG_INFO("Relocated ", relocatable.size(), " objects.");
 }
 
 void GEDS::relocate(std::shared_ptr<GEDSFileHandle> handle, bool force) {
@@ -906,19 +918,27 @@ void GEDS::relocate(std::shared_ptr<GEDSFileHandle> handle, bool force) {
   }
 
   static auto stats = geds::Statistics::createCounter("GEDS: Storage Relocated");
+  auto fsize = handle->localStorageSize();
   *stats += handle->localStorageSize();
 
   // Remove cached files.
   const auto path = getPath(handle->bucket, handle->key);
   if (handle->key.starts_with(GEDSCachedFileHandle::CacheBlockMarker)) {
-    _fileHandles.removeIf(path, [handle](const std::shared_ptr<GEDSFileHandle> &existing) {
-      return handle.get() == existing.get();
-    });
+    auto status =
+        _fileHandles.removeIf(path, [handle](const std::shared_ptr<GEDSFileHandle> &existing) {
+          return handle.get() == existing.get();
+        });
+    if (status) {
+      *stats += fsize;
+    }
     return;
   }
 
   // Relocate all other files.
-  (void)handle->relocate();
+  auto status = handle->relocate();
+  if (status.ok()) {
+    *stats += fsize;
+  }
 }
 
 void GEDS::startStorageMonitoringThread() {
@@ -931,21 +951,25 @@ void GEDS::startStorageMonitoringThread() {
     auto statsLocalMemoryFree = geds::Statistics::createGauge("GEDS: Local Memory free");
     auto statsLocalMemoryAllocated = geds::Statistics::createGauge("GEDS: Local Memory allocated");
 
-    std::vector<std::shared_ptr<GEDSFileHandle>> relocatable;
-    while (_state == ServiceState::Running) {
-      relocatable.clear();
+    while (_state.load() == ServiceState::Running) {
+      std::vector<std::shared_ptr<GEDSFileHandle>> relocatable;
       size_t memoryUsed = 0;
       size_t storageUsed = 0;
-      _fileHandles.forall(
-          [&relocatable, &storageUsed, &memoryUsed](std::shared_ptr<GEDSFileHandle> &fh) {
-            storageUsed += fh->localStorageSize();
-            memoryUsed += fh->localMemorySize();
-            if (fh->isRelocatable()) {
-              if (fh->openCount() == 0) {
-                relocatable.push_back(fh);
-              }
-            }
-          });
+      { // Extract all file handles to avoid deadlocks.
+        std::vector<std::shared_ptr<GEDSFileHandle>> allFileHandles;
+        _fileHandles.forall([&allFileHandles](std::shared_ptr<GEDSFileHandle> &fh) {
+          allFileHandles.push_back(fh);
+        });
+        for (const auto &fh : allFileHandles) {
+          auto storageSize = fh->localStorageSize();
+          auto memSize = fh->localMemorySize();
+          storageUsed += storageSize;
+          memoryUsed += memSize;
+          if (fh->isRelocatable() && fh->openCount() == 0) {
+            relocatable.push_back(fh);
+          }
+        }
+      }
 
       _storageCounters.updateUsed(storageUsed);
       _memoryCounters.updateUsed(memoryUsed);
@@ -964,8 +988,9 @@ void GEDS::startStorageMonitoringThread() {
         *statsLocalMemoryFree = _memoryCounters.free;
       }
 
-      auto targetStorage = (size_t)(0.7 * (double)_config.available_local_storage);
-      if (memoryUsed > targetStorage) {
+      auto targetStorage =
+          (size_t)(_config.storage_spilling_fraction * (double)_config.available_local_storage);
+      if (storageUsed > targetStorage) {
         std::sort(std::begin(relocatable), std::end(relocatable),
                   [](std::shared_ptr<GEDSFileHandle> a, std::shared_ptr<GEDSFileHandle> b) {
                     return a->lastReleased() < b->lastReleased();
@@ -974,7 +999,7 @@ void GEDS::startStorageMonitoringThread() {
         std::vector<std::shared_ptr<GEDSFileHandle>> tasks;
         size_t relocateBytes = 0;
         for (auto &f : relocatable) {
-          if (relocateBytes > targetStorage) {
+          if (relocateBytes > (storageUsed - targetStorage)) {
             break;
           }
           relocateBytes += f->localStorageSize();
@@ -982,10 +1007,41 @@ void GEDS::startStorageMonitoringThread() {
         }
         if (tasks.size()) {
           relocate(tasks);
+        } else {
+          LOG_WARNING("Unable to relocate files: No task found!");
         }
       }
       relocatable.clear();
       sleep(1);
     }
   });
+}
+
+void GEDS::startPubSubStreamThread() {
+  if (!_config.pubSubEnabled) {
+    LOG_DEBUG("PubSub streaming thread not enabled.");
+    return;
+  }
+  if (_state == ServiceState::Running) {
+    _pubSubStreamThread = std::thread([&]() { auto status = _metadataService.subscribeStream(); });
+  } else {
+    LOG_ERROR("Unable to start pub/sub streaming thread.");
+  }
+  LOG_DEBUG("PubSub streaming thread enabled.");
+}
+
+absl::Status GEDS::subscribe(const geds::SubscriptionEvent &event) {
+  GEDS_CHECK_SERVICE_RUNNING
+  if (!_config.pubSubEnabled) {
+    return absl::FailedPreconditionError("publish/subscribe is not enabled.");
+  }
+  return _metadataService.subscribe(event);
+}
+
+absl::Status GEDS::unsubscribe(const geds::SubscriptionEvent &event) {
+  GEDS_CHECK_SERVICE_RUNNING
+  if (!_config.pubSubEnabled) {
+    return absl::FailedPreconditionError("publish/subscribe is not enabled.");
+  }
+  return _metadataService.unsubscribe(event);
 }

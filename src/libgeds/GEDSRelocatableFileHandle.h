@@ -19,9 +19,9 @@
 class GEDSRelocatableFileHandle : public GEDSFileHandle {
 
   std::atomic<bool> _retrying{false};
+
   std::shared_ptr<GEDSFileHandle> _fileHandle;
   mutable std::shared_mutex _fileHandleMutex;
-  mutable std::mutex _retryMutex;
 
 private:
   GEDSRelocatableFileHandle(std::shared_ptr<GEDS> gedsService,

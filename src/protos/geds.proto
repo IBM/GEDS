@@ -6,6 +6,7 @@
 syntax = "proto3";
 
 package geds.rpc;
+option go_package = "./;protos";
 
 import "status.proto";
 
@@ -66,6 +67,34 @@ message ObjectResponse {
   optional StatusResponse error = 2;
 }
 
+enum SubscriptionType {
+  NO_SUBSCRIPTION = 0;
+  BUCKET = 1;
+  OBJECT = 2;
+  PREFIX = 3;
+}
+
+message SubscriptionEvent {
+  SubscriptionType subscriptionType = 1;
+  string subscriberID = 2;
+  string bucketID = 3;
+  string key = 4;
+}
+
+message SubscriptionStreamEvent { string subscriberID = 1; }
+
+enum PublicationType {
+  NO_PUBLICATION = 0;
+  CREATE_OBJECT = 1;
+  UPDATE_OBJECT = 2;
+  DELETE_OBJECT = 3;
+}
+
+message SubscriptionStreamResponse {
+  PublicationType publicationType = 1;
+  Object object = 2;
+}
+
 service MetadataService {
   rpc GetConnectionInformation(EmptyParams) returns (ConnectionInformation);
   rpc RegisterObjectStore(ObjectStoreConfig) returns (StatusResponse);
@@ -80,6 +109,10 @@ service MetadataService {
   rpc DeletePrefix(ObjectID) returns (StatusResponse);
   rpc Lookup(ObjectID) returns (ObjectResponse);
   rpc List(ObjectListRequest) returns (ObjectListResponse);
+
+  rpc Subscribe(SubscriptionEvent) returns (StatusResponse);
+  rpc SubscribeStream(SubscriptionStreamEvent) returns (stream SubscriptionStreamResponse);
+  rpc Unsubscribe(SubscriptionEvent) returns (StatusResponse);
 }
 
 enum FileTransferProtocol {

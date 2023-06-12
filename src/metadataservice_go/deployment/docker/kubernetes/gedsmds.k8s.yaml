@@ -1,0 +1,46 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    app.kubernetes.io/name: geds-mds-go
+  name: geds-mds-go
+  annotations:
+    prometheus.io/path: "/metrics"
+    prometheus.io/port: "4380"
+    prometheus.io/scrape: "true"
+spec:
+  containers:
+    - name: gedsmdsgo
+      image: zac32.zurich.ibm.com/pezhman.nasirifard/geds-mds-go:latest
+      imagePullPolicy: Always
+      env:
+        - name: GEDS_PUBSUB_MDS_ENABLED
+          value: "true"
+        - name: GEDS_PERSISTENT_STORAGE_MDS_ENABLED
+          value: "false"
+      resources:
+        requests:
+          memory: "16G"
+          cpu: "4"
+        limits:
+          memory: "16G"
+          cpu: "4"
+      ports:
+        - containerPort: 50004
+          name: geds-mds-go
+  imagePullSecrets:
+    - name: zac-registry
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: geds-mds-go
+spec:
+  selector:
+    app.kubernetes.io/name: geds-mds-go
+  ports:
+    - name: geds-mds-go
+      protocol: TCP
+      port: 50004
+      targetPort: geds-mds-go
