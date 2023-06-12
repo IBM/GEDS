@@ -16,6 +16,8 @@
 
 #include "Ports.h"
 
+enum class GEDSNodeType { Standard, Storage };
+
 struct GEDSConfig {
   /**
    * @brief The hostname of the metadata service/
@@ -73,6 +75,11 @@ struct GEDSConfig {
   size_t available_local_storage = 100 * 1024 * 1024 * (size_t)1024;
 
   size_t available_local_memory = 16 * 1024 * 1024 * (size_t)1024;
+
+  /**
+   * @brief Node type.
+   */
+  GEDSNodeType node_type = GEDSNodeType::Standard;
 
   /**
    * @brief Publish/Subscribe is enabled.

@@ -17,6 +17,14 @@ absl::Status GEDSConfig::set(const std::string &key, const std::string &value) {
     localStoragePath = value;
   } else if (key == "pub_sub_enabled" && value == "true") {
     pubSubEnabled = true;
+  } else if (key == "node_type") {
+    if (value == "Standard") {
+      node_type = GEDSNodeType::Standard;
+    } else if (value == "Storage") {
+      node_type = GEDSNodeType::Storage;
+    } else {
+      return absl::NotFoundError("Invalid node type " + value);
+    }
   } else {
     LOG_ERROR("Configuration " + key + " not supported (type: string).");
     return absl::NotFoundError("Key " + key + " not found.");
@@ -92,6 +100,9 @@ absl::StatusOr<std::string> GEDSConfig::getString(const std::string &key) const 
   }
   if (key == "local_storage_path") {
     return localStoragePath;
+  }
+  if (key == "node_type") {
+    return std::string{magic_enum::enum_name(node_type)};
   }
   LOG_ERROR("Configuration " + key + " not supported (type: string).");
   return absl::NotFoundError("Key " + key + " not found.");
