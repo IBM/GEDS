@@ -311,7 +311,7 @@ void TcpTransport::tcpTxThread(unsigned int id) {
   }
   epoll_wfd[id] = poll_fd;
   do {
-    int cnt = ::epoll_wait(poll_fd, events, EPOLL_MAXEVENTS, -1);
+    int cnt = ::epoll_wait(poll_fd, events, EPOLL_MAXEVENTS, 500);
 
     for (int i = 0; i < cnt; i++) {
       struct epoll_event *ev = &events[i];
@@ -657,7 +657,7 @@ void TcpTransport::tcpRxThread(unsigned int id) {
   epoll_rfd[id] = poll_fd;
 
   do {
-    int cnt = ::epoll_wait(poll_fd, events, EPOLL_MAXEVENTS, -1);
+    int cnt = ::epoll_wait(poll_fd, events, EPOLL_MAXEVENTS, 500);
 
     for (int i = 0; i < cnt; i++) {
       struct epoll_event *ev = &events[i];
