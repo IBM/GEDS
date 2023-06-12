@@ -115,6 +115,10 @@ GEDS::~GEDS() {
   }
 
 absl::Status GEDS::start() {
+  if (_state == ServiceState::Running) {
+    LOG_INFO("GEDS is already running.");
+    return absl::OkStatus();
+  }
   std::cout << "Starting GEDS (" << utility::GEDSVersion() << ")\n"
             << "- prefix: " << _pathPrefix << "\n"
             << "- metadata service: " << _metadataService.serverAddress << std::endl;
@@ -175,17 +179,20 @@ absl::Status GEDS::stop() {
   LOG_INFO("Stopping");
   LOG_INFO("Printing statistics");
 
-  // Update state
-  _state = ServiceState::Stopped;
-
   // Relocate to S3 if available.
   if (_config.force_relocation_when_stopping) {
     relocate(true);
+    return absl::OkStatus();
   }
 
+  // Update state
+  _state = ServiceState::Stopped;
+
+  absl::Status result;
+
   // Decomission node.
-  auto result = _metadataService.configureNode(uuid, _hostname, _server.port(),
-                                               geds::rpc::NodeState::Unregister);
+  result = _metadataService.configureNode(uuid, _hostname, _server.port(),
+                                          geds::rpc::NodeState::Unregister);
   if (!result.ok()) {
     LOG_ERROR("Unable to unregister: ", result.message());
   }
