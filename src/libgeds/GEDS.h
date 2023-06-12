@@ -322,7 +322,7 @@ public:
 
   absl::Status subscribe(const geds::SubscriptionEvent &event);
   absl::Status unsubscribe(const geds::SubscriptionEvent &event);
-  
+
   /**
    * @brief Pull object to this GEDS instance.
    */

@@ -933,7 +933,6 @@ void GEDS::relocate(std::shared_ptr<GEDSFileHandle> handle, bool force) {
 
   static auto stats = geds::Statistics::createCounter("GEDS: Storage Relocated");
   auto fsize = handle->localStorageSize();
-  *stats += handle->localStorageSize();
 
   // Remove cached files.
   const auto path = getPath(handle->bucket, handle->key);
@@ -1020,6 +1019,7 @@ absl::Status GEDS::downloadObjects(std::vector<geds::ObjectID> objects) {
       });
     }
   }
+
   auto relocateLock = h->lock();
   h->cv.wait(relocateLock, [h]() { return h->nTasks == 0; });
   LOG_INFO("Downloaded ", objects.size(), " objects, errors: ", h->nErrors);
