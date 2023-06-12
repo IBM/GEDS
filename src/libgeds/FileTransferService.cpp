@@ -29,7 +29,9 @@ using std::string;
   }
 
 FileTransferService::FileTransferService(std::string nodeAddress, std::shared_ptr<GEDS> geds)
-    : _geds(geds), nodeAddress(std::move(nodeAddress)) {}
+    : _geds(geds), nodeAddress(std::move(nodeAddress)) {
+  LOG_INFO("Creating a filetransfer service for ", nodeAddress);
+}
 
 FileTransferService::~FileTransferService() {
   if (_connectionState == ConnectionState::Connected) {
@@ -135,6 +137,9 @@ absl::StatusOr<size_t> FileTransferService::readBytes(const std::string &bucket,
   CHECK_CONNECTED
   auto tcp = _connections.pop_wait_until_available();
   auto status = tcp->readBytes(bucket, key, buffer, position, length);
+  if (!status.ok()) {
+    LOG_ERROR("Error when reading: ", status.status().message());
+  }
   _connections.push(tcp);
   return status;
 }

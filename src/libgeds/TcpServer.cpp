@@ -10,8 +10,8 @@
 #include <boost/asio/strand.hpp>
 
 #include "Logging.h"
-#include "TcpDataTransport.h"
 #include "TcpConnection.h"
+#include "TcpDataTransport.h"
 
 namespace geds {
 
@@ -54,6 +54,9 @@ void TcpServer::accept() {
           return;
         } else {
           LOG_DEBUG("Accepting connection");
+          socket.set_option(boost::asio::ip::tcp::no_delay(true));
+          socket.set_option(boost::asio::socket_base::send_buffer_size(65536));
+          socket.set_option(boost::asio::socket_base::receive_buffer_size(65536));
           auto connection = TcpConnection::create(std::move(socket), _geds);
           connection->start();
         }

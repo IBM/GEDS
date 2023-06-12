@@ -31,6 +31,7 @@ message ObjectID {
   string bucket = 1;
   string key = 2;
 }
+message MultiObjectID { repeated ObjectID objects = 1; }
 
 message ObjectInfo {
   string location = 1;
@@ -95,7 +96,30 @@ message SubscriptionStreamResponse {
   Object object = 2;
 }
 
+enum NodeState {
+  Register = 0;
+  Unregister = 1;
+  PrepareDecomission = 2;
+}
+
+message NodeIdentifier { string identifier = 1; }
+
+message NodeStatus {
+  NodeIdentifier node = 1;
+  NodeState state = 2;
+}
+
+message HeartbeatMessage {
+  NodeIdentifier node = 1;
+  uint64 memoryAllocated = 2;
+  uint64 memoryUsed = 3;
+  uint64 storageAllocated = 4;
+  uint64 storageUsed = 5;
+}
+
 service MetadataService {
+  rpc ConfigureNode(NodeStatus) returns (StatusResponse);
+  rpc Heartbeat(HeartbeatMessage) returns (StatusResponse);
   rpc GetConnectionInformation(EmptyParams) returns (ConnectionInformation);
   rpc RegisterObjectStore(ObjectStoreConfig) returns (StatusResponse);
   rpc ListObjectStores(EmptyParams) returns (AvailableObjectStoreConfigs);
@@ -128,4 +152,8 @@ message TransportEndpoint {
 
 message AvailTransportEndpoints { repeated TransportEndpoint endpoint = 1; }
 
-service GEDSService { rpc GetAvailEndpoints(EmptyParams) returns (AvailTransportEndpoints); }
+service GEDSService {
+  rpc GetAvailEndpoints(EmptyParams) returns (AvailTransportEndpoints);
+  rpc DownloadObjects(MultiObjectID) returns (StatusResponse);
+  rpc DeleteObjectsLocally(MultiObjectID) returns (StatusResponse);
+}

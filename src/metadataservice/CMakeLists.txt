@@ -6,6 +6,14 @@
 set(SOURCES
         GRPCServer.cpp
         GRPCServer.h
+        MDSHttpServer.cpp
+        MDSHttpServer.h
+        MDSHttpSession.cpp
+        MDSHttpSession.h
+        NodeInformation.cpp
+        NodeInformation.h
+        Nodes.cpp
+        Nodes.h
         ObjectStoreHandler.cpp
         ObjectStoreHandler.h
         S3Helper.cpp

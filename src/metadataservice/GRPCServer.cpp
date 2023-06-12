@@ -20,6 +20,8 @@
 
 #include "FormatISO8601.h"
 #include "Logging.h"
+#include "MDSHttpServer.h"
+#include "Nodes.h"
 #include "ObjectStoreConfig.h"
 #include "ObjectStoreHandler.h"
 #include "ParseGRPC.h"
@@ -37,8 +39,16 @@ class MetadataServiceImpl final : public geds::rpc::MetadataService::Service {
   std::shared_ptr<MDSKVS> _kvs;
   ObjectStoreHandler _objectStoreHandler;
 
+  Nodes _nodes;
+  geds::MDSHttpServer _httpServer;
+
 public:
-  MetadataServiceImpl(std::shared_ptr<MDSKVS> kvs) : _kvs(kvs) {}
+  MetadataServiceImpl(std::shared_ptr<MDSKVS> kvs) : _kvs(kvs), _httpServer(4383, _nodes) {
+    auto status = _httpServer.start();
+    if (!status.ok()) {
+      LOG_ERROR("Unable to start HTTP Server!");
+    }
+  }
 
   geds::ObjectID convert(const ::geds::rpc::ObjectID *r) {
     return geds::ObjectID(r->bucket(), r->key());
@@ -53,6 +63,43 @@ public:
   }
 
 protected:
+  grpc::Status ConfigureNode(::grpc::ServerContext *context, const ::geds::rpc::NodeStatus *request,
+                             ::geds::rpc::StatusResponse *response) override {
+    LOG_ACCESS("ConfigureNode");
+    const auto &identifier = request->node().identifier();
+    const auto state = request->state();
+
+    absl::Status status;
+    if (state == geds::rpc::NodeState::Register) {
+      status = _nodes.registerNode(identifier);
+    } else if (state == geds::rpc::NodeState::Unregister) {
+      status = _nodes.unregisterNode(identifier);
+    } else {
+      LOG_ERROR("Invalid state ", state);
+      status = absl::InvalidArgumentError("Invalid state: " + std::to_string(state));
+    }
+
+    convertStatus(response, status);
+    return grpc::Status::OK;
+  }
+
+  grpc::Status Heartbeat(::grpc::ServerContext *context,
+                         const ::geds::rpc::HeartbeatMessage *request,
+                         ::geds::rpc::StatusResponse *response) override {
+    LOG_ACCESS("Heartbeat: ", request->node().identifier());
+
+    const auto &identifier = request->node().identifier();
+    NodeHeartBeat val;
+    val.memoryAllocated = request->memoryallocated();
+    val.memoryUsed = request->memoryused();
+    val.storageAllocated = request->storageallocated();
+    val.storageUsed = request->storageused();
+
+    auto status = _nodes.heartbeat(identifier, std::move(val));
+    convertStatus(response, status);
+    return grpc::Status::OK;
+  }
+
   grpc::Status GetConnectionInformation(::grpc::ServerContext *context,
                                         const ::geds::rpc::EmptyParams * /* unused request */,
                                         ::geds::rpc::ConnectionInformation *response) override {
