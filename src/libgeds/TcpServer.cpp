@@ -21,9 +21,9 @@ constexpr size_t BUFFER_ALIGNMENT = 32;
 using boost::asio::ip::tcp;
 
 TcpServer::TcpServer(std::shared_ptr<GEDS> geds, uint16_t portArg)
-    : _geds(geds), _buffers(MAXIMUM_TCP_THREADS()), port(portArg), _endpoint(tcp::v4(), port),
+    : _geds(geds), _buffers(MAXIMUM_TCP_THREADS() * 2), port(portArg), _endpoint(tcp::v4(), port),
       _acceptor(_ioService, _endpoint) {
-  for (size_t i = 0; i < MAXIMUM_TCP_THREADS(); i++) {
+  for (size_t i = 0; i < MAXIMUM_TCP_THREADS() * 2; i++) {
     _buffers.push(new (std::align_val_t(BUFFER_ALIGNMENT)) uint8_t[MIN_SENDFILE_SIZE]);
   }
 }
@@ -41,7 +41,7 @@ absl::Status TcpServer::start() {
   }
 
   accept();
-  for (size_t i = 0; i < MAXIMUM_TCP_THREADS(); i++) {
+  for (size_t i = 0; i < MAXIMUM_TCP_THREADS() * 2; i++) {
     _threads.emplace_back(std::thread([&] { _ioService.run(); }));
   }
   _started = true;
