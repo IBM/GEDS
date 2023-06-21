@@ -190,12 +190,12 @@ absl::Status GEDS::stop() {
 
   absl::Status result;
 
-  // Decomission node.
-  result = _metadataService.configureNode(uuid, _hostname, _server.port(),
-                                          geds::rpc::NodeState::Unregister);
-  if (!result.ok()) {
-    LOG_ERROR("Unable to unregister: ", result.message());
-  }
+  // // Decomission node.
+  // result = _metadataService.configureNode(uuid, _hostname, _server.port(),
+  //                                         geds::rpc::NodeState::Unregister);
+  // if (!result.ok()) {
+  //   LOG_ERROR("Unable to unregister: ", result.message());
+  // }
 
   result = _metadataService.disconnect();
   if (!result.ok()) {
