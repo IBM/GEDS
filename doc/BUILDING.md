@@ -2,7 +2,6 @@
 
 - [Workflow](#workflow)
 - [Instructions for MacOS](#instructions-for-macos)
-- [Instructions for Windows](#instructions-for-windows)
 - [Instructions for Linux](#instructions-for-linux)
 - [Deploying via Docker](#deploying-via-docker)
 - [Deploying via Ansible](#deploying-via-ansible)
@@ -46,14 +45,19 @@ Finally build it with:
 cmake --build . --target all
 ```
 
-## Instructions for Windows <a name="instructions-for-windows"></a>
-Coming
-
 ## Instructions for Linux <a name="instructions-for-linux"></a>
 Install GEDS dependencies:
 
 ```
 sudo apt install -y clang curl wget build-essential gcc ninja-build openjdk-11-jdk python3-dev python3-distutils cmake
+```
+
+CMake version >= 3.20:
+```
+CMAKE_VERSION=3.22.4
+wget --quiet -O cmake.tar.gz https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-linux-x86_64.tar.gz \
+    && tar xf cmake.tar.gz  --strip-components=1 -C /usr/local/ \
+    && rm cmake.tar.gz
 ```
 
 Install AWS SDK dependecies:
