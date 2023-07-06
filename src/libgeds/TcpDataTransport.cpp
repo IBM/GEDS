@@ -11,7 +11,9 @@
 #include "Logging.h"
 
 namespace geds {
-size_t MAXIMUM_TCP_THREADS() { return std::max<size_t>(8, std::thread::hardware_concurrency()); }
+size_t MAXIMUM_TCP_THREADS() {
+  return std::max<size_t>(8, std::thread::hardware_concurrency() * 2);
+}
 
 namespace tcp_transport {
 absl::StatusOr<RequestType> parseRequestType(const std::string &message) {
