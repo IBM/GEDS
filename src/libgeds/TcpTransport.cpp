@@ -673,7 +673,6 @@ void TcpTransport::tcpRxThread(unsigned int id) {
       }
       auto it = tcpPeers.get(epId);
       if (it.has_value()) {
-        LOG_DEBUG("Found peer for %d: ", sock);
         tcpPeer = *it;
       } else {
         LOG_ERROR("No peer for: ", sock);

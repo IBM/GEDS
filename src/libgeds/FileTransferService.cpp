@@ -155,6 +155,7 @@ absl::StatusOr<size_t> FileTransferService::readBytes(const std::string &bucket,
   }
   auto status = fut.get();
   if (status.ok()) {
+    LOG_DEBUG("TCP readBytes OK, bytes: ", length);
     return *status;
   }
   // Close the FileTransferService on error.
