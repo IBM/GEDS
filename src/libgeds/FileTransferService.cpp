@@ -82,7 +82,6 @@ absl::Status FileTransferService::connect() {
 
       if (peer) {
         _tcpPeer = peer;
-        // for now, make just one connection
         break;
       }
     }
@@ -144,10 +143,10 @@ absl::StatusOr<size_t> FileTransferService::readBytes(const std::string &bucket,
   {
     auto lock = getReadLock();
     if (_tcpPeer.expired()) {
-      return absl::UnavailableError("No TCP for " + nodeAddress);
+      return absl::UnavailableError("TCP readBytes: no peer: " + nodeAddress);
     }
 
-    LOG_DEBUG("Found TCP peer for ", nodeAddress);
+    LOG_DEBUG("TCP readBytes: ", nodeAddress, ", REQ: ", length);
     auto peer = _tcpPeer.lock();
     lock.unlock();
     auto prom = peer->sendRpcRequest((uint64_t)buffer, bucket + "/" + key, position, length);
@@ -155,7 +154,7 @@ absl::StatusOr<size_t> FileTransferService::readBytes(const std::string &bucket,
   }
   auto status = fut.get();
   if (status.ok()) {
-    LOG_DEBUG("TCP readBytes OK, bytes: ", length);
+    LOG_DEBUG("TCP readBytes: ", nodeAddress, ", DONE: ", length);
     return *status;
   }
   // Close the FileTransferService on error.
