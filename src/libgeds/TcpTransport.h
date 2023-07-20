@@ -218,6 +218,9 @@ private:
   int epoll_rfd[MAX_IO_THREADS] = {}; // for epoll() receive
   int epoll_wfd[MAX_IO_THREADS] = {}; // for epoll() send
 
+  /* fd to signal threads in epoll to interrupt wait */
+  int eventFd = -1;
+
   void deactivateEndpoint(int poll_fd, int sock, uint32_t state);
   bool activateEndpoint(std::shared_ptr<TcpEndpoint>, std::shared_ptr<TcpPeer>);
   utility::ConcurrentMap<unsigned int, std::shared_ptr<TcpPeer>> tcpPeers;

@@ -21,6 +21,7 @@
 #include <shared_mutex>
 #include <string>
 #include <sys/epoll.h>
+#include <sys/eventfd.h>
 #include <sys/sendfile.h>
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -65,6 +66,13 @@ void TcpTransport::start() {
   num_proc = std::min(num_proc, MAX_IO_THREADS);
   isServing = true;
 
+  /*
+   * Create eventfd to be integrated into epoll interest list for RX and TX
+   * threads. Writing to it will wakeup epoll_wait() if no other fd available
+   * or active
+   */
+  eventFd = eventfd(0, 0);
+
   for (unsigned int id = 0; id < MAX_IO_THREADS; id++) {
     txThreads.push_back(std::make_unique<std::thread>([this, id] { this->tcpTxThread(id); }));
     rxThreads.push_back(std::make_unique<std::thread>([this, id] { this->tcpRxThread(id); }));
@@ -72,13 +80,18 @@ void TcpTransport::start() {
   }
   ioStatsThread = std::make_unique<std::thread>([this] { this->updateIoStats(); });
 
-  LOG_DEBUG("TCP service start");
+  LOG_DEBUG("TCP service started");
 }
 
 void TcpTransport::stop() {
+  LOG_DEBUG("Stopping TCP Service");
   isServing = false;
 
-  LOG_DEBUG("Stopping TCP Service");
+  if (eventFd > 0) {
+    u_int64_t buf = 1;
+    LOG_DEBUG("TCP Transport: write CTL fd");
+    write(eventFd, &buf, 8);
+  }
 
   std::vector<std::shared_ptr<TcpPeer>> tcpPeerV;
   tcpPeers.forall([&tcpPeerV](std::shared_ptr<TcpPeer> &tp) { tcpPeerV.push_back(tp); });
@@ -103,6 +116,10 @@ void TcpTransport::stop() {
   while (_buffers.pop(buffer)) {
     delete[] buffer;
   }
+  if (eventFd > 0)
+    close(eventFd);
+  
+  eventFd = -1;
   LOG_DEBUG("TCP Transport stopped");
 }
 
@@ -301,20 +318,32 @@ bool TcpPeer::processEndpointSend(std::shared_ptr<TcpEndpoint> tep) {
 
 void TcpTransport::tcpTxThread(unsigned int id) {
   struct epoll_event events[EPOLL_MAXEVENTS]; // NOLINT
-
-  LOG_DEBUG("TX thread ", id, " starting");
-
   int poll_fd = ::epoll_create1(0);
   if (poll_fd < 0) {
     perror("epoll_create: ");
     return;
   }
+  LOG_DEBUG("TCP TX thread ", id, " starting");
   epoll_wfd[id] = poll_fd;
+  if (eventFd > 0) {
+    struct epoll_event ev{};
+    ev.events = EPOLLIN | EPOLLHUP | EPOLLRDHUP | EPOLLERR;
+    ev.data.fd = eventFd;
+    if (epoll_ctl(poll_fd, EPOLL_CTL_ADD, eventFd, &ev)) {
+      LOG_ERROR("WARNING: Cannot register ctl socket for TX epoll");
+      perror("epoll_ctl: ");
+    }
+  }
   do {
-    int cnt = ::epoll_wait(poll_fd, events, EPOLL_MAXEVENTS, 500);
+    int cnt = ::epoll_wait(poll_fd, events, EPOLL_MAXEVENTS, -1);
 
     for (int i = 0; i < cnt; i++) {
       struct epoll_event *ev = &events[i];
+
+      if (ev->data.fd == eventFd) {
+        LOG_DEBUG("TCP TX: epoll CTL");
+        continue;
+      }
       epoll_epid_t ep_id = {};
       ep_id.data = ev->data.u64;
       int sock = ep_id.id.sock;
@@ -327,10 +356,10 @@ void TcpTransport::tcpTxThread(unsigned int id) {
       }
       auto it = tcpPeers.get(epId);
       if (it.has_value()) {
-        LOG_DEBUG("Found TX peer for: ", sock);
+        LOG_DEBUG("TX: Found peer for: ", sock);
         tcpPeer = *it;
       } else {
-        LOG_DEBUG("No TX peer for: ", sock);
+        LOG_ERROR("TX: No peer for: ", sock);
         deactivateEndpoint(poll_fd, sock, ALL_CLOSED);
         continue;
       }
@@ -355,14 +384,21 @@ void TcpTransport::tcpTxThread(unsigned int id) {
       }
     }
   } while (isServing);
-  LOG_DEBUG("TX thread ", id, " exiting");
+  if (eventFd > 0)
+    epoll_ctl(poll_fd, EPOLL_CTL_DEL, eventFd, NULL);
+  
+  close(poll_fd);
+  LOG_DEBUG("TCP TX thread ", id, " exiting");
 }
 
 bool TcpPeer::SocketStateChange(int sock, uint32_t change) {
   auto lock = getWriteLock();
   auto it = endpoints.find(sock);
   if (it == endpoints.end()) {
-    return true;
+    LOG_ERROR("Unassigned socket: ", sock);
+    close(sock);
+    // Return false to keep unassociated peer alive
+    return false;
   }
   auto tep = it->second;
   bool dead = false;
@@ -377,6 +413,8 @@ bool TcpPeer::SocketStateChange(int sock, uint32_t change) {
       dead = true;
       close(sock);
       endpoints.erase(it);
+      LOG_DEBUG("TCP Peer: ", this->hostname, ", erased socket: ",
+                sock, ", change: ", change, ", num sockets now: ", endpoints.size());
     }
   }
   if (endpoints.size() != 0)
@@ -646,21 +684,34 @@ void TcpTransport::updateIoStats() {
 
 void TcpTransport::tcpRxThread(unsigned int id) {
   struct epoll_event events[EPOLL_MAXEVENTS]; // NOLINT
-
-  LOG_DEBUG("RX thread ", id, " starting");
-
   int poll_fd = ::epoll_create1(0);
   if (poll_fd < 0) {
     perror("epoll_create: ");
     return;
   }
+  LOG_DEBUG("TCP RX thread ", id, " starting");
   epoll_rfd[id] = poll_fd;
 
+  if (eventFd > 0) {
+    struct epoll_event ev{};
+    ev.events = EPOLLIN | EPOLLHUP | EPOLLRDHUP | EPOLLERR;
+    ev.data.fd = eventFd;
+    if (epoll_ctl(poll_fd, EPOLL_CTL_ADD, eventFd, &ev)) {
+      LOG_ERROR("WARNING: Cannot register ctl socket for RX epoll");
+      perror("epoll_ctl: ");
+    }
+  }
+
   do {
-    int cnt = ::epoll_wait(poll_fd, events, EPOLL_MAXEVENTS, 500);
+    int cnt = ::epoll_wait(poll_fd, events, EPOLL_MAXEVENTS, -1);
 
     for (int i = 0; i < cnt; i++) {
       struct epoll_event *ev = &events[i];
+      
+      if (ev->data.fd == eventFd) {
+        LOG_DEBUG("TCP RX: epoll CTL");
+        continue;
+      }
       epoll_epid_t ep_id = {};
       ep_id.data = ev->data.u64;
       int sock = ep_id.id.sock;
@@ -675,11 +726,12 @@ void TcpTransport::tcpRxThread(unsigned int id) {
       if (it.has_value()) {
         tcpPeer = *it;
       } else {
-        LOG_ERROR("No peer for: ", sock);
+        LOG_ERROR("RX: No peer for: ", sock);
         deactivateEndpoint(poll_fd, sock, ALL_CLOSED);
         continue;
       }
       if (ev->events & (EPOLLHUP | EPOLLRDHUP | EPOLLERR)) {
+        LOG_DEBUG("Peer closes: ", sock);
         deactivateEndpoint(poll_fd, sock, RX_CLOSED);
         if (tcpPeer->SocketStateChange(sock, RX_CLOSED)) {
           tcpPeers.remove(tcpPeer->Id);
@@ -700,7 +752,11 @@ void TcpTransport::tcpRxThread(unsigned int id) {
       }
     }
   } while (isServing);
-  LOG_DEBUG("RX thread ", id, " exiting");
+  if (eventFd > 0)
+    epoll_ctl(poll_fd, EPOLL_CTL_DEL, eventFd, NULL);
+
+  close(poll_fd);
+  LOG_DEBUG("TCP RX thread ", id, " exiting");
 }
 
 std::shared_ptr<TcpTransport> TcpTransport::factory(std::shared_ptr<GEDS> geds) {
@@ -708,6 +764,7 @@ std::shared_ptr<TcpTransport> TcpTransport::factory(std::shared_ptr<GEDS> geds) 
 }
 
 void TcpTransport::deactivateEndpoint(int poll_fd, int sock, uint32_t state) {
+  LOG_DEBUG("TCP deactivate EP: ", sock, ", state: ", state);
   if (state & TX_CLOSED)
     epoll_ctl(poll_fd, EPOLL_CTL_DEL, sock, nullptr);
   if (state & RX_CLOSED)
@@ -743,7 +800,7 @@ bool TcpTransport::activateEndpoint(std::shared_ptr<TcpEndpoint> tep,
     perror("epoll_ctl send: ");
     return false;
   }
-  LOG_DEBUG("Registered socket ", tep->sock, " for epoll.");
+  LOG_DEBUG("TCP activated EP, socket: ", tep->sock, ", host: ", peer->hostname);
   return true;
 }
 
@@ -803,6 +860,7 @@ std::shared_ptr<TcpPeer> TcpTransport::getPeer(sockaddr *peer) {
   auto it = tcpPeers.get(epId);
   if (it.has_value()) {
     tcpPeer = *it;
+    LOG_DEBUG("Already connected: ", hostname, "::", inaddr->sin_port);
     return tcpPeer;
   }
   if (peer->sa_family != AF_INET) {
@@ -816,7 +874,7 @@ std::shared_ptr<TcpPeer> TcpTransport::getPeer(sockaddr *peer) {
     }
     rv = ::connect(sock, peer, addrlen);
     if (rv) {
-      LOG_DEBUG("cannot connect ", hostname);
+      LOG_ERROR("Cannot connect: ", hostname, "::", inaddr->sin_port);
       ::close(sock);
       return nullptr;
     }
@@ -826,19 +884,19 @@ std::shared_ptr<TcpPeer> TcpTransport::getPeer(sockaddr *peer) {
      */
     rv = ::fcntl(sock, F_SETFL, fcntl(sock, F_GETFL, 0) | O_NONBLOCK);
     if (rv) {
-      LOG_DEBUG("cannot set socket non-blocking ", hostname);
+      LOG_ERROR("Cannot set socket non-blocking ", hostname, "::", inaddr->sin_port);
       close(sock);
       return nullptr;
     }
     struct linger lg = {.l_onoff = 0, .l_linger = 0};
     if (::setsockopt(sock, SOL_SOCKET, SO_LINGER, &lg, sizeof lg)) {
-      perror("SO_LINGER: ");
+      LOG_ERROR("Cannot set NO_LINGER ", hostname, "::", inaddr->sin_port);
       close(sock);
       return nullptr;
     }
     std::shared_ptr<TcpEndpoint> tep = std::make_shared<TcpEndpoint>();
 
-    LOG_DEBUG("connected ", hostname, "::", inaddr->sin_port);
+    LOG_DEBUG("Connected, num Ep: ", num_ep, " hostname: ", hostname, "::", inaddr->sin_port);
     tep->sock = sock;
     if (num_ep == 0) {
       tcpPeer = std::make_shared<TcpPeer>(hostname, _geds, *this);
@@ -847,7 +905,7 @@ std::shared_ptr<TcpPeer> TcpTransport::getPeer(sockaddr *peer) {
     tcpPeer->addEndpoint(tep);
     activateEndpoint(tep, tcpPeer);
   }
-  LOG_DEBUG("Client connected to ", hostname);
+  LOG_DEBUG("Client connected to ", hostname, "::", inaddr->sin_port);
   return tcpPeer;
 }
 
