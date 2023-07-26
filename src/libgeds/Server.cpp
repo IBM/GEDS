@@ -155,7 +155,7 @@ void Server::TcpListenThread() {
     }
     if (_geds->_tcpTransport->addEndpointPassive(newsock) == false) {
       ::close(newsock);
-      LOG_ERROR("Server: Adding new TCP client failed ");
+      LOG_DEBUG("Server: Adding new TCP client failed ");
     }
   }
   close(sock);
