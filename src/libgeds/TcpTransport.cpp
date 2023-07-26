@@ -805,7 +805,6 @@ bool TcpTransport::activateEndpoint(std::shared_ptr<TcpEndpoint> tep,
 }
 
 bool TcpTransport::addEndpointPassive(int sock) {
-  std::shared_ptr<TcpEndpoint> tep = std::make_shared<TcpEndpoint>();
   struct sockaddr peer_sockaddr = {};
   auto *in_peer = (sockaddr_in *)&peer_sockaddr;
 
@@ -826,11 +825,12 @@ bool TcpTransport::addEndpointPassive(int sock) {
     perror("getpeername: ");
     return false;
   }
-  tep->sock = sock;
 
   std::string hostname = inet_ntoa(in_peer->sin_addr);
   std::shared_ptr<TcpPeer> tcpPeer;
   unsigned int epId = SStringHash(hostname);
+
+  getWriteLock();
   auto it = tcpPeers.get(epId);
   if (!it.has_value()) {
     tcpPeer = std::make_shared<TcpPeer>(hostname, _geds, *this);
@@ -838,11 +838,23 @@ bool TcpTransport::addEndpointPassive(int sock) {
   } else {
     tcpPeer = *it;
   }
-  tcpPeer->addEndpoint(tep);
-  activateEndpoint(tep, tcpPeer);
-  LOG_DEBUG("Server connected to ", hostname, "::", in_peer->sin_port);
-
-  return true;
+  if (tcpPeer->endpoints.size() < num_proc) {
+    std::shared_ptr<TcpEndpoint> tep = std::make_shared<TcpEndpoint>();
+    
+    tep->sock = sock;
+    tcpPeer->addEndpoint(tep);
+    activateEndpoint(tep, tcpPeer);
+    LOG_DEBUG("Server with ", tcpPeer->endpoints.size(),
+             " connections to ", hostname, "::", in_peer->sin_port);
+    return true;
+  }
+  /*
+   * Will kill this extra connection probably created during cross-connect
+   * from both sides
+   */
+  LOG_DEBUG("Server with ", tcpPeer->endpoints.size() + 1,
+            " connections to ", hostname, "::", in_peer->sin_port, ", dropping new");
+  return false;
 }
 
 std::shared_ptr<TcpPeer> TcpTransport::getPeer(sockaddr *peer) {
@@ -851,7 +863,13 @@ std::shared_ptr<TcpPeer> TcpTransport::getPeer(sockaddr *peer) {
   size_t addrlen = sizeof *peer;
   int sock = -1, rv = 0;
   unsigned int epId = SStringHash(hostname);
+
+  if (peer->sa_family != AF_INET) {
+    LOG_ERROR("Address family not supported: ", peer->sa_family);
+    return nullptr;
+  }
   auto lock = getWriteLock();
+
   /*
    * Check if we are already connected to that address. No new peer in
    * this case.
@@ -860,23 +878,23 @@ std::shared_ptr<TcpPeer> TcpTransport::getPeer(sockaddr *peer) {
   auto it = tcpPeers.get(epId);
   if (it.has_value()) {
     tcpPeer = *it;
-    LOG_DEBUG("Already connected: ", hostname, "::", inaddr->sin_port);
-    return tcpPeer;
+  } else {
+    tcpPeer = std::make_shared<TcpPeer>(hostname, _geds, *this);
+    tcpPeers.insertOrReplace(epId, tcpPeer);
   }
-  if (peer->sa_family != AF_INET) {
-    LOG_ERROR("Address family not supported: ", peer->sa_family);
-    return nullptr;
-  }
-  for (unsigned int num_ep = 0; num_ep < num_proc; num_ep++) {
+  unsigned int num_ep = tcpPeer->endpoints.size();
+
+  while (num_ep < num_proc) {
     sock = ::socket(AF_INET, SOCK_STREAM, 0);
     if (sock < 0) {
-      return nullptr;
+      LOG_ERROR("Cannot create socket: ", hostname, "::", inaddr->sin_port);
+      break;
     }
     rv = ::connect(sock, peer, addrlen);
     if (rv) {
       LOG_ERROR("Cannot connect: ", hostname, "::", inaddr->sin_port);
       ::close(sock);
-      return nullptr;
+      break;
     }
     /*
      * Mark socket non-blocking to allow efficient handling of
@@ -886,27 +904,29 @@ std::shared_ptr<TcpPeer> TcpTransport::getPeer(sockaddr *peer) {
     if (rv) {
       LOG_ERROR("Cannot set socket non-blocking ", hostname, "::", inaddr->sin_port);
       close(sock);
-      return nullptr;
+      break;
     }
     struct linger lg = {.l_onoff = 0, .l_linger = 0};
     if (::setsockopt(sock, SOL_SOCKET, SO_LINGER, &lg, sizeof lg)) {
       LOG_ERROR("Cannot set NO_LINGER ", hostname, "::", inaddr->sin_port);
       close(sock);
-      return nullptr;
+      break;
     }
     std::shared_ptr<TcpEndpoint> tep = std::make_shared<TcpEndpoint>();
-
-    LOG_DEBUG("Connected, num Ep: ", num_ep, " hostname: ", hostname, "::", inaddr->sin_port);
     tep->sock = sock;
-    if (num_ep == 0) {
-      tcpPeer = std::make_shared<TcpPeer>(hostname, _geds, *this);
-      tcpPeers.insertOrReplace(epId, tcpPeer);
-    }
     tcpPeer->addEndpoint(tep);
     activateEndpoint(tep, tcpPeer);
+
+    num_ep++;
+
+    LOG_DEBUG("Client with ", num_ep, " connections to ", hostname, "::", inaddr->sin_port);
   }
-  LOG_DEBUG("Client connected to ", hostname, "::", inaddr->sin_port);
-  return tcpPeer;
+  if (num_ep)
+    return tcpPeer;
+  
+  tcpPeers.remove(tcpPeer->Id);
+  LOG_ERROR("Cannot connect peer: ", hostname, "::", inaddr->sin_port);
+  return nullptr;
 }
 
 void TcpPeer::updateIoStats() {
