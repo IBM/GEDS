@@ -90,7 +90,8 @@ void TcpTransport::stop() {
   if (eventFd > 0) {
     u_int64_t buf = 1;
     LOG_DEBUG("TCP Transport: write CTL fd");
-    write(eventFd, &buf, 8);
+    if (write(eventFd, &buf, 8) <= 0)
+      perror("TCP Transport writing control socket failed: ");
   }
 
   std::vector<std::shared_ptr<TcpPeer>> tcpPeerV;
@@ -334,7 +335,7 @@ void TcpTransport::tcpTxThread(unsigned int id) {
       perror("epoll_ctl: ");
     }
   }
-  do {
+  while (isServing) {
     int cnt = ::epoll_wait(poll_fd, events, EPOLL_MAXEVENTS, -1);
 
     for (int i = 0; i < cnt; i++) {
@@ -383,7 +384,7 @@ void TcpTransport::tcpTxThread(unsigned int id) {
         tcpPeers.remove(tcpPeer->Id);
       }
     }
-  } while (isServing);
+  };
   if (eventFd > 0)
     epoll_ctl(poll_fd, EPOLL_CTL_DEL, eventFd, NULL);
   
@@ -702,7 +703,7 @@ void TcpTransport::tcpRxThread(unsigned int id) {
     }
   }
 
-  do {
+  while (isServing) {
     int cnt = ::epoll_wait(poll_fd, events, EPOLL_MAXEVENTS, -1);
 
     for (int i = 0; i < cnt; i++) {
@@ -751,7 +752,7 @@ void TcpTransport::tcpRxThread(unsigned int id) {
         }
       }
     }
-  } while (isServing);
+  };
   if (eventFd > 0)
     epoll_ctl(poll_fd, EPOLL_CTL_DEL, eventFd, NULL);
 
@@ -843,13 +844,16 @@ bool TcpTransport::addEndpointPassive(int sock) {
     
     tep->sock = sock;
     tcpPeer->addEndpoint(tep);
-    activateEndpoint(tep, tcpPeer);
-    LOG_DEBUG("Server with ", tcpPeer->endpoints.size(),
-             " connections to ", hostname, "::", in_peer->sin_port);
-    return true;
+    if (activateEndpoint(tep, tcpPeer) == true) {
+      LOG_DEBUG("Server with ", tcpPeer->endpoints.size(),
+              " connections to ", hostname, "::", in_peer->sin_port);
+      return true;
+    }
+    tcpPeer->delEndpoint(tep);
+    LOG_ERROR("Server failed adding connection to ", hostname, "::", in_peer->sin_port);
   }
   /*
-   * Will kill this extra connection probably created during cross-connect
+   * Drop this extra connection probably created during cross-connect
    * from both sides
    */
   LOG_DEBUG("Server with ", tcpPeer->endpoints.size() + 1,
@@ -915,10 +919,13 @@ std::shared_ptr<TcpPeer> TcpTransport::getPeer(sockaddr *peer) {
     std::shared_ptr<TcpEndpoint> tep = std::make_shared<TcpEndpoint>();
     tep->sock = sock;
     tcpPeer->addEndpoint(tep);
-    activateEndpoint(tep, tcpPeer);
-
+    if (activateEndpoint(tep, tcpPeer) == false) {
+      tcpPeer->delEndpoint(tep);
+      ::close(sock);
+      LOG_ERROR("Client failed adding connection to ", hostname, "::", inaddr->sin_port);
+      break;
+    }
     num_ep++;
-
     LOG_DEBUG("Client with ", num_ep, " connections to ", hostname, "::", inaddr->sin_port);
   }
   if (num_ep)

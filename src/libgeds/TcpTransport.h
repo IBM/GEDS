@@ -182,8 +182,12 @@ public:
   sendRpcRequest(uint64_t dest, std::string name, size_t src_off, size_t len);
   int sendRpcReply(uint64_t reqId, int in_fd, uint64_t start, size_t len, int status);
   void addEndpoint(std::shared_ptr<TcpEndpoint> tep) {
-    auto lock = getWriteLock();
+    // Caller must hold TcpTransports write lock
     endpoints.emplace(tep->sock, tep);
+  };
+  void delEndpoint(std::shared_ptr<TcpEndpoint> tep) {
+    // Caller must hold TcpTransport write lock
+    endpoints.erase(tep->sock);
   };
   TcpPeer(std::string name, std::shared_ptr<GEDS> geds, TcpTransport &tcpTransport)
       : Id(SStringHash(name)), _geds(std::move(geds)), _tcpTransport(tcpTransport),
