@@ -1,0 +1,123 @@
+---
+- hosts: geds
+  name: Update all apt packages
+  become: false
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+    remote_home: "{{ ansible_env.HOME }}"
+
+  tasks:
+    - name: Update and upgrade
+      tags: update
+      become: true
+      apt:
+        upgrade: yes
+        update_cache: yes
+
+    - name: Reboot
+      tags: reboot
+      become: true
+      reboot:
+
+    - name: Install GEDS dependencies
+      tags: dependencies
+      become: true
+      apt:
+        pkg:
+          - clang
+          - curl
+          - wget
+          - build-essential
+          - gcc
+          - ninja-build
+          - openjdk-11-jdk
+          - python3-dev
+          - python3-distutils
+          - cmake
+        state: latest
+        update_cache: yes
+
+    - name: Create GEDS directory
+      tags: git
+      become: false
+      file:
+        path: "{{ remote_home }}/GEDS"
+        state: directory
+
+    - name: Git clone GEDS
+      tags: git
+      become: false
+      ansible.builtin.git:
+        repo: "https://github.com/IBM/GEDS.git"
+        dest: "{{ remote_home }}/GEDS/"
+
+    - name: AWS dependencies
+      tags: aws
+      become: true
+      apt:
+        pkg:
+          - libcurl4-openssl-dev
+          - libssl-dev
+          - uuid-dev
+          - zlib1g-dev
+          - libpulse-dev
+        state: latest
+        update_cache: yes
+
+    - name: Build AWS
+      tags: aws
+      become: false
+      ansible.builtin.command: /bin/bash build-aws-sdk.sh
+      async: 3600
+      poll: 30
+      args:
+        chdir: "{{ remote_home }}/GEDS"
+
+    - name: Build boost
+      tags: boost
+      become: false
+      ansible.builtin.command: /bin/bash build-boost.sh
+      args:
+        chdir: "{{ remote_home }}/GEDS"
+
+    - name: Create GEDS build directory
+      tags: geds
+      become: false
+      file:
+        path: "{{ remote_home }}/GEDS/build"
+        state: directory
+
+    - name: Build GEDS
+      tags: geds
+      become: false
+      ansible.builtin.command: cmake -DCMAKE_BUILD_TYPE=Debug -S . -B $BUILD_DIR
+      args:
+        chdir: "{{ remote_home }}/GEDS"
+      environment:
+        BUILD_DIR: "{{ remote_home }}/GEDS/build"
+
+    - name: Build GEDS
+      tags: geds
+      become: false
+      ansible.builtin.command: cmake --build $BUILD_DIR -j 4
+      args:
+        chdir: "{{ remote_home }}/GEDS"
+      environment:
+        BUILD_DIR: "{{ remote_home }}/GEDS/build"
+
+    - name: Create GEDS install directory
+      tags: geds
+      become: false
+      file:
+        path: "{{ remote_home }}/GEDS/bin"
+        state: directory
+
+    - name: Install GEDS
+      tags: geds
+      become: false
+      ansible.builtin.command: cmake --install $BUILD_DIR --prefix $INSTALL_DIR --component geds
+      args:
+        chdir: "{{ remote_home }}/GEDS"
+      environment:
+        BUILD_DIR: "{{ remote_home }}/GEDS/build"
+        INSTALL_DIR: "{{ remote_home }}/GEDS/bin"
