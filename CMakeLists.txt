@@ -41,7 +41,19 @@ endif()
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
-set(GEDS_EXTRA_COMPILER_FLAGS -Wall -Wextra -Werror) # -Wpedantic # error: ISO C++ does not support ‘__int128’ for ‘type name’ [-Werror=pedantic]
+# Added for pub/sub service
+# Requires to remove GEDS_EXTRA_COMPILER_FLAGS -Werror
+include(FetchContent)
+FetchContent_Declare(MQTT
+                     GIT_REPOSITORY https://github.com/eclipse/paho.mqtt.c.git
+                     GIT_TAG v1.3.8)
+FetchContent_MakeAvailable(MQTT)
+FetchContent_Declare(MQTT_CXX
+                     GIT_REPOSITORY https://github.com/eclipse/paho.mqtt.cpp
+                     GIT_TAG v1.2.0)
+FetchContent_MakeAvailable(MQTT_CXX)
+
+set(GEDS_EXTRA_COMPILER_FLAGS -Wall -Wextra) # -Wpedantic # error: ISO C++ does not support ‘__int128’ for ‘type name’ [-Werror=pedantic]
 set(GEDS_EXTRA_LINKER_FLAGS)
 
 # if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
