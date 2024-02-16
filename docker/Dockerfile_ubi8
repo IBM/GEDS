@@ -4,7 +4,7 @@
 #
 
 ARG GIT_REVISION
-FROM geds-build_ubi8:${GIT_REVISION} as builder
+FROM geds-build/ubi8:${GIT_REVISION} as builder
 
 FROM registry.access.redhat.com/ubi8/ubi
 
