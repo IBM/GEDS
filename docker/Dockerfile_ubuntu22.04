@@ -4,7 +4,7 @@
 #
 
 ARG GIT_REVISION
-FROM geds-build_ubuntu22.04:${GIT_REVISION} as builder
+FROM geds-build/ubuntu22.04:${GIT_REVISION} as builder
 
 FROM ubuntu:22.04
 
@@ -15,6 +15,7 @@ RUN apt-get clean && apt-get update \
     && apt-get install -y --no-install-recommends \
         openjdk-11-jdk-headless \
         python3.10 python3.10-distutils python3-numpy \
+        curl \
     && apt-get clean
 
 COPY --from=builder /usr/local/opt/geds/ /usr/local/

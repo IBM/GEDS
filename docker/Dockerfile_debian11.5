@@ -4,7 +4,7 @@
 #
 
 ARG GIT_REVISION
-FROM geds-build_debian11.5:${GIT_REVISION} as builder
+FROM geds-build/debian11.5:${GIT_REVISION} as builder
 
 FROM debian:11.5
 
