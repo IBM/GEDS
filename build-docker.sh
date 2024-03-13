@@ -20,7 +20,11 @@ GEDS_VERSION=${TRAVIS_TAG:-$(git describe --tags --match "v*" --dirty)}
 [[ "$GEDS_VERSION" =~ ^v ]] && GEDS_VERSION=$(echo $GEDS_VERSION | cut -c 2-)
 
 DOCKER_IMAGE_PREFIX=${DOCKER_IMAGE_PREFIX:-"zac32.zurich.ibm.com/zrlio/"}
+CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release}
 IMAGE_PREFIX=geds-dev_${DOCKER_BUILD_TARGET}
+if [[ "${CMAKE_BUILD_TYPE}" != "Release" ]]; then
+    IMAGE_PREFIX=${IMAGE_PREFIX}-${CMAKE_BUILD_TYPE,,}
+fi
 IMAGE_NAME=${IMAGE_PREFIX}:${GEDS_DOCKER_VERSION}
 echo $IMAGE_NAME
 IMAGE=${DOCKER_IMAGE_PREFIX}${IMAGE_PREFIX}
@@ -46,6 +50,7 @@ docker build -t geds-build/${DOCKER_BUILD_TARGET}:${GIT_REVISION} \
     --build-arg GEDS_VERSION=${GEDS_VERSION} \
     --build-arg DOCKER_BUILD_TARGET=${DOCKER_BUILD_TARGET} \
     --build-arg CMAKE_BUILD_PARALLEL_LEVEL=$(( $(nproc) + 1)) \
+    --build-arg CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} \
     -f docker/Dockerfile-build .
 
 docker build -t ${IMAGE_NAME} \
@@ -63,5 +68,5 @@ echo "Built ${IMAGE}:${GEDS_VERSION}"
 docker push $IMAGE:latest
 docker push $IMAGE:${GEDS_VERSION}
 
-echo "Pushed ${IMAGE}:latest" 
+echo "Pushed ${IMAGE}:latest"
 echo "Pushed ${IMAGE}:${GEDS_VERSION}"
