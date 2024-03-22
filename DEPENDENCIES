@@ -11,7 +11,7 @@ export AWS_SDK_VERSION="1.10.20"
 # GRPC Version
 export GRPC_VERSION="v1.51.1"
 # Boost Version
-export BOOST_VERSION="1.80.0"
+export BOOST_VERSION="1.83.0"
 
 # GEDS Docker Version
 export GEDS_DOCKER_VERSION="1.0"

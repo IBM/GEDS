@@ -20,7 +20,7 @@ option(HAVE_PROMETHEUS_HISTOGRAM_BUCKETS "Enable Prometheus Histogram Buckets." 
 option(ENABLE_PROFILING "Compile with -pg to enable gprof." OFF)
 
 set(DEFAULT_BUCKET_NAME "default" CACHE STRING "Name of the default bucket.")
-set(BOOST_VERSION "1.80.0" CACHE STRING "Boost version")
+set(BOOST_VERSION "1.83.0" CACHE STRING "Boost version")
 
 message(STATUS "HAVE_TESTS:           ${HAVE_TESTS}")
 message(STATUS "HAVE_PYTHON_BINDINGS: ${HAVE_PYTHON_BINDINGS}")
@@ -146,6 +146,18 @@ FetchContent_Declare(
     URL https://github.com/Neargye/magic_enum/archive/3d1f6a5a2a3fbcba077e00ad0ccc2dd9fefc2ca7.zip # v0.7.3
 )
 FetchContent_MakeAvailable(magic_enum)
+
+# # Capnproto
+FetchContent_Declare(
+    CapnProto
+    GIT_REPOSITORY https://github.com/capnproto/capnproto
+    GIT_TAG v1.0.1
+)
+set(CapnProto_CXXFLAGS "-Wno-deprecated")
+set(CapnProto_BUILD_TESTING OFF CACHE INTERNAL "")
+set(CapnProto_CAPNP_LITE ON CACHE INTERNAL "")
+FetchContent_MakeAvailable(CapnProto)
+
 
 # S3
 if(DEFINED ENV{AWS_SDK_INSTALL_DIR})

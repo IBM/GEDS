@@ -23,109 +23,26 @@
 #include <absl/status/statusor.h>
 #include <boost/asio/thread_pool.hpp>
 
-#include "ConcurrentMap.h"
-#include "ConcurrentSet.h"
-#include "FileTransferService.h"
-#include "GEDSConfig.h"
 #include "GEDSFileHandle.h"
 #include "GEDSFileStatus.h"
-#include "GEDSInternal.h"
-#include "GEDSLocalFileHandle.h"
-#include "HttpServer.h"
-#include "MetadataService.h"
-#include "Object.h"
-#include "ObjectStoreConfig.h"
-#include "Path.h"
 #include "RWConcurrentObjectAdaptor.h"
-#include "S3Endpoint.h"
-#include "S3ObjectStores.h"
-#include "Server.h"
-#include "Statistics.h"
-#include "StorageCounter.h"
-#include "TcpTransport.h"
 
 const char Default_GEDSFolderDelimiter = '/';
 
 class GEDSFile;
 
 class GEDS : public std::enable_shared_from_this<GEDS>, utility::RWConcurrentObjectAdaptor {
-  GEDSConfig _config;
-
-public:
-  const GEDSConfig &config() const { return _config; }
 
 protected:
-  /**
-   * @brief GEDS Server instance that allows file transfers.
-   */
-  geds::Server _server;
-
-  /**
-   * @brief GEDS Service state.
-   */
-  std::atomic<geds::ServiceState> _state{geds::ServiceState::Stopped};
-
-  /**
-   * @brief Metadata service.
-   */
-  geds::MetadataService _metadataService;
-
-  /**
-   * @brief GEDS local directory path. Folder/path-prefix which stores all local GEDS data.
-   *
-   */
-  const std::string _pathPrefix;
-  mutable std::atomic<size_t> _fileNameCounter;
-  mutable utility::ConcurrentMap<std::string, size_t> _fileNames;
-
-  /**
-   * @brief URI for Local Host.
-   */
-  std::string _hostURI;
-  std::string _hostname;
-
-  /**
-   * @brief Filehandles known to the local GEDS instance.
-   */
-  utility::ConcurrentMap<utility::Path, std::shared_ptr<GEDSFileHandle>, std::less<>> _fileHandles;
-  inline utility::Path getPath(const std::string &bucket, const std::string &key) {
-    return {bucket + "/" + key};
-  }
-  utility::ConcurrentMap<std::string, std::shared_ptr<geds::FileTransferService>> _fileTransfers;
-
-  utility::ConcurrentSet<std::string> _knownBuckets;
-
-  geds::s3::ObjectStores _objectStores;
-
-  std::shared_ptr<geds::StatisticsCounter> _statisticsFilesOpened =
-      geds::Statistics::createCounter("GEDS: files opened");
-  std::shared_ptr<geds::StatisticsCounter> _statisticsFilesCreated =
-      geds::Statistics::createCounter("GEDS: files created");
-
-  geds::HttpServer _httpServer;
-
-  boost::asio::thread_pool _ioThreadPool;
-  std::thread _storageMonitoringThread;
-  void startStorageMonitoringThread();
-
-  geds::StorageCounter _storageCounters;
-  geds::StorageCounter _memoryCounters;
-
-  std::thread _pubSubStreamThread;
-  void startPubSubStreamThread();
+  GEDS() = default;
 
 public:
   const std::string uuid;
 
   /**
-   * @brief GEDS CTOR. Note: This CTOR needs to be wrapped in a SHARED_POINTER!
-   */
-  GEDS(GEDSConfig &&argConfig);
-
-  /**
    * @brief Constructor wrapper which forces a shared_ptr.
    */
-  [[nodiscard]] static std::shared_ptr<GEDS> factory(GEDSConfig config);
+  [[nodiscard]] static std::shared_ptr<GEDS> factory();
 
   virtual ~GEDS();
 
@@ -138,35 +55,6 @@ public:
    * @brief Stop GEDS.
    */
   absl::Status stop();
-
-  /**
-   * @brief Check if the bucket name is allowed.
-   * In order to ensure compatibility with S3 we make sure that a bucket name
-   * - Consists of only lower case ASCII characers, numbers, dots and hypens.
-   * - The bucket name must begin and end with a letter or number.
-   * - The bucket must be at least 3 characters long.
-   */
-  static absl::Status isValidBucketName(const std::string &bucket);
-
-  /**
-   * @brief Validate the name of the key.
-   * - Keys shall not start with `/`.
-   * - A length of zero is not allowed.
-   * - Keys are not allowed to end with `/`.
-   * - `/../` as part of a key is not allowed.
-   */
-  static absl::Status isValidKeyName(const std::string &key);
-
-  /**
-   * @brief Validate the name of bucket and key.
-   */
-  static absl::Status isValid(const std::string &bucket, const std::string &key);
-
-  /**
-   * @brief Parse the object name and split it into bucket and key.
-   */
-  static absl::StatusOr<std::pair<std::string, std::string>>
-  parseObjectName(const std::string &objectName);
 
   /**
    * @brief Create object located at bucket/key.
@@ -294,39 +182,11 @@ public:
   absl::Status deleteObjectPrefix(const std::string &bucket, const std::string &prefix);
 
   /**
-   * @brief Compute the path to the files stored in `_pathPrefix` folder.
-   */
-  std::string getLocalPath(const std::string &bucket, const std::string &key) const;
-  std::string getLocalPath(const GEDSFile &file) const;
-
-  /**
-   * @brief Tcp inter-node object transport service.
-   *
-   */
-  std::shared_ptr<geds::TcpTransport> _tcpTransport;
-
-  /**
    * @brief Register an object store configuration with GEDS.
    */
   absl::Status registerObjectStoreConfig(const std::string &bucket, const std::string &endpointUrl,
                                          const std::string &accessKey,
                                          const std::string &secretKey);
-
-  /**
-   * @brief Sync object store configs.
-   */
-  absl::Status syncObjectStoreConfigs();
-
-  absl::StatusOr<std::shared_ptr<geds::s3::Endpoint>> getS3Endpoint(const std::string &s3Bucket);
-  absl::StatusOr<std::shared_ptr<geds::FileTransferService>>
-  getFileTransferService(const std::string &hostname);
-
-  void relocate(bool force = false);
-  void relocate(std::vector<std::shared_ptr<GEDSFileHandle>> &relocatable, bool force = false);
-  void relocate(std::shared_ptr<GEDSFileHandle> handle, bool force = false);
-
-  absl::Status subscribe(const geds::SubscriptionEvent &event);
-  absl::Status unsubscribe(const geds::SubscriptionEvent &event);
 };
 
 #endif // GEDS_GEDS_H

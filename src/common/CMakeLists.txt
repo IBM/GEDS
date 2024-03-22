@@ -7,6 +7,8 @@
 set(SOURCES
     DirectoryMarker.cpp
     DirectoryMarker.h
+    Filesystem.cpp
+    Filesystem.h
     GEDSFileStatus.h
 )
 
@@ -18,6 +20,12 @@ target_compile_definitions(geds_common
         "HAVE_RDMA=$<BOOL:${HAVE_RDMA}>"
         _POSIX_C_SOURCE=200809L
 )
+
+target_link_libraries(
+        geds_common PUBLIC 
+        absl::status
+)
+
 target_include_directories(geds_common
         PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}

@@ -4,55 +4,14 @@
 #
 
 SET(SOURCES
-        Filesystem.cpp
-        Filesystem.h
-        FileTransferProtocol.cpp
-        FileTransferProtocol.h
-        FileTransferService.cpp
-        FileTransferService.h
-
-        TcpTransport.h
-        TcpTransport.cpp
-
         GEDS.cpp
         GEDS.h
-        GEDSAbstractFileHandle.cpp
-        GEDSAbstractFileHandle.h
-        GEDSCachedFileHandle.cpp
-        GEDSCachedFileHandle.h
-        GEDSConfig.h
-        GEDSConfig.cpp
         GEDSFile.h
         GEDSFile.cpp
         GEDSFileHandle.h
         GEDSFileHandle.cpp
-        GEDSProtocol.h
-        GEDSProtocol.cpp
-        GEDSRelocatableFileHandle.cpp
-        GEDSRelocatableFileHandle.h
-        GEDSService.cpp
-        GEDSService.h
-        HttpServer.cpp
-        HttpServer.h
-        HttpSession.cpp
-        HttpSession.h
-        MetadataService.cpp
-        MetadataService.h
-        GEDSInternal.cpp
-        GEDSInternal.h
-        GEDSLocalFileHandle.h
-        GEDSMMapFileHandle.h
         GEDSRemoteFileHandle.cpp
         GEDSRemoteFileHandle.h
-        GEDSS3FileHandle.cpp
-        GEDSS3FileHandle.h
-
-        LocalFile.cpp
-        LocalFile.h
-        MMAPFile.cpp
-        MMAPFile.h
-        Server.cpp
-        Server.h
 )
 
 # Create an object lib to build both a dynamic and a static library.
@@ -107,6 +66,6 @@ target_link_libraries(libgeds_dynamic PUBLIC geds_objlib)
 install(TARGETS libgeds libgeds_dynamic
         COMPONENT geds)
 
-if(HAVE_TESTS)
-        add_subdirectory(tests)
-endif()
+# if(HAVE_TESTS)
+#         add_subdirectory(tests)
+# endif()

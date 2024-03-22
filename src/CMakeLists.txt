@@ -14,6 +14,7 @@ add_subdirectory(s3)
 add_subdirectory(libgeds)
 
 # Binaries
+add_subdirectory(daemon)
 add_subdirectory(benchmarks)
 add_subdirectory(geds)
 add_subdirectory(geds_cmd)
