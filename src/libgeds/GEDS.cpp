@@ -659,7 +659,7 @@ absl::StatusOr<GEDSFileStatus> GEDS::status(const std::string &bucket, const std
   }
 
   // Location is most likely a file.
-  auto obj = _metadataService.lookup(bucket, key);
+  auto obj = _metadataService.lookup(bucket, key, true /* invalidate */);
   if (obj.ok()) {
     return GEDSFileStatus{.key = key, .size = obj->info.size, .isDirectory = false};
   }
