@@ -249,6 +249,8 @@ absl::Status MetadataService::createObject(const geds::Object &obj) {
 absl::Status MetadataService::updateObject(const geds::Object &obj) {
   METADATASERVICE_CHECK_CONNECTED;
 
+  (void)_mdsCache.updateObject(obj);
+
   geds::rpc::Object request;
   auto id = request.mutable_id();
   id->set_bucket(obj.id.bucket);
