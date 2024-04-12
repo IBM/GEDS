@@ -45,7 +45,9 @@ PYBIND11_MODULE(pygeds, m) {
       .def_readwrite("port_http_server", &GEDSConfig::portHttpServer)
       .def_readwrite("local_storage_path", &GEDSConfig::localStoragePath)
       .def_readwrite("cache_block_size", &GEDSConfig::cacheBlockSize)
-      .def_readwrite("cache_objects_from_s3", &GEDSConfig::cache_objects_from_s3);
+      .def_readwrite("cache_objects_from_s3", &GEDSConfig::cache_objects_from_s3)
+      .def_readwrite("available_local_storage", &GEDSConfig::available_local_storage)
+      .def_readwrite("available_local_memory", &GEDSConfig::available_local_memory);
 
   py::class_<GEDS, std::shared_ptr<GEDS>>(m, "GEDS")
       .def_property_readonly_static(
