@@ -225,8 +225,15 @@ class GEDSInstance(object):
             if BLOCK_SIZE is not None:
                 config.cache_block_size = int(BLOCK_SIZE)
 
-            # Init GEDS
+            GEDS_AVAILABLE_STORAGE = os.environ.get("GEDS_AVAILABLE_STORAGE")
+            if GEDS_AVAILABLE_STORAGE is not None:
+                config.available_local_storage = int(GEDS_AVAILABLE_STORAGE)
 
+            GEDS_AVAILABLE_MEMORY = os.environ.get("GEDS_AVAILABLE_MEMORY")
+            if GEDS_AVAILABLE_MEMORY is not None:
+                config.available_local_memory = int(GEDS_AVAILABLE_MEMORY)
+
+            # Init GEDS
             cls._geds = pygeds.GEDS(config)
             try:
                 cls._geds.start()
@@ -266,9 +273,11 @@ class GEDSInstance(object):
     def object_store_mapped(cls, bucket: str) -> bool:
         return bucket in cls._known_s3_buckets
 
+
 @atexit.register
 def handle_shutdown():
     GEDSInstance.handle_shutdown()
+
 
 def register_object_store(
     bucket: str, endpoint_url: str, access_key: str, secret_key: str
