@@ -9,6 +9,7 @@
 import io
 import os
 import threading
+import atexit
 from typing import Iterable
 
 try:
@@ -59,7 +60,7 @@ class GEDSRawInputBase(io.RawIOBase):
 
     def close(self) -> None:
         """Flush and close this stream"""
-        if self.is_writeable:
+        if not self.closed and self.is_writeable:
             self.file.seal()
         self.file = None
 
@@ -72,7 +73,7 @@ class GEDSRawInputBase(io.RawIOBase):
         return self.file is None
 
     def flush(self):
-        if self.is_writeable:
+        if not self.closed and self.is_writeable:
             self.file.seal()
 
     def isatty(self) -> bool:
@@ -87,6 +88,10 @@ class GEDSRawInputBase(io.RawIOBase):
     def checkReadable(self):
         if not self.readable:
             raise OSError("The file is not readable")
+
+    def checkClosed(self):
+        if self.closed:
+            raise IOError("the file is already closed!")
 
     def seekable(self) -> bool:
         return True
@@ -112,6 +117,7 @@ class GEDSRawInputBase(io.RawIOBase):
         of file. If the object is in non-blocking mode and no bytes are
         available, None is returned.
         """
+        self.checkClosed()
         self.checkReadable()
         maxcount = self.file.size - self.position
         assert maxcount >= 0
@@ -128,11 +134,16 @@ class GEDSRawInputBase(io.RawIOBase):
 
     def readinto(self, buffer):
         self.checkReadable()
+        if self.closed:
+            return -1
         count = self.file.read(buffer, self.position, len(buffer))
         self.position += count
         return count
 
     def readline(self, limit: int = -1) -> bytes:
+        if self.closed:
+            return -1
+
         previous_position = self.position
         print("readline " + limit)
         if limit != -1:
@@ -154,12 +165,15 @@ class GEDSRawInputBase(io.RawIOBase):
         return line.getvalue()
 
     def readall(self) -> bytes:
+        self.checkClosed()
+
         length = self.file.size - self.position
         buffer = bytearray(length)
         count = self.readinto(buffer)
         return buffer[0:count]
 
     def write(self, b):
+        self.checkClosed()
         if not self.is_writeable:
             raise IOError("write is not allowed: the file is not writeable!")
         self.file.write(b, self.position, len(b))
@@ -167,11 +181,13 @@ class GEDSRawInputBase(io.RawIOBase):
         return len(b)
 
     def writelines(self, lines: Iterable) -> None:
+        self.checkClosed()
         for line in lines:
             self.write(line)
             self.write(self.line_terminator)
 
     def truncate(self, size=None) -> int:
+        self.checkClosed()
         if not self.is_writeable:
             raise IOError("truncate not allowed: the file is not writeable!")
         if size is None:
@@ -225,6 +241,12 @@ class GEDSInstance(object):
         return cls._geds
 
     @classmethod
+    def handle_shutdown(cls) -> None:
+        if cls._geds != None:
+            print("Stopping GEDS --> Spilling data.")
+            cls._geds.stop()
+
+    @classmethod
     def register_object_store(
         cls, bucket: str, endpoint_url: str, access_key: str, secret_key: str
     ):
@@ -244,6 +266,9 @@ class GEDSInstance(object):
     def object_store_mapped(cls, bucket: str) -> bool:
         return bucket in cls._known_s3_buckets
 
+@atexit.register
+def handle_shutdown():
+    GEDSInstance.handle_shutdown()
 
 def register_object_store(
     bucket: str, endpoint_url: str, access_key: str, secret_key: str

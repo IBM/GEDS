@@ -49,7 +49,7 @@ if [ "${TRAVIS:-""}" == "true" ]; then
         -e BUILD_TARGET=${DOCKER_BUILD_TARGET} \
         -e BUILD_TYPE=${CMAKE_BUILD_TYPE} \
         -e GEDS_VERSION=${GEDS_VERSION} \
-        -e GEDS_INSTALL_PREFIX="/install/" \
+        -e GEDS_INSTALL_PREFIX="/install/geds" \
         -e ARTIFACTS_PREFIX="/src/geds/travis_artifacts/" \
         -w "/build/geds" \
         -t docker.io/python:3.10-buster \

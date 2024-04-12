@@ -24,12 +24,12 @@ BUILD_TARGET=$(echo ${BUILD_TARGET} | awk '{print tolower($0)}')
 BUILD_TYPE=$(echo ${BUILD_TYPE} | awk '{print tolower($0)}')
 
 ARTIFACTS_DIR="${ARTIFACTS_DIR:-"${ROOT}/travis_artifacts"}"
-GEDS_INSTALL_PREFIX=${GEDS_INSTALL_PREFIX:-"${ROOT}/travis_install"}
+GEDS_INSTALL_PREFIX=${GEDS_INSTALL_PREFIX:-"${ROOT}/travis_install/geds"}
 BUILD_LOC=$(mktemp -d /tmp/gedspy_XXX)
 
 cp -a src/python/geds_smart_open/ "${BUILD_LOC}/"
 cd "${BUILD_LOC}/geds_smart_open"
-cp "${GEDS_INSTALL_PREFIX}/geds/python/pygeds.so" src/geds_smart_open/
+cp "${GEDS_INSTALL_PREFIX}/python/pygeds.so" src/geds_smart_open/
 sed -i "s/SNAPSHOT/${GEDS_VERSION}/g" "pyproject.toml"
 
 pip install 'build[virtualenv]'
