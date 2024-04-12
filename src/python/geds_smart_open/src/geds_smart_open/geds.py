@@ -233,6 +233,12 @@ class GEDSInstance(object):
             if GEDS_AVAILABLE_MEMORY is not None:
                 config.available_local_memory = int(GEDS_AVAILABLE_MEMORY)
 
+            GEDS_RELOCATE_WHEN_STOPPING = os.environ.get("GEDS_RELOCATE_WHEN_STOPPING")
+            if GEDS_RELOCATE_WHEN_STOPPING is not None:
+                config.force_relocation_when_stopping = (
+                    GEDS_RELOCATE_WHEN_STOPPING.lower() in ("true", "1", "t")
+                )
+
             # Init GEDS
             cls._geds = pygeds.GEDS(config)
             try:
