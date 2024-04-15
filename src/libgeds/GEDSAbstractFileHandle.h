@@ -160,11 +160,19 @@ public:
 
   absl::StatusOr<int> rawFd() const override {
     auto lock = lockShared();
+    auto s = _file.fsync();
+    if (!s.ok()) {
+      return s;
+    }
     return _file.rawFd();
   }
 
   absl::StatusOr<uint8_t *> rawPtr() override {
     auto lock = lockShared();
+    auto s = _file.fsync();
+    if (!s.ok()) {
+      return s;
+    }
     return _file.rawPtr();
   }
 
@@ -186,6 +194,12 @@ public:
           "Unable to relocate " + identifier + " reason: No tier configured for " + bucket;
       LOG_ERROR(message);
       return absl::UnavailableError(message);
+    }
+
+    // Sync file
+    auto syncStatus = _file.fsync();
+    if (!syncStatus.ok()) {
+      return syncStatus;
     }
 
     absl::Status s3Put;
