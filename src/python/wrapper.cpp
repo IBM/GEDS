@@ -59,33 +59,41 @@ PYBIND11_MODULE(pygeds, m) {
           "create",
           [](GEDS &self, const std::string &bucket, const std::string &key, bool overwrite)
               -> absl::StatusOr<GEDSFile> { return self.create(bucket, key, overwrite); },
-          py::arg("bucket"), py::arg("key"), py::arg("overwrite") = true)
-      .def("create_bucket", &GEDS::createBucket)
-      .def("mkdirs",
-           [](GEDS &self, const std::string &bucket, const std::string &path) -> absl::Status {
-             return self.mkdirs(bucket, path);
-           })
-      .def("list",
-           [](GEDS &self, const std::string &bucket, const std::string &key)
-               -> absl::StatusOr<std::vector<GEDSFileStatus>> { return self.list(bucket, key); })
-      .def("list_folder", &GEDS::listAsFolder)
-      .def("status",
-           [](GEDS &self, const std::string &bucket, const std::string &key)
-               -> absl::StatusOr<GEDSFileStatus> { return self.status(bucket, key); })
+          py::arg("bucket"), py::arg("key"), py::arg("overwrite") = true,
+          py::call_guard<py::gil_scoped_release>())
+      .def("create_bucket", &GEDS::createBucket, py::call_guard<py::gil_scoped_release>())
+      .def(
+          "mkdirs",
+          [](GEDS &self, const std::string &bucket, const std::string &path) -> absl::Status {
+            return self.mkdirs(bucket, path);
+          },
+          py::call_guard<py::gil_scoped_release>())
+      .def(
+          "list",
+          [](GEDS &self, const std::string &bucket, const std::string &key)
+              -> absl::StatusOr<std::vector<GEDSFileStatus>> { return self.list(bucket, key); },
+          py::call_guard<py::gil_scoped_release>())
+      .def("list_folder", &GEDS::listAsFolder, py::call_guard<py::gil_scoped_release>())
+      .def(
+          "status",
+          [](GEDS &self, const std::string &bucket, const std::string &key)
+              -> absl::StatusOr<GEDSFileStatus> { return self.status(bucket, key); },
+          py::call_guard<py::gil_scoped_release>())
       .def(
           "open",
           [](GEDS &self, const std::string &bucket, const std::string &key,
              bool retry) -> absl::StatusOr<GEDSFile> { return self.open(bucket, key, retry); },
           py::arg("bucket"), py::arg("key"), py::arg("retry") = false)
-      .def("delete", &GEDS::deleteObject)
-      .def("delete_prefix", &GEDS::deleteObjectPrefix)
+      .def("delete", &GEDS::deleteObject, py::call_guard<py::gil_scoped_release>())
+      .def("delete_prefix", &GEDS::deleteObjectPrefix, py::call_guard<py::gil_scoped_release>())
       .def(
           "rename",
           [](GEDS &self, const std::string &srcBucket, const std::string &srcKey,
              const std::string &destBucket, const std::string &destKey) -> absl::Status {
             return self.rename(srcBucket, srcKey, destBucket, destKey);
           },
-          py::arg("src_bucket"), py::arg("src_key"), py::arg("dest_bucket"), py::arg("dest_key"))
+          py::arg("src_bucket"), py::arg("src_key"), py::arg("dest_bucket"), py::arg("dest_key"),
+          py::call_guard<py::gil_scoped_release>())
       .def(
           "rename_prefix",
           [](GEDS &self, const std::string &srcBucket, const std::string &srcPrefix,
@@ -93,14 +101,15 @@ PYBIND11_MODULE(pygeds, m) {
             return self.renamePrefix(srcBucket, srcPrefix, destBucket, destPrefix);
           },
           py::arg("src_bucket"), py::arg("src_prefix"), py::arg("dest_bucket"),
-          py::arg("dest_prefix"))
+          py::arg("dest_prefix"), py::call_guard<py::gil_scoped_release>())
       .def(
           "copy",
           [](GEDS &self, const std::string &srcBucket, const std::string &srcKey,
              const std::string &destBucket, const std::string &destKey) -> absl::Status {
             return self.copy(srcBucket, srcKey, destBucket, destKey);
           },
-          py::arg("src_bucket"), py::arg("src_key"), py::arg("dest_bucket"), py::arg("dest_key"))
+          py::arg("src_bucket"), py::arg("src_key"), py::arg("dest_bucket"), py::arg("dest_key"),
+          py::call_guard<py::gil_scoped_release>())
       .def(
           "copy_prefix",
           [](GEDS &self, const std::string &srcBucket, const std::string &srcPrefix,
@@ -108,43 +117,53 @@ PYBIND11_MODULE(pygeds, m) {
             return self.copyPrefix(srcBucket, srcPrefix, destBucket, destPrefix);
           },
           py::arg("src_bucket"), py::arg("src_prefix"), py::arg("dest_bucket"),
-          py::arg("dest_prefix"))
-      .def("local_path",
-           [](GEDS &self, GEDSFile &file) -> std::string { return self.getLocalPath(file); })
+          py::arg("dest_prefix"), py::call_guard<py::gil_scoped_release>())
+      .def(
+          "local_path",
+          [](GEDS &self, GEDSFile &file) -> std::string { return self.getLocalPath(file); },
+          py::call_guard<py::gil_scoped_release>())
       .def("registerObjectStoreConfig", &GEDS::registerObjectStoreConfig, py::arg("bucket"),
-           py::arg("endpointUrl"), py::arg("accessKey"), py::arg("secretKey"))
-      .def("syncObjectStoreConfigs", &GEDS::syncObjectStoreConfigs)
+           py::arg("endpointUrl"), py::arg("accessKey"), py::arg("secretKey"),
+           py::call_guard<py::gil_scoped_release>())
+      .def("syncObjectStoreConfigs", &GEDS::syncObjectStoreConfigs,
+           py::call_guard<py::gil_scoped_release>())
       .def(
           "relocate", [](GEDS &self, bool force) { self.relocate(force); },
-          py::arg("force") = false);
+          py::arg("force") = false, py::call_guard<py::gil_scoped_release>());
 
   py::class_<GEDSFile, std::shared_ptr<GEDSFile>>(m, "GEDSFile")
       .def_property_readonly("size", &GEDSFile::size)
       .def_property_readonly("writeable", &GEDSFile::isWriteable)
       .def_property_readonly("identifier", &GEDSFile::identifier)
-      .def_property_readonly("metadata", &GEDSFile::metadata)
+      .def_property_readonly("metadata", &GEDSFile::metadata,
+                             py::call_guard<py::gil_scoped_release>())
       .def_property_readonly("metadata_bytes",
                              [](GEDSFile &file) -> std::optional<py::bytes> {
-                               auto s = file.metadata();
+                               std::optional<std::string> s;
+                               {
+                                 py::gil_scoped_release release;
+                                 s = file.metadata();
+                               }
                                if (s->empty()) {
                                  return std::nullopt;
                                }
                                return std::make_optional(py::bytes(s.value()));
                              })
-      .def("truncate", &GEDSFile::truncate)
-      .def("raw_ptr", &GEDSFile::rawPtr)
-      .def("seal", &GEDSFile::seal)
+      .def("truncate", &GEDSFile::truncate, py::call_guard<py::gil_scoped_release>())
+      .def("raw_ptr", &GEDSFile::rawPtr, py::call_guard<py::gil_scoped_release>())
+      .def("seal", &GEDSFile::seal, py::call_guard<py::gil_scoped_release>())
       .def(
           "set_metadata",
           [](GEDSFile &self, std::optional<std::string> metadata, bool seal) -> absl::Status {
+            py::gil_scoped_release release;
             return self.setMetadata(metadata, seal);
           },
           py::arg("metadata"), py::arg("seal") = true)
       .def(
           "set_metadata",
-          [](GEDSFile &self, const py::array_t<uint8_t> &buffer, std::optional<size_t> lengthArg,
+          [](GEDSFile &self, const py::buffer buffer, std::optional<size_t> lengthArg,
              bool seal) -> absl::Status {
-            py::buffer_info info = buffer.request(false);
+            py::buffer_info info = buffer.request();
             if (info.ndim != 1) {
               return absl::FailedPreconditionError("Buffer has wrong dimensions!");
             }
@@ -152,6 +171,7 @@ PYBIND11_MODULE(pygeds, m) {
             if (lengthArg.has_value()) {
               length = std::min(length, lengthArg.value());
             }
+            py::gil_scoped_release release;
             return self.setMetadata(static_cast<const uint8_t *>(info.ptr), length, seal);
           },
           py::arg("buffer"), py::arg("length") = std::nullopt, py::arg("seal") = true)
@@ -160,11 +180,12 @@ PYBIND11_MODULE(pygeds, m) {
           [](GEDSFile &self, const char *buffer, std::optional<size_t> lengthArg,
              bool seal) -> absl::Status {
             size_t length = lengthArg.value_or(strlen(buffer));
+            py::gil_scoped_release release;
             return self.setMetadata(reinterpret_cast<const uint8_t *>(buffer), length, seal);
           },
           py::arg("buffer"), py::arg("length") = std::nullopt, py::arg("seal") = true)
       .def("read",
-           [](GEDSFile &self, py::array_t<uint8_t> &buffer, size_t position,
+           [](GEDSFile &self, py::buffer buffer, size_t position,
               size_t length) -> absl::StatusOr<size_t> {
              py::buffer_info info = buffer.request(true);
              if (info.ndim != 1) {
@@ -174,17 +195,19 @@ PYBIND11_MODULE(pygeds, m) {
                return absl::FailedPreconditionError("The buffer does not have sufficient space!");
              }
              length = std::min<size_t>(info.size, length);
+             py::gil_scoped_release release;
              return self.read(static_cast<uint8_t *>(info.ptr), position, length);
            })
       .def("read",
            [](GEDSFile &self, char *array, size_t position,
               size_t length) -> absl::StatusOr<size_t> {
+             py::gil_scoped_release release;
              return self.read(reinterpret_cast<uint8_t *>(array), position, length);
            })
       .def("write",
-           [](GEDSFile &self, const py::array_t<uint8_t> &buffer, size_t position,
+           [](GEDSFile &self, const py::buffer buffer, size_t position,
               size_t length) -> absl::Status {
-             py::buffer_info info = buffer.request(false);
+             py::buffer_info info = buffer.request();
              if (info.ndim != 1) {
                return absl::FailedPreconditionError("Buffer has wrong dimensions!");
              }
@@ -192,10 +215,12 @@ PYBIND11_MODULE(pygeds, m) {
                return absl::FailedPreconditionError("The buffer does not have sufficient space!");
              }
              length = std::min<size_t>(info.size, length);
+             py::gil_scoped_release release;
              return self.write(static_cast<const uint8_t *>(info.ptr), position, length);
            })
       .def("write",
            [](GEDSFile &self, const char *array, size_t position, size_t length) -> absl::Status {
+             py::gil_scoped_release release;
              return self.write(reinterpret_cast<const uint8_t *>(array), position, length);
            });
 
