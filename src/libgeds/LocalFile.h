@@ -49,7 +49,7 @@ public:
 
   void notifyUnused();
 
-  absl::Status fsync();
+  absl::Status fsync() const;
 
   [[nodiscard]] size_t size() const { return _size; }
   [[nodiscard]] size_t localStorageSize() const { return _size; }

@@ -18,6 +18,11 @@
 #include "Filesystem.h"
 #include "Logging.h"
 
+#define CHECK_FILE_OPEN                                                                            \
+  if (_fd < 0) {                                                                                   \
+    return absl::UnavailableError("The file at " + _path + " is not open!");                       \
+  }
+
 namespace geds::filesystem {
 
 static const size_t MMAP_pageSize = getpagesize();
@@ -53,9 +58,7 @@ MMAPFile::~MMAPFile() {
 }
 
 absl::Status MMAPFile::increaseMmap(size_t requestSize) {
-  if (_fd < 0) {
-    return absl::UnknownError("No valid file descriptor for " + _path);
-  }
+  CHECK_FILE_OPEN;
 
   if (_mmapSize < requestSize) {
     size_t nPages = requestSize / MMAP_pageSize + (requestSize % MMAP_pageSize > 0 ? 1 : 0);
@@ -132,9 +135,8 @@ absl::StatusOr<uint8_t *> MMAPFile::rawPtr() {
 }
 
 absl::StatusOr<int> MMAPFile::rawFd() const {
-  if (_fd < 0) {
-    return absl::UnavailableError("The fd for the file " + _path + " is not available");
-  }
+  CHECK_FILE_OPEN;
+
   return _fd;
 }
 
@@ -241,6 +243,20 @@ absl::Status MMAPFile::reopen() {
     }
     _mmapPtr = static_cast<uint8_t *>(m);
     _mmapSize = mmapSize;
+  }
+  return absl::OkStatus();
+}
+
+absl::Status MMAPFile::fsync() const {
+  CHECK_FILE_OPEN;
+
+  int e = 0;
+  do {
+    e = ::fsync(_fd);
+  } while (e != 0 && errno == EINTR);
+  if (e != 0) {
+    int err = errno;
+    return absl::UnknownError("Unable to fsync " + _path + ": " + strerror(err));
   }
   return absl::OkStatus();
 }

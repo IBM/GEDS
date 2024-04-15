@@ -48,6 +48,8 @@ public:
 
   void notifyUnused();
 
+  absl::Status fsync() const;
+
   [[nodiscard]] const std::string &path() const { return _path; }
 
   [[nodiscard]] size_t size() const { return _size; }

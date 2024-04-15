@@ -68,7 +68,7 @@ void LocalFile::notifyUnused() {
   // NOOP.
 }
 
-absl::Status LocalFile::fsync() {
+absl::Status LocalFile::fsync() const {
   CHECK_FILE_OPEN
 
   int e = 0;
