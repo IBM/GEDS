@@ -188,25 +188,27 @@ PYBIND11_MODULE(pygeds, m) {
             return self.setMetadata(reinterpret_cast<const uint8_t *>(buffer), length, seal);
           },
           py::arg("buffer"), py::arg("length") = std::nullopt, py::arg("seal") = true)
-      .def("read",
-           [](GEDSFile &self, py::buffer buffer, size_t position,
-              size_t length) -> absl::StatusOr<size_t> {
+      .def("read1",
+           [](GEDSFile &self, size_t position,
+              size_t length) -> absl::StatusOr<py::array_t<uint8_t>> {
+             auto result = py::array_t<uint8_t>(length);
+             py::buffer_info buffer = result.request(true);
+             py::gil_scoped_release release;
+             auto status = self.read(static_cast<uint8_t *>(buffer.ptr), position, length);
+             if (!status.ok()) {
+               return status.status();
+             }
+             result.resize({*status});
+             return result;
+           })
+      .def("readinto1",
+           [](GEDSFile &self, py::buffer buffer, size_t position) -> absl::StatusOr<size_t> {
              py::buffer_info info = buffer.request(true);
              if (info.ndim != 1) {
                return absl::FailedPreconditionError("Buffer has wrong dimensions!");
              }
-             if ((size_t)info.size < length) {
-               return absl::FailedPreconditionError("The buffer does not have sufficient space!");
-             }
-             length = std::min<size_t>(info.size, length);
              py::gil_scoped_release release;
-             return self.read(static_cast<uint8_t *>(info.ptr), position, length);
-           })
-      .def("read",
-           [](GEDSFile &self, char *array, size_t position,
-              size_t length) -> absl::StatusOr<size_t> {
-             py::gil_scoped_release release;
-             return self.read(reinterpret_cast<uint8_t *>(array), position, length);
+             return self.read(static_cast<uint8_t *>(info.ptr), position, info.size);
            })
       .def("write",
            [](GEDSFile &self, const py::buffer buffer, size_t position,
