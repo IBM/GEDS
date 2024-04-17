@@ -49,6 +49,7 @@ class GEDSRawInputBase(io.RawIOBase):
         self.bucket = bucket
         self.key = key
         self.position = 0
+        self._size = file.size
         self.file = file
         self.raw = None
         self.line_terminator = line_terminator
@@ -66,7 +67,7 @@ class GEDSRawInputBase(io.RawIOBase):
 
     @property
     def size(self) -> int:
-        return self.file.size
+        return self._size
 
     @property
     def closed(self) -> bool:
@@ -102,7 +103,7 @@ class GEDSRawInputBase(io.RawIOBase):
         elif whence == io.SEEK_CUR:
             self.position += offset
         elif whence == io.SEEK_END:
-            self.position = self.file.size + offset
+            self.position = self.size + offset
         return self.position
 
     def tell(self) -> int:
@@ -119,24 +120,22 @@ class GEDSRawInputBase(io.RawIOBase):
         """
         self.checkClosed()
         self.checkReadable()
-        maxcount = self.file.size - self.position
+        maxcount = self.size - self.position
         assert maxcount >= 0
         count = limit
         if limit == 0:
             return b""
         if limit < 0 or limit > maxcount:
             count = maxcount
-        buffer = bytearray(count)
-        count = self.readinto(buffer)
-        if count < len(buffer):
-            return buffer[0:count]
-        return buffer
+
+        count = maxcount - self.position
+        return self.file.read1(self.position, count)
 
     def readinto(self, buffer):
         self.checkReadable()
         if self.closed:
             return -1
-        count = self.file.read(buffer, self.position, len(buffer))
+        count = self.file.readinto1(buffer, self.position, len(buffer))
         self.position += count
         return count
 
@@ -148,13 +147,13 @@ class GEDSRawInputBase(io.RawIOBase):
         print("readline " + limit)
         if limit != -1:
             raise NotImplementedError("limits other than -1 not implemented yet")
-        buffer = bytearray(self.buffer_size)
+        # buffer = bytearray(self.buffer_size)
         line = io.BytesIO()
 
         while True:
             previous_position = self.position
-            count = self.readinto(buffer)
-            if count == 0:
+            buffer = self.file.read(self.position, self.buffer_size)
+            if len(buffer) == 0:
                 break
             index = buffer.find(self.line_terminator, 0)
             if index > 0:
@@ -167,7 +166,7 @@ class GEDSRawInputBase(io.RawIOBase):
     def readall(self) -> bytes:
         self.checkClosed()
 
-        length = self.file.size - self.position
+        length = self.size - self.position
         buffer = bytearray(length)
         count = self.readinto(buffer)
         return buffer[0:count]
@@ -290,6 +289,8 @@ def register_object_store(
 ):
     GEDSInstance.register_object_store(bucket, endpoint_url, access_key, secret_key)
 
+def relocate(force: bool = False):
+    GEDSInstance.get().relocate(force)
 
 def parse_uri(uri: str):
     path = uri.removeprefix("geds://")
@@ -328,10 +329,12 @@ def open(bucket: str, key: str, mode: str, client=None):
     if mode == constants.READ_BINARY:
         f = client.open(bucket, key)
     elif mode == constants.WRITE_BINARY:
-        try:
+        f = client.create(bucket, key, True)
+    elif mode == 'ab':
+        f = client.open(bucket, key)
+        if not f.writable():
+            client.copy(bucket, key, bucket, key)
             f = client.open(bucket, key)
-        except:
-            f = client.create(bucket, key)
     else:
         raise ValueError(f"Invalid argument for mode: {mode}")
     return GEDSRawInputBase(
