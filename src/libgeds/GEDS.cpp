@@ -300,18 +300,17 @@ GEDS::createAsFileHandle(const std::string &bucket, const std::string &key, bool
   }
 
   const auto path = getPath(bucket, key);
-  auto local_handle = GEDSLocalFileHandle::factory(shared_from_this(), bucket, key, std::nullopt);
-  if (!local_handle.ok()) {
-    return local_handle.status();
+  auto handle = GEDSLocalFileHandle::factory(shared_from_this(), bucket, key, std::nullopt);
+  if (!handle.ok()) {
+    return handle.status();
   }
-  auto handle = GEDSRelocatableFileHandle::factory(shared_from_this(), *local_handle);
 
   if (overwrite) {
-    _fileHandles.insertOrReplace(path, handle);
+    _fileHandles.insertOrReplace(path, *handle);
     return handle;
   }
-  auto newHandle = _fileHandles.insertOrExists(path, handle);
-  if (newHandle.get() != handle.get()) {
+  auto newHandle = _fileHandles.insertOrExists(path, *handle);
+  if (newHandle.get() != handle->get()) {
     return absl::AlreadyExistsError("The file " + path.name + "already exists!");
   }
   return newHandle;
@@ -863,11 +862,13 @@ void GEDS::relocate(bool force) {
   std::vector<std::shared_ptr<GEDSFileHandle>> relocatable;
 
   _fileHandles.forall([&relocatable, force](std::shared_ptr<GEDSFileHandle> &item) {
-    if (item->openCount() == 0 || force) {
+    if ((item->openCount() == 0 || force) && item->isRelocatable() && item->isValid()) {
       relocatable.push_back(item);
     }
   });
-  relocate(relocatable, force);
+  if (relocatable.size() > 0) {
+    relocate(relocatable, force);
+  }
 }
 
 void GEDS::relocate(std::vector<std::shared_ptr<GEDSFileHandle>> &relocatable, bool force) {
@@ -875,17 +876,23 @@ void GEDS::relocate(std::vector<std::shared_ptr<GEDSFileHandle>> &relocatable, b
     std::mutex mutex;
     std::condition_variable cv;
     std::atomic<size_t> nTasks;
+    std::atomic<int64_t> activeTasks;
   };
   auto h = std::make_shared<RelocateHelper>();
   {
     std::lock_guard lock(h->mutex);
     h->nTasks = relocatable.size();
+    h->activeTasks = 0;
   }
 
   LOG_INFO("Relocating ", relocatable.size(), " objects.");
 
   auto self = shared_from_this();
   for (auto fh : relocatable) {
+    if (!fh->isValid()) {
+      continue;
+    }
+    h->activeTasks += 1;
     boost::asio::post(_ioThreadPool, [self, fh, h, force]() {
       try {
         self->relocate(fh, force);
@@ -895,13 +902,14 @@ void GEDS::relocate(std::vector<std::shared_ptr<GEDSFileHandle>> &relocatable, b
       {
         std::lock_guard lock(h->mutex);
         h->nTasks -= 1;
+        h->activeTasks -= 1;
+        h->cv.notify_all();
       }
-      h->cv.notify_all();
     });
 
     const auto tp_size = _config.io_thread_pool_size;
     std::unique_lock lock(h->mutex);
-    h->cv.wait(lock, [h, tp_size]() { return h->nTasks <= (tp_size + 1); });
+    h->cv.wait(lock, [h, tp_size]() { return h->activeTasks <= ((int64_t)tp_size + 1); });
   }
   std::unique_lock lock(h->mutex);
   h->cv.wait(lock, [h]() { return h->nTasks == 0; });
@@ -911,9 +919,11 @@ void GEDS::relocate(std::vector<std::shared_ptr<GEDSFileHandle>> &relocatable, b
 void GEDS::relocate(std::shared_ptr<GEDSFileHandle> handle, bool force) {
   LOG_DEBUG(handle->identifier);
 
+  const auto path = getPath(handle->bucket, handle->key);
   auto lock = handle->lockFile();
-  if (handle->openCount() > 0 && !force) {
+  if ((handle->openCount() > 0 && !force) || !_fileHandles.exists(path)) {
     // File is open: Unable to relocate.
+    // Or the file does not exist anymore.
     return;
   }
 
@@ -922,11 +932,10 @@ void GEDS::relocate(std::shared_ptr<GEDSFileHandle> handle, bool force) {
   *stats += handle->localStorageSize();
 
   // Remove cached files.
-  const auto path = getPath(handle->bucket, handle->key);
   if (handle->key.starts_with(GEDSCachedFileHandle::CacheBlockMarker)) {
     auto status =
         _fileHandles.removeIf(path, [handle](const std::shared_ptr<GEDSFileHandle> &existing) {
-          return handle.get() == existing.get();
+          return handle.get() == existing.get() && handle->openCount() == 0;
         });
     if (status) {
       *stats += fsize;
@@ -938,6 +947,8 @@ void GEDS::relocate(std::shared_ptr<GEDSFileHandle> handle, bool force) {
   auto status = handle->relocate();
   if (status.ok()) {
     *stats += fsize;
+    // Replace filehandle.
+    _fileHandles.insertOrReplace(path, *status);
   }
 }
 
@@ -965,7 +976,7 @@ void GEDS::startStorageMonitoringThread() {
           auto memSize = fh->localMemorySize();
           storageUsed += storageSize;
           memoryUsed += memSize;
-          if (fh->isRelocatable() && fh->openCount() == 0) {
+          if (fh->isRelocatable() && fh->openCount() == 0 && fh->isValid()) {
             relocatable.push_back(fh);
           }
         }
