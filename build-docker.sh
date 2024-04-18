@@ -16,7 +16,7 @@ source "${ROOT}/DEPENDENCIES"
 GIT_REVISION=$(git rev-parse --short HEAD)
 git diff-files --quiet || GIT_REVISION="${GIT_REVISION}-dirty"
 
-GEDS_VERSION=${TRAVIS_TAG:-$(git describe --tags --match "v*" --dirty)}
+GEDS_VERSION=${GITHUB_TAG:-$(git describe --tags --match "v*" --dirty)}
 [[ "$GEDS_VERSION" =~ ^v ]] && GEDS_VERSION=$(echo $GEDS_VERSION | cut -c 2-)
 
 DOCKER_IMAGE_PREFIX=${DOCKER_IMAGE_PREFIX:-"zac32.zurich.ibm.com/zrlio/"}

@@ -13,7 +13,7 @@ cd "${SCRIPT_DIR}/../"
 ROOT="$(pwd)"
 source "${ROOT}/DEPENDENCIES"
 
-DOCKER_CACHE_DIR="${DOCKER_CACHE_DIR:-"${ROOT}/travis_cache"}"
+DOCKER_CACHE_DIR="${DOCKER_CACHE_DIR:-"${ROOT}/github_actions_cache"}"
 
 GIT_REVISION=$(git rev-parse --short HEAD)
 GRPC_DOCKER_IMAGE="geds_dependencies-${DOCKER_BUILD_TARGET}:${GEDS_DOCKER_VERSION}"
@@ -30,10 +30,10 @@ else
     echo "Building base image"
     BASE_BUILD_IMAGE="geds_build-${DOCKER_BUILD_TARGET}:${GEDS_DOCKER_VERSION}"
     docker build -t ${BASE_BUILD_IMAGE} \
-        -f docker/Dockerfile-base_${DOCKER_BUILD_TARGET} . &> build.log || cat build.log
+        -f docker/Dockerfile-base_${DOCKER_BUILD_TARGET} .
 
     echo "Building dependencies"
-    docker build -t ${GRPC_DOCKER_IMAGE} \
+    docker buildx build -t ${GRPC_DOCKER_IMAGE} \
          --build-arg GEDS_DOCKER_VERSION=${GEDS_DOCKER_VERSION} \
          --build-arg DOCKER_BUILD_TARGET=${DOCKER_BUILD_TARGET} \
          --build-arg CMAKE_BUILD_PARALLEL_LEVEL=${CMAKE_BUILD_PARALLEL_LEVEL} \

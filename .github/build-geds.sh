@@ -13,7 +13,7 @@ ROOT="$(pwd)"
 
 source "${ROOT}/DEPENDENCIES"
 
-GEDS_VERSION=${TRAVIS_TAG:-$(git describe --tags --match "v*" --dirty)}
+GEDS_VERSION=${GITHUB_TAG:-$(git describe --tags --match "v*" --dirty)}
 [[ "$GEDS_VERSION" =~ ^v ]] && GEDS_VERSION=$(echo $GEDS_VERSION | cut -c 2-)
 
 GIT_REVISION=$(git rev-parse --short HEAD)
@@ -37,11 +37,11 @@ docker run \
     -t $GRPC_DOCKER_IMAGE \
     /src/geds/docker/build.sh
 
-if [ "${TRAVIS:-""}" == "true" ]; then
-    echo "Running as travis."
+if [ "${GITHUB_ACTIONS:-""}" == "true" ]; then
+    echo "Running as Github CI."
     cd "${INSTALL_DIR}"
-    mkdir -p "${ROOT}/travis_artifacts"
-    tar cf "${ROOT}/travis_artifacts/geds-x86_64-${DOCKER_BUILD_TARGET}-${GEDS_VERSION}-${CMAKE_BUILD_TYPE}.tar.gz" geds
+    mkdir -p "${ROOT}/github_artifacts"
+    tar cf "${ROOT}/github_artifacts/geds-x86_64-${DOCKER_BUILD_TARGET}-${GEDS_VERSION}-${CMAKE_BUILD_TYPE}.tar.gz" geds
 
     docker run \
         -v "${ROOT}":"/src/geds" \
@@ -50,7 +50,7 @@ if [ "${TRAVIS:-""}" == "true" ]; then
         -e BUILD_TYPE=${CMAKE_BUILD_TYPE} \
         -e GEDS_VERSION=${GEDS_VERSION} \
         -e GEDS_INSTALL_PREFIX="/install/geds" \
-        -e ARTIFACTS_PREFIX="/src/geds/travis_artifacts/" \
+        -e ARTIFACTS_PREFIX="/src/geds/github_artifacts/" \
         -w "/build/geds" \
         -t docker.io/python:3.10-buster \
         /src/geds/package_python.sh

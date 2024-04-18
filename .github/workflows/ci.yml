@@ -1,0 +1,76 @@
+#
+# Copyright 2022- IBM Inc. All rights reserved
+# SPDX-License-Identifier: Apache2.0
+#
+name: CI
+on:
+  pull_request:
+  push:
+    branches:
+    - main
+    tags:
+    - v*
+
+env:
+  DOCKER_CACHE_DIR: github_actions_cache
+  DEPENDENCIES_VERSION: 'v2024-04-19'
+
+jobs:
+  Build:
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - buildTarget: debian11.5
+            buildType: Release
+          # - target: debian11.5
+          #   buildType: Debug
+          # - buildTarget: ubuntu20.04
+          #   buildType: Release
+          # - buildTarget: ubuntu20.04
+          #   buildType: Debug
+          - buildTarget: ubuntu22.04
+            buildType: Release
+          # - buildTarget: ubuntu22.04
+          #   buildType: Debug
+          # - buildTarget: ubi8
+          #   buildType: Release
+          # - buildTarget: ubi8
+          #   buildType: Debug
+    runs-on: ubuntu-latest
+    env:
+      DOCKER_BUILD_TARGET: ${{ matrix.buildTarget }}
+      CMAKE_BUILD_TYPE: ${{ matrix.buildType }}
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-tags: true  # Ensure we can run "git describe"
+        fetch-depth: 50
+
+    - name: Cache GRPC Build (Restore)
+      uses: actions/cache/restore@v4
+      with:
+        path: ${{ env.DOCKER_CACHE_DIR }}
+        key: dependencies-${{ matrix.buildTarget }}-${{ matrix.buildType }}-${{ env.DEPENDENCIES_VERSION }}
+
+    - name: Build or Cache GRPC
+      run: |
+        ${PWD}/.github/build-or-cache-grpc.sh
+
+    - name: Cache GRPC Build (Save)
+      uses: actions/cache/save@v4
+      with:
+        path: ${{ env.DOCKER_CACHE_DIR }}
+        key: dependencies-${{ matrix.buildTarget }}-${{ matrix.buildType }}-${{ env.DEPENDENCIES_VERSION }}
+
+    - name: Build GEDS
+      run: |
+        export GITHUB_TAG=$(git describe --tags --match "v*")
+        ${PWD}/.github/build-geds.sh
+
+    - name: Upload release
+      if: startsWith(github.ref, 'refs/tags/v')
+      uses: softprops/action-gh-release@v1
+      with:
+        files: github_artifacts/*
