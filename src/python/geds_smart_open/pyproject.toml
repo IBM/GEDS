@@ -10,6 +10,7 @@ requires-python = ">=3.9"
 
 dependencies = [
     "smart_open",
+    "numpy",
 ]
 
 [project.urls]
