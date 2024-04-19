@@ -25,8 +25,8 @@ jobs:
             buildType: Release
           # - target: debian11.5
           #   buildType: Debug
-          # - buildTarget: ubuntu20.04
-          #   buildType: Release
+          - buildTarget: ubuntu20.04
+            buildType: Release
           # - buildTarget: ubuntu20.04
           #   buildType: Debug
           - buildTarget: ubuntu22.04
