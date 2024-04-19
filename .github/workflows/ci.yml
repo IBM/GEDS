@@ -52,6 +52,7 @@ jobs:
         fetch-depth: 50
 
     - name: Cache GRPC Build (Restore)
+      id: load-grpc-cache
       uses: actions/cache/restore@v4
       with:
         path: ${{ env.DOCKER_CACHE_DIR }}
@@ -62,6 +63,7 @@ jobs:
         ${PWD}/.github/build-or-cache-grpc.sh
 
     - name: Cache GRPC Build (Save)
+      if: ${{ steps.load-grpc-cache.outputs.cache-hit != 'true' }}
       uses: actions/cache/save@v4
       with:
         path: ${{ env.DOCKER_CACHE_DIR }}
