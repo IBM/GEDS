@@ -45,7 +45,10 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
       with:
-        fetch-tags: true  # Ensure we can run "git describe"
+        # Ensure we can run `git describe`.
+        # Related issue:
+        # https://github.com/actions/checkout/issues/1467
+        fetch-tags: ${{ ! contains(github.ref, 'refs/tags/') }} # Only fetch the tag if we're not being triggered by a tag.
         fetch-depth: 50
 
     - name: Cache GRPC Build (Restore)
