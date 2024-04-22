@@ -21,10 +21,10 @@ GIT_REVISION=$(git rev-parse --short HEAD)
 GRPC_DOCKER_IMAGE=${GRPC_DOCKER_IMAGE:-"geds_dependencies-${DOCKER_BUILD_TARGET}:${GEDS_DOCKER_VERSION}"}
 CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-"Release"}
 
-INSTALL_DIR="${INSTALL_DIR:-"${ROOT}/travis_install"}"
+INSTALL_DIR="${INSTALL_DIR:-"${ROOT}/github_install_${DOCKER_BUILD_TARGET}"}"
 
-mkdir -p install
-mkdir -p artifacts
+mkdir -p "${INSTALL_DIR}/geds"
+
 $DOCKER run \
     -v "${ROOT}":"/src/geds" \
     -v "${INSTALL_DIR}/geds":"/install" \

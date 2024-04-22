@@ -18,11 +18,11 @@ DOCKER_CACHE_DIR="${DOCKER_CACHE_DIR:-"${ROOT}/github_actions_cache"}"
 
 GIT_REVISION=$(git rev-parse --short HEAD)
 GRPC_DOCKER_IMAGE="geds_dependencies-${DOCKER_BUILD_TARGET}:${GEDS_DOCKER_VERSION}"
-GRPC_CACHED="${DOCKER_CACHE_DIR}/docker_geds_dependencies-${GEDS_DOCKER_VERSION}.tgz"
+GRPC_CACHED="${DOCKER_CACHE_DIR}/docker_geds_dependencies-${DOCKER_BUILD_TARGET}-${GEDS_DOCKER_VERSION}.tgz"
 
 if [ -f "${GRPC_CACHED}" ]; then
     echo "Loading cached docker image from ${GRPC_CACHED}"
-    (gzip -dc "${GRPC_CACHED}" | docker load) || true
+    (gzip -dc "${GRPC_CACHED}" | $DOCKER load) || true
 else
     echo "Cached docker image does not exist in ${GRPC_CACHED}."
     CMAKE_BUILD_PARALLEL_LEVEL=$(($(nproc) + 1))
