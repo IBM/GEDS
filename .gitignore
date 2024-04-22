@@ -5,6 +5,7 @@ cmake-build-*
 travis_*
 __pycache__
 .idea/*
+github_*
 
 CMakeLists.txt.user
 compile_commands.json
