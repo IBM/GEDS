@@ -4,22 +4,23 @@
 #
 
 ARG GIT_REVISION
-FROM geds-build/debian11.5:${GIT_REVISION} as builder
+FROM geds-build/debian12:${GIT_REVISION} as builder
 
-FROM debian:11.5
+FROM debian:12
 
 ENV DEBIAN_FRONTEND noninteractive
 ENV DEBCONF_NONINTERACTIVE_SEEN true
+ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64/
 
 RUN apt-get clean && apt-get update \
     && apt-get install -y --no-install-recommends \
-        openjdk-11-jdk-headless gcc-10 \
-        python3.9 python3.9-distutils \
+        openjdk-17-jdk-headless gcc-12 \
+        python3.11 python3-distutils \
         curl \
     && apt-get clean \
     && curl -o /tmp/get-pip.py https://bootstrap.pypa.io/get-pip.py \
-    && python3.9 /tmp/get-pip.py \
-    && python3.9 -m pip install numpy
+    && python3.11 /tmp/get-pip.py \
+    && python3.11 -m pip install numpy
 
 COPY --from=builder /usr/local/opt/geds/ /usr/local/
 

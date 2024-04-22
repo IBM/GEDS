@@ -3,10 +3,11 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-FROM debian:11.5
+FROM debian:12
 
 ENV DEBIAN_FRONTEND noninteractive
 ENV DEBCONF_NONINTERACTIVE_SEEN true
+ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64/
 ARG DEFAULT_LOCALE=en_US.UTF-8
 
 RUN apt-get clean && apt-get update && \
@@ -15,8 +16,9 @@ RUN apt-get clean && apt-get update && \
         git \
         curl wget \
         build-essential gcc ninja-build \
-        openjdk-11-jdk \
-        python3.9 python3.9-dev python3-distutils \
+        openjdk-17-jdk \
+        python3.11 python3.11-dev python3-distutils \
+        zlib1g-dev \
         libcurl4 libcurl4-openssl-dev libssl-dev \
         locales
 
