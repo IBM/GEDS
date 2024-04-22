@@ -13,6 +13,7 @@ ROOT="$(pwd)"
 
 source "${ROOT}/DEPENDENCIES"
 
+DOCKER=${DOCKER:-"docker"}
 GEDS_VERSION=${GITHUB_TAG:-$(git describe --tags --match "v*" --dirty)}
 [[ "$GEDS_VERSION" =~ ^v ]] && GEDS_VERSION=$(echo $GEDS_VERSION | cut -c 2-)
 
@@ -24,7 +25,7 @@ INSTALL_DIR="${INSTALL_DIR:-"${ROOT}/travis_install"}"
 
 mkdir -p install
 mkdir -p artifacts
-docker run \
+$DOCKER run \
     -v "${ROOT}":"/src/geds" \
     -v "${INSTALL_DIR}/geds":"/install" \
     -e GEDS_VERSION=${GEDS_VERSION} \
@@ -43,7 +44,7 @@ if [ "${GITHUB_ACTIONS:-""}" == "true" ]; then
     mkdir -p "${ROOT}/github_artifacts"
     tar cf "${ROOT}/github_artifacts/geds-x86_64-${DOCKER_BUILD_TARGET}-${GEDS_VERSION}-${CMAKE_BUILD_TYPE}.tar.gz" geds
 
-    docker run \
+    $DOCKER run \
         -v "${ROOT}":"/src/geds" \
         -v "${INSTALL_DIR}":"/install" \
         -e BUILD_TARGET=${DOCKER_BUILD_TARGET} \
