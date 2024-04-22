@@ -4,7 +4,7 @@
 #
 # NOTE:
 # If any of these values are changed the `DEPENDENCIES_VERSION` in `.github/workflows/ci.yml` needs to be updated.
-DEPENDENCIES_VERSION=v2024-04-19 # Make sure this matches .github/workflows/ci.yml
+DEPENDENCIES_VERSION=v2024-04-21 # Make sure this matches .github/workflows/ci.yml
 
 # Default Docker build target
 export DOCKER_BUILD_TARGET=${DOCKER_BUILD_TARGET:-"ubuntu22.04"}

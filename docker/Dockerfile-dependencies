@@ -70,3 +70,6 @@ RUN mkdir -p /build/boost \
     && ./b2 install -j ${CMAKE_BUILD_PARALLEL_LEVEL} \
     && cd / \
     && rm -rf /build/boost
+
+# Create geds build dir
+RUN mkdir -p /build/geds
