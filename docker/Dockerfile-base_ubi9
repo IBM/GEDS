@@ -3,14 +3,15 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-FROM registry.access.redhat.com/ubi8/ubi
+FROM registry.access.redhat.com/ubi9/ubi
 
 RUN yum install -y  \
     git unzip \
     clang wget  \
     gcc-toolset-12-gcc gcc-toolset-12-gcc-c++ gcc-toolset-12-runtime \
-    curl libcurl-devel \
+    libcurl-devel \
     openssl-devel \
+    zlib-devel \
     python3.11 python3.11-devel \
     java-11-openjdk java-11-openjdk-devel
 
