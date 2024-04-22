@@ -4,13 +4,13 @@
 #
 
 ARG GIT_REVISION
-FROM geds-build/ubi8:${GIT_REVISION} as builder
+FROM geds-build/ubi9:${GIT_REVISION} as builder
 
-FROM registry.access.redhat.com/ubi8/ubi
+FROM registry.access.redhat.com/ubi9/ubi
 
 RUN yum install -y  \
     curl \
-    gcc-toolset-12-runtime \
+    gcc-toolset-12-gcc gcc-toolset-12-gcc-c++ gcc-toolset-12-runtime \
     openssl-devel \
     python3.11 \
     java-11-openjdk java-11-openjdk-devel
@@ -20,6 +20,9 @@ COPY --from=builder /usr/local/opt/geds/ /usr/local/
 ENV PATH=/opt/rh/gcc-toolset-12/root/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
     LD_LIBRARY_PATH=/opt/rh/gcc-toolset-12/root/usr/lib64:/opt/rh/gcc-toolset-12/root/usr/lib \
     PKG_CONFIG_PATH=/opt/rh/gcc-toolset-12/root/usr/lib64/pkgconfig
+
+ENV CC=/opt/rh/gcc-toolset-12/root/usr/bin/gcc \
+    CXX=/opt/rh/gcc-toolset-12/root/usr/bin/g++
 
 EXPOSE 4380
 EXPOSE 4381
