@@ -21,9 +21,9 @@ jobs:
       fail-fast: true
       matrix:
         include:
-          - buildTarget: debian11.5
+          - buildTarget: debian12
             buildType: Release
-          # - target: debian11.5
+          # - target: debian12
           #   buildType: Debug
           - buildTarget: ubuntu20.04
             buildType: Release
