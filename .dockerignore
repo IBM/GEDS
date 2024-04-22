@@ -1,7 +1,10 @@
-cmake-build-debug
 .cache
-.git
-.travis
+.idea/*
+.metals
+__pycache__
+cmake-build-*
+cmake-build-debug/
+github_*
 travis_*
 
 CMakeLists.txt.user
