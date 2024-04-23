@@ -4,13 +4,13 @@
 #
 # NOTE:
 # If any of these values are changed the `DEPENDENCIES_VERSION` in `.github/workflows/ci.yml` needs to be updated.
-DEPENDENCIES_VERSION=v2024-04-21 # Make sure this matches .github/workflows/ci.yml
+DEPENDENCIES_VERSION=v2024-04-22 # Make sure this matches .github/workflows/ci.yml
 
 # Default Docker build target
 export DOCKER_BUILD_TARGET=${DOCKER_BUILD_TARGET:-"ubuntu22.04"}
 
 # AWS SDK
-export AWS_SDK_VERSION="1.10.20"
+export AWS_SDK_VERSION="1.11.311"
 # GRPC Version
 export GRPC_VERSION="v1.51.1"
 # Boost Version

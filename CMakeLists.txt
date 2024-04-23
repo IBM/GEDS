@@ -162,6 +162,7 @@ endif()
 
 message(STATUS "Using ${AWSSDK_ROOT} to search for AWS.")
 
+find_package(ZLIB REQUIRED)
 find_package(AWSSDK REQUIRED COMPONENTS s3)
 message(STATUS "AWS SDK Libraries:  ${AWSSDK_LINK_LIBRARIES}")
 
