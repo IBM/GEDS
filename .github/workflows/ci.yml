@@ -13,7 +13,7 @@ on:
 
 env:
   DOCKER_CACHE_DIR: github_actions_cache
-  DEPENDENCIES_VERSION: 'v2024-04-21'
+  DEPENDENCIES_VERSION: 'v2024-04-22' # Make sure this matches DEPENDENCIES.
 
 jobs:
   Build:
