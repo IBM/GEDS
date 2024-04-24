@@ -36,6 +36,7 @@ ABSL_FLAG(std::string, bucket, "benchmark", "Bucket used for benchmarking.");
 ABSL_FLAG(size_t, maxThreads, 16, "Maximum number of threads for concurrent downloads.");
 ABSL_FLAG(size_t, maxFactor, 18, "Maximum factor.");
 ABSL_FLAG(std::string, outputFile, "output.csv", "Filename of the output.");
+ABSL_FLAG(bool, doCachedReads, false, "Cached reads");
 ABSL_FLAG(bool, sameFile, false, "Access the same file from all threads.");
 
 struct BenchmarkResult {
@@ -69,15 +70,17 @@ std::vector<std::vector<uint8_t>> buffers;
 
 size_t getPayloadSize(size_t factor) { return KILOBYTE * (1 << factor); }
 
-void runBenchmarkThread(std::shared_ptr<GEDS> geds, size_t threadId, size_t factor,
-                        size_t payloadSize, bool sameFile, std::promise<Latency> &&latency) {
+void runBenchmarkThread(std::shared_ptr<GEDS> geds, size_t numThreads, size_t threadId,
+                        size_t factor, size_t payloadSize, bool sameFile,
+                        std::promise<Latency> &&latency) {
   auto startTime = std::chrono::steady_clock::now();
 
   std::string key;
   if (sameFile) {
-    key = std::to_string(factor) + "-0.data";
+    key = "1-" + std::to_string(factor) + "-0.data";
   } else {
-    key = std::to_string(factor) + "-" + std::to_string(threadId) + ".data";
+    key = std::to_string(numThreads) + "-" + std::to_string(factor) + "-" +
+          std::to_string(threadId) + ".data";
   }
 
   auto file = geds->open(FLAGS_bucket.CurrentValue(), key);
@@ -113,8 +116,8 @@ BenchmarkResult benchmark(std::shared_ptr<GEDS> geds, size_t factor, size_t numT
   for (size_t i = 0; i < numThreads; i++) {
     std::promise<Latency> p;
     futures[i] = p.get_future();
-    threads[i] =
-        std::thread(runBenchmarkThread, geds, i, factor, payloadSize, sameFile, std::move(p));
+    threads[i] = std::thread(runBenchmarkThread, geds, numThreads, i, factor, payloadSize, sameFile,
+                             std::move(p));
   }
   for (auto &t : threads) {
     t.join();
@@ -193,8 +196,12 @@ int main(int argc, char **argv) {
     buffer.resize(maxPayload);
   }
 
+  auto doCachedReads = absl::GetFlag(FLAGS_doCachedReads);
   for (size_t i = 0; i <= factorCount; i++) {
-    for (size_t j = 1; j < threadCount; j++) {
+    for (size_t j = 1; j <= threadCount; j++) {
+      if (doCachedReads) {
+        benchmark(geds, i, j);
+      }
       auto result = benchmark(geds, i, j);
       std::cout << result.payloadSize << ": " << result.threads << " " << result.rate << " MB/s"
                 << std::endl;
