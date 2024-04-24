@@ -42,7 +42,7 @@
 #include "Server.h"
 #include "Statistics.h"
 #include "StorageCounter.h"
-#include "TcpTransport.h"
+#include "TcpClient.h"
 
 const char Default_GEDSFolderDelimiter = '/';
 
@@ -298,12 +298,6 @@ public:
    */
   std::string getLocalPath(const std::string &bucket, const std::string &key) const;
   std::string getLocalPath(const GEDSFile &file) const;
-
-  /**
-   * @brief Tcp inter-node object transport service.
-   *
-   */
-  std::shared_ptr<geds::TcpTransport> _tcpTransport;
 
   /**
    * @brief Register an object store configuration with GEDS.

@@ -18,6 +18,6 @@ except status.StatusNotOk as e:
 file = instance.open("bucket", "testfile")
 
 buffer = bytearray(file.size)
-l = file.read(buffer, 0, len(buffer))
+l = file.read(buffer, 1, len(buffer))
 print(f"Read {l} bytes")
 print(buffer.decode("utf-8"))

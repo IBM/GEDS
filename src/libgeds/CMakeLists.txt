@@ -11,9 +11,6 @@ SET(SOURCES
         FileTransferService.cpp
         FileTransferService.h
 
-        TcpTransport.h
-        TcpTransport.cpp
-
         GEDS.cpp
         GEDS.h
         GEDSAbstractFileHandle.cpp
@@ -53,6 +50,14 @@ SET(SOURCES
         MMAPFile.h
         Server.cpp
         Server.h
+        TcpClient.cpp
+        TcpClient.h
+        TcpDataTransport.cpp
+        TcpDataTransport.h
+        TcpConnection.cpp
+        TcpConnection.h
+        TcpServer.cpp
+        TcpServer.h
 )
 
 # Create an object lib to build both a dynamic and a static library.
@@ -79,6 +84,7 @@ target_include_directories(geds_objlib
 )
 target_link_libraries(geds_objlib
         PUBLIC
+        ${Boost_LIBRARIES}
         magic_enum::magic_enum
         geds_common
         geds_proto

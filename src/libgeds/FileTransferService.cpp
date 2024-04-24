@@ -5,35 +5,19 @@
 
 #include "FileTransferService.h"
 
-#include <cassert>
-#include <cerrno>
 #include <cstddef>
-#include <cstdint>
-#include <cstring>
-#include <exception>
 #include <memory>
-#include <netinet/in.h>
-#include <ostream>
 #include <string>
-#include <sys/socket.h>
 #include <tuple>
-#include <unistd.h>
-#include <vector>
 
-#include <grpcpp/client_context.h>
-#include <grpcpp/create_channel.h>
-#include <grpcpp/security/credentials.h>
+#include <absl/status/status.h>
 
 #include "FileTransferProtocol.h"
-#include "GEDS.h"
 #include "GEDSInternal.h"
 #include "Logging.h"
-#include "Object.h"
-#include "Status.h"
-#include "TcpTransport.h"
-#include "geds.grpc.pb.h"
+#include "TcpClient.h"
+#include "TcpDataTransport.h"
 #include "geds.pb.h"
-#include "status.pb.h"
 
 namespace geds {
 using std::string;
@@ -44,10 +28,8 @@ using std::string;
     return absl::FailedPreconditionError("Not connected.");                                        \
   }
 
-FileTransferService::FileTransferService(std::string nodeAddress, std::shared_ptr<GEDS> geds,
-                                         std::shared_ptr<TcpTransport> tcpTrans)
-    : _connectionState(ConnectionState::Disconnected), _channel(nullptr), _geds(geds),
-      _tcp(tcpTrans), nodeAddress(std::move(nodeAddress)) {}
+FileTransferService::FileTransferService(std::string nodeAddress, std::shared_ptr<GEDS> geds)
+    : _geds(geds), nodeAddress(std::move(nodeAddress)) {}
 
 FileTransferService::~FileTransferService() {
   if (_connectionState == ConnectionState::Connected) {
@@ -56,12 +38,11 @@ FileTransferService::~FileTransferService() {
 }
 
 absl::Status FileTransferService::connect() {
+  auto lock = getWriteLock();
   if (_connectionState != ConnectionState::Disconnected) {
     return absl::FailedPreconditionError("Cannot reinitialize service.");
   }
-  auto lock = getWriteLock();
   try {
-    assert(_channel.get() == nullptr);
     _channel = grpc::CreateChannel(nodeAddress, grpc::InsecureChannelCredentials());
     auto success = _channel->WaitForConnected(grpcDefaultDeadline());
     if (!success) {
@@ -74,33 +55,42 @@ absl::Status FileTransferService::connect() {
   }
   LOG_DEBUG("About to check for available file transfer endpoints");
 
+  auto it = nodeAddress.find(":");
+  if (it == std::string::npos) {
+    return absl::UnknownError("Unable to parse node address.");
+  }
+  auto nodeLoc = nodeAddress.substr(0, it);
   auto endpoints = availTransportEndpoints();
-  for (auto &addr : *endpoints) {
-    if (std::get<1>(addr) == FileTransferProtocol::Socket) {
-      struct sockaddr saddr = std::get<0>(addr);
-      auto peer = _tcp->getPeer(&saddr);
+  if (!endpoints.ok()) {
+    return endpoints.status();
+  }
 
-      if (peer) {
-        _tcpPeer = peer;
+  for (size_t i = 0; i < geds::MAXIMUM_TCP_THREADS(); i++) {
+    for (auto &ep : *endpoints) {
+      if (std::get<2>(ep) == FileTransferProtocol::Socket) {
+        const auto &ep_ip = std::get<0>(ep);
+        if (ep_ip != nodeLoc) {
+          continue;
+        }
+        auto ep_port = std::get<1>(ep);
+        LOG_DEBUG("Creating a new TcpClient for ", ep_ip, ":", ep_port);
+        auto connection = std::make_shared<TcpClient>(ep_ip, ep_port);
+        auto status = connection->connect();
+        if (!status.ok()) {
+          connection = nullptr;
+          continue;
+        }
+        _connections.push(connection);
         break;
       }
     }
   }
+
   _connectionState = ConnectionState::Connected;
   return absl::OkStatus();
 }
 
-absl::Status FileTransferService::disconnect() {
-  if (_connectionState != ConnectionState::Connected) {
-    return absl::UnknownError("The service is in the wrong state!");
-  }
-  auto lock = getWriteLock();
-  _tcpPeer.reset();
-  _channel = nullptr;
-  return absl::OkStatus();
-}
-
-absl::StatusOr<std::vector<std::tuple<sockaddr, FileTransferProtocol>>>
+absl::StatusOr<std::vector<std::tuple<std::string, uint16_t, FileTransferProtocol>>>
 FileTransferService::availTransportEndpoints() {
   // Function is called during connect, so no check.
   geds::rpc::EmptyParams request;
@@ -111,58 +101,42 @@ FileTransferService::availTransportEndpoints() {
   if (!status.ok()) {
     LOG_ERROR("Unable to execute grpc call, status: ", status.error_code(), " ",
               status.error_details());
-    return absl::UnknownError("Unable to execute command");
+    return absl::UnknownError("Unable to obtain available endpoints!");
   }
 
   const auto rpc_results = response.endpoint();
-  auto results = std::vector<std::tuple<struct sockaddr, FileTransferProtocol>>();
-  results.reserve(rpc_results.size());
-
-  for (auto &i : rpc_results) {
-    sockaddr saddr{};
-    auto inaddr = (sockaddr_in *)&saddr;
-    inaddr->sin_addr.s_addr = inet_addr(i.address().c_str());
-    inaddr->sin_port = i.port();
-    inaddr->sin_family = AF_INET;
-
-    // For now only TCP connections are possible
-    if (i.type() == rpc::Socket) {
-      results.emplace_back(saddr, FileTransferProtocol::Socket);
-    }
+  auto results = std::vector<std::tuple<std::string, uint16_t, FileTransferProtocol>>{};
+  for (const auto &i : rpc_results) {
+    results.emplace_back(std::make_tuple(i.address(), i.port(),
+                                         i.type() == rpc::RDMA ? FileTransferProtocol::RDMA
+                                                               : FileTransferProtocol::Socket));
   }
   return results;
+}
+
+absl::Status FileTransferService::disconnect() {
+  auto lock = getWriteLock();
+  if (_connectionState != ConnectionState::Connected) {
+    return absl::UnknownError("The service is in the wrong state!");
+  }
+  _connectionState = ConnectionState::Unknown;
+  for (size_t i = 0; i < MAXIMUM_TCP_THREADS(); i++) {
+    auto tcp = _connections.pop_wait_until_available();
+    tcp = nullptr;
+  }
+  _channel = nullptr;
+  _connectionState = ConnectionState::Disconnected;
+  return absl::OkStatus();
 }
 
 absl::StatusOr<size_t> FileTransferService::readBytes(const std::string &bucket,
                                                       const std::string &key, uint8_t *buffer,
                                                       size_t position, size_t length) {
   CHECK_CONNECTED
-
-  std::future<absl::StatusOr<size_t>> fut;
-  // Create a scope for the std::shared_ptr<TcpPeer> so that the peer is automatically cleaned up.
-  {
-    auto lock = getReadLock();
-    if (_tcpPeer.expired()) {
-      return absl::UnavailableError("TCP readBytes: no peer: " + nodeAddress);
-    }
-
-    LOG_DEBUG("TCP readBytes: ", nodeAddress, ", REQ: ", length);
-    auto peer = _tcpPeer.lock();
-    lock.unlock();
-    auto prom = peer->sendRpcRequest((uint64_t)buffer, bucket + "/" + key, position, length);
-    fut = prom->get_future();
-  }
-  auto status = fut.get();
-  if (status.ok()) {
-    LOG_DEBUG("TCP readBytes: ", nodeAddress, ", DONE: ", length);
-    return *status;
-  }
-  // Close the FileTransferService on error.
-  if (status.status().code() == absl::StatusCode::kAborted) {
-    auto lock = getWriteLock();
-    _tcpPeer.reset();
-  }
-  return status.status();
+  auto tcp = _connections.pop_wait_until_available();
+  auto status = tcp->readBytes(bucket, key, buffer, position, length);
+  _connections.push(tcp);
+  return status;
 }
 
 } // namespace geds
