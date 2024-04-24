@@ -18,9 +18,11 @@
 #include <absl/status/status.h>
 #include <grpcpp/grpcpp.h>
 #include <grpcpp/server.h>
+#include <utility>
 
 #include "FileTransferProtocol.h"
 #include "GEDSInternal.h"
+#include "TcpServer.h"
 
 class GEDS;
 
@@ -39,9 +41,9 @@ class Server {
 
   std::unique_ptr<grpc::Service> _grpcService;
   std::unique_ptr<grpc::Server> _grpcServer;
+  std::unique_ptr<TcpServer> _TcpServer;
 
-  std::unique_ptr<std::thread> _listenThread;
-  void TcpListenThread();
+  std::vector<std::tuple<FileTransferProtocol, std::string, uint16_t>> _endpoints;
 
 public:
   Server(std::string hostname, std::optional<uint16_t> port = std::nullopt);
@@ -49,12 +51,12 @@ public:
   Server &operator=(const Server &) = delete;
   ~Server();
 
-  uint16_t port();
+  uint16_t port() const { return _port; }
 
-  /**
-   * @brief List of TCP connections for object transfers between server and client
-   */
-  std::list<geds::ObjTransferEndpoint> TcpListenEp;
+  const std::vector<std::tuple<FileTransferProtocol, std::string, uint16_t>> &
+  getAvailableEndpoints() const {
+    return _endpoints;
+  }
 
   absl::Status start(std::shared_ptr<GEDS> geds);
   absl::Status stop();

@@ -4,7 +4,6 @@
  */
 
 #include "MDSKVS.h"
-#include "absl/status/status.h"
 
 #define QUOTE(str) #str
 #define STRINGIFY(str) QUOTE(str)
