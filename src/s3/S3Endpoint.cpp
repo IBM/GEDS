@@ -296,8 +296,24 @@ absl::Status Endpoint::putObject(const std::string &bucket, const std::string &k
 absl::StatusOr<size_t> Endpoint::readBytes(const std::string &bucket, const std::string &key,
                                            uint8_t *bytes, size_t position, size_t length) const {
 
-  auto stream = utility::ByteIOStream(bytes, length);
-  return read(bucket, key, stream, position, length);
+  size_t count = 0;
+  while (count < length) {
+    // Only request 1GiB chunks at a time.
+    // ToDo: Make this value configurable.
+    auto request = std::min((size_t)1024 * 1024 * 1024, length - count);
+    auto stream = utility::ByteIOStream(&bytes[count], request);
+    auto status = read(bucket, key, stream, position + count, request);
+    if (!status.ok()) {
+      return status;
+    }
+    if (*status == 0) {
+      LOG_WARNING("Unexpected length for ", bucket, "/", key, ": Requested ", length, " (at pos ",
+                  position, ") but got ", count, "!");
+      break;
+    }
+    count += *status;
+  }
+  return count;
 }
 
 absl::StatusOr<size_t> Endpoint::read(const std::string &bucket, const std::string &key,
