@@ -13,7 +13,11 @@ source "${ROOT}/DEPENDENCIES"
 
 BUILD_TYPE=${BUILD_TYPE:-Release}
 
-INSTALL_PREFIX=${INSTALL_PREFIX:-"/usr/local/opt/boost-${BOOST_VERSION}"}
+if [ "${BUILD_TYPE}" != "Release" ]; then
+    INSTALL_PREFIX=${INSTALL_PREFIX:-"/usr/local/opt/boost-${BOOST_VERSION}_${BUILD_TYPE}"}
+else
+    INSTALL_PREFIX=${INSTALL_PREFIX:-"/usr/local/opt/boost-${BOOST_VERSION}"}
+fi
 
 BUILD_DIR=$(mktemp -d /tmp/boost-${BOOST_VERSION}-build-XXX)
 mkdir -p $BUILD_DIR
