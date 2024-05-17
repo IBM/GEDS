@@ -22,7 +22,7 @@ SET(SOURCES
         Platform.cpp
 )
 
-set(GEDS_JAVA_VERSION 1.2)
+set(GEDS_JAVA_VERSION 1.3)
 
 set(GEDS_JAR_GROUPID "com.ibm.geds")
 set(CMAKE_JAR_ARTIFACT_NAME "geds")

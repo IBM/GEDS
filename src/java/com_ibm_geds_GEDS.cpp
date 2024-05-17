@@ -71,7 +71,8 @@ JNIEXPORT jint JNICALL Java_com_ibm_geds_GEDS_getDefaultMetdataServerPort(JNIEnv
 
 // NOLINTNEXTLINE(modernize-use-trailing-return-type)
 JNIEXPORT jlong JNICALL Java_com_ibm_geds_GEDS_nativeCreate(JNIEnv *env, jclass, jlong nativePtr,
-                                                            jstring jBucket, jstring jKey) {
+                                                            jstring jBucket, jstring jKey,
+                                                            jboolean overwrite) {
   static auto counter = geds::Statistics::createCounter("Java GEDS: create");
 
   if (nativePtr == 0) {
@@ -81,7 +82,7 @@ JNIEXPORT jlong JNICALL Java_com_ibm_geds_GEDS_nativeCreate(JNIEnv *env, jclass,
 
   auto bucket = env->GetStringUTFChars(jBucket, nullptr);
   auto key = env->GetStringUTFChars(jKey, nullptr);
-  auto createStatus = container->element->create(std::string(bucket), std::string(key));
+  auto createStatus = container->element->create(std::string(bucket), std::string(key), overwrite);
   env->ReleaseStringUTFChars(jBucket, bucket);
   env->ReleaseStringUTFChars(jKey, key);
   *counter += 1;
