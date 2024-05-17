@@ -296,16 +296,18 @@ GEDS::createAsFileHandle(const std::string &bucket, const std::string &key, bool
   }
 
   const auto path = getPath(bucket, key);
-  auto handle = GEDSLocalFileHandle::factory(shared_from_this(), bucket, key, std::nullopt);
-  if (!handle.ok()) {
-    return handle.status();
+  auto local_handle = GEDSLocalFileHandle::factory(shared_from_this(), bucket, key, std::nullopt);
+  if (!local_handle.ok()) {
+    return local_handle.status();
   }
 
+  auto handle = GEDSRelocatableFileHandle::factory(shared_from_this(), *local_handle);
+
   if (overwrite) {
-    _fileHandles.insertOrReplace(path, *handle);
+    _fileHandles.insertOrReplace(path, handle);
     return handle;
   }
-  auto newHandle = _fileHandles.insertOrExists(path, *handle);
+  auto newHandle = _fileHandles.insertOrExists(path, handle);
   if (newHandle.get() != handle->get()) {
     return absl::AlreadyExistsError("The file " + path.name + "already exists!");
   }

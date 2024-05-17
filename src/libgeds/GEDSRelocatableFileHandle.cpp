@@ -15,7 +15,10 @@ GEDSRelocatableFileHandle::factory(std::shared_ptr<GEDS> gedsService,
   return std::shared_ptr<GEDSFileHandle>(new GEDSRelocatableFileHandle(gedsService, wrapped));
 }
 
-bool GEDSRelocatableFileHandle::isRelocatable() const { return true; }
+bool GEDSRelocatableFileHandle::isRelocatable() const {
+  auto lock = lockShared();
+  return _fileHandle->isRelocatable();
+}
 
 absl::StatusOr<size_t> GEDSRelocatableFileHandle::size() const {
   auto lock = lockShared();
