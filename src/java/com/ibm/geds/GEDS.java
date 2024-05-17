@@ -102,16 +102,20 @@ public class GEDS {
     /**
      * Create a file in bucket at key.
      */
-    public GEDSFile create(String bucket, String key) throws IOException {
+    public GEDSFile create(String bucket, String key, boolean overwrite) throws IOException {
         checkGEDS();
-        long ptr = nativeCreate(nativePtr, bucket, key);
+        long ptr = nativeCreate(nativePtr, bucket, key, overwrite);
         if (ptr == 0) {
             throw new RuntimeException("Unable to create file at " + bucket + "/" + key);
         }
         return new GEDSFile(ptr, bucket, key);
     }
 
-    private native static long nativeCreate(long ptr, String bucket, String key) throws IOException;
+    public GEDSFile create(String bucket, String key) throws IOException {
+        return create(bucket, key, true);
+    }
+
+    private native static long nativeCreate(long ptr, String bucket, String key, boolean overwrite) throws IOException;
 
     /**
      * Open a file in bucket at key.
