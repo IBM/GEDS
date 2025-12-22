@@ -269,6 +269,10 @@ if(HAVE_JAVA_BINDINGS)
     message(STATUS "Java ${Java_VERSION} found: ${JNI_INCLUDE_DIRS} ${JNI_LIBRARIES}")
 endif()
 
+if (HAVE_RUST_BINDINGS)
+    include("cmake/rust-helpers.cmake")
+endif()
+
 if(HAVE_TESTS)
     enable_testing()
     include(GoogleTest)
