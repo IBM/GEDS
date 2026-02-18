@@ -1,0 +1,13 @@
+# Package Information for pkg-config
+
+prefix=
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib/wasm32-wasi
+includedir=${prefix}/include
+
+Name: SQLite
+Description: SQL database engine
+Version: 3.41.2
+Libs: -L${libdir} -lsqlite3
+Libs.private: 
+Cflags: -I${includedir}

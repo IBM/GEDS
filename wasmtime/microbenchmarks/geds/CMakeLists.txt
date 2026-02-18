@@ -1,0 +1,2 @@
+add_executable(geds_microbenchmark src/main.c)
+target_link_libraries(geds_microbenchmark)

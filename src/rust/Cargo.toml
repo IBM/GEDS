@@ -1,0 +1,16 @@
+#
+# Copyright 2022- IBM Inc. All rights reserved
+# SPDX-License-Identifier: Apache-2.0
+#
+
+[package]
+name = "geds_rs"
+authors = ["Pablo Gimeno Sarroca <pablo.gimeno.sarroca@ibm.com>"]
+version = "1.0.0"
+edition = "2021"
+
+[dependencies]
+cxx = "=1.0.129"
+
+[build-dependencies]
+cxx-build = "=1.0.129"

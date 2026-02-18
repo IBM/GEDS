@@ -26,3 +26,7 @@ endif()
 if(HAVE_JAVA_BINDINGS)
     add_subdirectory(java)
 endif()
+
+if(HAVE_RUST_BINDINGS)
+    add_subdirectory(rust)
+endif()

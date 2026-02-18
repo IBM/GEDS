@@ -13,6 +13,7 @@ option(USE_EXTERNAL_GRPC "Use external GRPC (set GRPC_INSTALL_DIR env variable a
 option(HAVE_TESTS "Enable tests" ON)
 option(HAVE_PYTHON_BINDINGS "Enable python bindings" ON)
 option(HAVE_JAVA_BINDINGS "Enable Java bindings (SET JAVA_HOME env variable accordingly)." ON)
+option(HAVE_RUST_BINDINGS "Enable Rust bindings" ON)
 option(HAVE_RDMA_SUPPORT "Supports RDMA" OFF)
 option(HAVE_DEFAULT_BUCKET "Creates a default (default) bucket." ON)
 option(HAVE_PROMETHEUS_HISTOGRAM_BUCKETS "Enable Prometheus Histogram Buckets." OFF)
@@ -268,6 +269,10 @@ if(HAVE_JAVA_BINDINGS)
     message(STATUS "Java ${Java_VERSION} found: ${JNI_INCLUDE_DIRS} ${JNI_LIBRARIES}")
 endif()
 
+if (HAVE_RUST_BINDINGS)
+    include("cmake/rust-helpers.cmake")
+endif()
+
 if(HAVE_TESTS)
     enable_testing()
     include(GoogleTest)
@@ -312,7 +317,7 @@ add_custom_target(build-all
     metadataserver
     test_metadataserver
     pygeds
-
+    geds_rs
     geds_java
     geds_jar
 )

@@ -9,3 +9,4 @@ github_*
 
 CMakeLists.txt.user
 compile_commands.json
+/build/

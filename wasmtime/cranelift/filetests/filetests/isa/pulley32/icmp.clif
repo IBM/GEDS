@@ -1,0 +1,603 @@
+test compile precise-output
+target pulley32
+
+function %i8_eq(i8, i8) -> i8 {
+block0(v0: i8, v1: i8):
+    v2 = icmp eq v0, v1
+    return v2
+}
+
+; VCode:
+; block0:
+;   x0 = xeq32 x0, x1
+;   ret
+;
+; Disassembled:
+;        0: 20 00 04                        xeq32 x0, x0, x1
+;        3: 00                              ret
+
+function %i16_eq(i16, i16) -> i8 {
+block0(v0: i16, v1: i16):
+    v2 = icmp eq v0, v1
+    return v2
+}
+
+; VCode:
+; block0:
+;   x0 = xeq32 x0, x1
+;   ret
+;
+; Disassembled:
+;        0: 20 00 04                        xeq32 x0, x0, x1
+;        3: 00                              ret
+
+function %i32_eq(i32, i32) -> i8 {
+block0(v0: i32, v1: i32):
+    v2 = icmp eq v0, v1
+    return v2
+}
+
+; VCode:
+; block0:
+;   x0 = xeq32 x0, x1
+;   ret
+;
+; Disassembled:
+;        0: 20 00 04                        xeq32 x0, x0, x1
+;        3: 00                              ret
+
+function %i64_eq(i64, i64) -> i8 {
+block0(v0: i64, v1: i64):
+    v2 = icmp eq v0, v1
+    return v2
+}
+
+; VCode:
+; block0:
+;   x0 = xeq64 x0, x1
+;   ret
+;
+; Disassembled:
+;        0: 1a 00 04                        xeq64 x0, x0, x1
+;        3: 00                              ret
+
+function %i8_ne(i8, i8) -> i8 {
+block0(v0: i8, v1: i8):
+    v2 = icmp ne v0, v1
+    return v2
+}
+
+; VCode:
+; block0:
+;   x0 = xneq32 x0, x1
+;   ret
+;
+; Disassembled:
+;        0: 21 00 04                        xneq32 x0, x0, x1
+;        3: 00                              ret
+
+function %i16_ne(i16, i16) -> i8 {
+block0(v0: i16, v1: i16):
+    v2 = icmp ne v0, v1
+    return v2
+}
+
+; VCode:
+; block0:
+;   x0 = xneq32 x0, x1
+;   ret
+;
+; Disassembled:
+;        0: 21 00 04                        xneq32 x0, x0, x1
+;        3: 00                              ret
+
+function %i32_ne(i32, i32) -> i8 {
+block0(v0: i32, v1: i32):
+    v2 = icmp ne v0, v1
+    return v2
+}
+
+; VCode:
+; block0:
+;   x0 = xneq32 x0, x1
+;   ret
+;
+; Disassembled:
+;        0: 21 00 04                        xneq32 x0, x0, x1
+;        3: 00                              ret
+
+function %i64_ne(i64, i64) -> i8 {
+block0(v0: i64, v1: i64):
+    v2 = icmp ne v0, v1
+    return v2
+}
+
+; VCode:
+; block0:
+;   x0 = xneq64 x0, x1
+;   ret
+;
+; Disassembled:
+;        0: 1b 00 04                        xneq64 x0, x0, x1
+;        3: 00                              ret
+
+function %i8_ult(i8, i8) -> i8 {
+block0(v0: i8, v1: i8):
+    v2 = icmp ult v0, v1
+    return v2
+}
+
+; VCode:
+; block0:
+;   x0 = xult32 x0, x1
+;   ret
+;
+; Disassembled:
+;        0: 24 00 04                        xult32 x0, x0, x1
+;        3: 00                              ret
+
+function %i16_ult(i16, i16) -> i8 {
+block0(v0: i16, v1: i16):
+    v2 = icmp ult v0, v1
+    return v2
+}
+
+; VCode:
+; block0:
+;   x0 = xult32 x0, x1
+;   ret
+;
+; Disassembled:
+;        0: 24 00 04                        xult32 x0, x0, x1
+;        3: 00                              ret
+
+function %i32_ult(i32, i32) -> i8 {
+block0(v0: i32, v1: i32):
+    v2 = icmp ult v0, v1
+    return v2
+}
+
+; VCode:
+; block0:
+;   x0 = xult32 x0, x1
+;   ret
+;
+; Disassembled:
+;        0: 24 00 04                        xult32 x0, x0, x1
+;        3: 00                              ret
+
+function %i64_ult(i64, i64) -> i8 {
+block0(v0: i64, v1: i64):
+    v2 = icmp ult v0, v1
+    return v2
+}
+
+; VCode:
+; block0:
+;   x0 = xult64 x0, x1
+;   ret
+;
+; Disassembled:
+;        0: 1e 00 04                        xult64 x0, x0, x1
+;        3: 00                              ret
+
+function %i8_ule(i8, i8) -> i8 {
+block0(v0: i8, v1: i8):
+    v2 = icmp ule v0, v1
+    return v2
+}
+
+; VCode:
+; block0:
+;   x0 = xulteq32 x0, x1
+;   ret
+;
+; Disassembled:
+;        0: 25 00 04                        xulteq32 x0, x0, x1
+;        3: 00                              ret
+
+function %i16_ule(i16, i16) -> i8 {
+block0(v0: i16, v1: i16):
+    v2 = icmp ule v0, v1
+    return v2
+}
+
+; VCode:
+; block0:
+;   x0 = xulteq32 x0, x1
+;   ret
+;
+; Disassembled:
+;        0: 25 00 04                        xulteq32 x0, x0, x1
+;        3: 00                              ret
+
+function %i32_ule(i32, i32) -> i8 {
+block0(v0: i32, v1: i32):
+    v2 = icmp ule v0, v1
+    return v2
+}
+
+; VCode:
+; block0:
+;   x0 = xulteq32 x0, x1
+;   ret
+;
+; Disassembled:
+;        0: 25 00 04                        xulteq32 x0, x0, x1
+;        3: 00                              ret
+
+function %i64_ule(i64, i64) -> i8 {
+block0(v0: i64, v1: i64):
+    v2 = icmp ule v0, v1
+    return v2
+}
+
+; VCode:
+; block0:
+;   x0 = xulteq64 x0, x1
+;   ret
+;
+; Disassembled:
+;        0: 1f 00 04                        xulteq64 x0, x0, x1
+;        3: 00                              ret
+
+function %i8_slt(i8, i8) -> i8 {
+block0(v0: i8, v1: i8):
+    v2 = icmp slt v0, v1
+    return v2
+}
+
+; VCode:
+; block0:
+;   x0 = xslt32 x0, x1
+;   ret
+;
+; Disassembled:
+;        0: 22 00 04                        xslt32 x0, x0, x1
+;        3: 00                              ret
+
+function %i16_slt(i16, i16) -> i8 {
+block0(v0: i16, v1: i16):
+    v2 = icmp slt v0, v1
+    return v2
+}
+
+; VCode:
+; block0:
+;   x0 = xslt32 x0, x1
+;   ret
+;
+; Disassembled:
+;        0: 22 00 04                        xslt32 x0, x0, x1
+;        3: 00                              ret
+
+function %i32_slt(i32, i32) -> i8 {
+block0(v0: i32, v1: i32):
+    v2 = icmp slt v0, v1
+    return v2
+}
+
+; VCode:
+; block0:
+;   x0 = xslt32 x0, x1
+;   ret
+;
+; Disassembled:
+;        0: 22 00 04                        xslt32 x0, x0, x1
+;        3: 00                              ret
+
+function %i64_slt(i64, i64) -> i8 {
+block0(v0: i64, v1: i64):
+    v2 = icmp slt v0, v1
+    return v2
+}
+
+; VCode:
+; block0:
+;   x0 = xslt64 x0, x1
+;   ret
+;
+; Disassembled:
+;        0: 1c 00 04                        xslt64 x0, x0, x1
+;        3: 00                              ret
+
+function %i8_sle(i8, i8) -> i8 {
+block0(v0: i8, v1: i8):
+    v2 = icmp sle v0, v1
+    return v2
+}
+
+; VCode:
+; block0:
+;   x0 = xslteq32 x0, x1
+;   ret
+;
+; Disassembled:
+;        0: 23 00 04                        xslteq32 x0, x0, x1
+;        3: 00                              ret
+
+function %i16_sle(i16, i16) -> i8 {
+block0(v0: i16, v1: i16):
+    v2 = icmp sle v0, v1
+    return v2
+}
+
+; VCode:
+; block0:
+;   x0 = xslteq32 x0, x1
+;   ret
+;
+; Disassembled:
+;        0: 23 00 04                        xslteq32 x0, x0, x1
+;        3: 00                              ret
+
+function %i32_sle(i32, i32) -> i8 {
+block0(v0: i32, v1: i32):
+    v2 = icmp sle v0, v1
+    return v2
+}
+
+; VCode:
+; block0:
+;   x0 = xslteq32 x0, x1
+;   ret
+;
+; Disassembled:
+;        0: 23 00 04                        xslteq32 x0, x0, x1
+;        3: 00                              ret
+
+function %i64_sle(i64, i64) -> i8 {
+block0(v0: i64, v1: i64):
+    v2 = icmp sle v0, v1
+    return v2
+}
+
+; VCode:
+; block0:
+;   x0 = xslteq64 x0, x1
+;   ret
+;
+; Disassembled:
+;        0: 1d 00 04                        xslteq64 x0, x0, x1
+;        3: 00                              ret
+
+function %i8_ugt(i8, i8) -> i8 {
+block0(v0: i8, v1: i8):
+    v2 = icmp ugt v0, v1
+    return v2
+}
+
+; VCode:
+; block0:
+;   x0 = xult32 x1, x0
+;   ret
+;
+; Disassembled:
+;        0: 24 20 00                        xult32 x0, x1, x0
+;        3: 00                              ret
+
+function %i16_ugt(i16, i16) -> i8 {
+block0(v0: i16, v1: i16):
+    v2 = icmp ugt v0, v1
+    return v2
+}
+
+; VCode:
+; block0:
+;   x0 = xult32 x1, x0
+;   ret
+;
+; Disassembled:
+;        0: 24 20 00                        xult32 x0, x1, x0
+;        3: 00                              ret
+
+function %i32_ugt(i32, i32) -> i8 {
+block0(v0: i32, v1: i32):
+    v2 = icmp ugt v0, v1
+    return v2
+}
+
+; VCode:
+; block0:
+;   x0 = xult32 x1, x0
+;   ret
+;
+; Disassembled:
+;        0: 24 20 00                        xult32 x0, x1, x0
+;        3: 00                              ret
+
+function %i64_ugt(i64, i64) -> i8 {
+block0(v0: i64, v1: i64):
+    v2 = icmp ugt v0, v1
+    return v2
+}
+
+; VCode:
+; block0:
+;   x0 = xult64 x1, x0
+;   ret
+;
+; Disassembled:
+;        0: 1e 20 00                        xult64 x0, x1, x0
+;        3: 00                              ret
+
+function %i8_sgt(i8, i8) -> i8 {
+block0(v0: i8, v1: i8):
+    v2 = icmp sgt v0, v1
+    return v2
+}
+
+; VCode:
+; block0:
+;   x0 = xslt32 x1, x0
+;   ret
+;
+; Disassembled:
+;        0: 22 20 00                        xslt32 x0, x1, x0
+;        3: 00                              ret
+
+function %i16_sgt(i16, i16) -> i8 {
+block0(v0: i16, v1: i16):
+    v2 = icmp sgt v0, v1
+    return v2
+}
+
+; VCode:
+; block0:
+;   x0 = xslt32 x1, x0
+;   ret
+;
+; Disassembled:
+;        0: 22 20 00                        xslt32 x0, x1, x0
+;        3: 00                              ret
+
+function %i32_sgt(i32, i32) -> i8 {
+block0(v0: i32, v1: i32):
+    v2 = icmp sgt v0, v1
+    return v2
+}
+
+; VCode:
+; block0:
+;   x0 = xslt32 x1, x0
+;   ret
+;
+; Disassembled:
+;        0: 22 20 00                        xslt32 x0, x1, x0
+;        3: 00                              ret
+
+function %i64_sgt(i64, i64) -> i8 {
+block0(v0: i64, v1: i64):
+    v2 = icmp sgt v0, v1
+    return v2
+}
+
+; VCode:
+; block0:
+;   x0 = xslt64 x1, x0
+;   ret
+;
+; Disassembled:
+;        0: 1c 20 00                        xslt64 x0, x1, x0
+;        3: 00                              ret
+
+function %i8_uge(i8, i8) -> i8 {
+block0(v0: i8, v1: i8):
+    v2 = icmp uge v0, v1
+    return v2
+}
+
+; VCode:
+; block0:
+;   x0 = xulteq32 x1, x0
+;   ret
+;
+; Disassembled:
+;        0: 25 20 00                        xulteq32 x0, x1, x0
+;        3: 00                              ret
+
+function %i16_uge(i16, i16) -> i8 {
+block0(v0: i16, v1: i16):
+    v2 = icmp uge v0, v1
+    return v2
+}
+
+; VCode:
+; block0:
+;   x0 = xulteq32 x1, x0
+;   ret
+;
+; Disassembled:
+;        0: 25 20 00                        xulteq32 x0, x1, x0
+;        3: 00                              ret
+
+function %i32_uge(i32, i32) -> i8 {
+block0(v0: i32, v1: i32):
+    v2 = icmp uge v0, v1
+    return v2
+}
+
+; VCode:
+; block0:
+;   x0 = xulteq32 x1, x0
+;   ret
+;
+; Disassembled:
+;        0: 25 20 00                        xulteq32 x0, x1, x0
+;        3: 00                              ret
+
+function %i64_uge(i64, i64) -> i8 {
+block0(v0: i64, v1: i64):
+    v2 = icmp uge v0, v1
+    return v2
+}
+
+; VCode:
+; block0:
+;   x0 = xulteq64 x1, x0
+;   ret
+;
+; Disassembled:
+;        0: 1f 20 00                        xulteq64 x0, x1, x0
+;        3: 00                              ret
+
+function %i8_sge(i8, i8) -> i8 {
+block0(v0: i8, v1: i8):
+    v2 = icmp sge v0, v1
+    return v2
+}
+
+; VCode:
+; block0:
+;   x0 = xslteq32 x1, x0
+;   ret
+;
+; Disassembled:
+;        0: 23 20 00                        xslteq32 x0, x1, x0
+;        3: 00                              ret
+
+function %i16_sge(i16, i16) -> i8 {
+block0(v0: i16, v1: i16):
+    v2 = icmp sge v0, v1
+    return v2
+}
+
+; VCode:
+; block0:
+;   x0 = xslteq32 x1, x0
+;   ret
+;
+; Disassembled:
+;        0: 23 20 00                        xslteq32 x0, x1, x0
+;        3: 00                              ret
+
+function %i32_sge(i32, i32) -> i8 {
+block0(v0: i32, v1: i32):
+    v2 = icmp sge v0, v1
+    return v2
+}
+
+; VCode:
+; block0:
+;   x0 = xslteq32 x1, x0
+;   ret
+;
+; Disassembled:
+;        0: 23 20 00                        xslteq32 x0, x1, x0
+;        3: 00                              ret
+
+function %i64_sge(i64, i64) -> i8 {
+block0(v0: i64, v1: i64):
+    v2 = icmp sge v0, v1
+    return v2
+}
+
+; VCode:
+; block0:
+;   x0 = xslteq64 x1, x0
+;   ret
+;
+; Disassembled:
+;        0: 1d 20 00                        xslteq64 x0, x1, x0
+;        3: 00                              ret
+
