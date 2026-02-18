@@ -48,6 +48,4 @@ The command `git commit -s` will automatically add the message to the end of the
 This project welcomes external contributions. To contribute code or documentation, please submit a [pull request](https://github.com/IBM/GEDS/pulls).
 
 ## Acknowledgement
-**This project has received funding through CloudStars.**
-
-**CloudStars has received funding from the European Union's Horizon research and innovation programme under grant agreement No 101086248.**
+**This project has received funding through the European Union’s Horizon research and innovation programmes CloudSkin (grant agreement No. 101092646) and CloudStars (grant agreement No. 101086248).**
