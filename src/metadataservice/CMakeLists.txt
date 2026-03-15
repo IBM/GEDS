@@ -10,6 +10,7 @@ set(SOURCES
         ObjectStoreHandler.h
         S3Helper.cpp
         S3Helper.h
+        PubSubMQTT.h        
 )
 
 add_library(libmetadataservice STATIC ${SOURCES})
@@ -19,6 +20,7 @@ target_link_libraries(libmetadataservice
         geds_utility
         geds_proto
         geds_s3
+        paho-mqttpp3
 )
 target_compile_options(libmetadataservice PUBLIC ${GEDS_EXTRA_COMPILER_FLAGS})
 target_compile_definitions(libmetadataservice
