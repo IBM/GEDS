@@ -63,7 +63,7 @@ ENV BOOST_INSTALL_DIR=/usr/local/opt/boost
 
 RUN mkdir -p /build/boost \
     && cd /build/boost \
-    && wget -O boost.tar.gz https://boostorg.jfrog.io/artifactory/main/release/${BOOST_VERSION}/source/boost_${BOOST_VERSION_}.tar.gz \
+    && wget -O boost.tar.gz https://archives.boost.io/release/${BOOST_VERSION}/source/boost_${BOOST_VERSION_}.tar.gz \
     && cd "${BUILD_DIR}" \
     && tar xf boost.tar.gz --strip-components 1 \
     && ./bootstrap.sh --prefix="${BOOST_INSTALL_DIR}" \
