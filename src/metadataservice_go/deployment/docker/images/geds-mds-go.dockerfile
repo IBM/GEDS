@@ -1,4 +1,4 @@
-FROM golang:1.20.1-alpine3.17 as builder
+FROM golang:1.26-alpine3.24 AS builder
 
 RUN apk add --no-cache \
 	bash \
@@ -10,7 +10,7 @@ COPY ./env.secret /gedsmds/env
 
 RUN make build-mds
 
-FROM alpine:3.17
+FROM alpine:3.24
 
 ENV GEDSMDS_SERVER_PORT=50004
 
