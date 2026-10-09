@@ -21,7 +21,7 @@ fi
 
 BUILD_DIR=$(mktemp -d /tmp/boost-${BOOST_VERSION}-build-XXX)
 mkdir -p $BUILD_DIR
-wget -O ${BUILD_DIR}/boost.tar.gz https://boostorg.jfrog.io/artifactory/main/release/${BOOST_VERSION}/source/boost_${BOOST_VERSION//./_}.tar.gz
+wget -O ${BUILD_DIR}/boost.tar.gz https://archives.boost.io/release/${BOOST_VERSION}/source/boost_${BOOST_VERSION//./_}.tar.gz
 cd "${BUILD_DIR}"
 tar xf boost.tar.gz --strip-components 1
 ./bootstrap.sh --prefix="${INSTALL_PREFIX}"
